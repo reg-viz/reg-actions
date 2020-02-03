@@ -44,13 +44,11 @@ const run = async () => {
       event.pull_request.head.sha)
   ).slice(0, 7);
 
-  console.log("current hash = ", currentHash);
-
   const currentRun = runs.data.workflow_runs.find(run =>
     run.head_sha.startsWith(currentHash)
   );
 
-  console.log("current run = ", currentRun);
+  if (!currentRun) return;
 
   cpx.copySync(
     path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`),
