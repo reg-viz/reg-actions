@@ -1,0 +1,6 @@
+[submodule "x-img-diff"]
+	path = x-img-diff
+	url = https://github.com/Quramy/x-img-diff.git
+[submodule "opencv"]
+	path = opencv
+	url = https://github.com/opencv/opencv.git

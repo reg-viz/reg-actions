@@ -1,0 +1,53 @@
+{
+  "name": "node12-template-action",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Node 12 template action",
+  "main": "lib/main.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/actions/node12-template.git"
+  },
+  "keywords": [
+    "actions",
+    "node",
+    "setup"
+  ],
+  "resolutions": {
+    "**/@octokit/rest": "16.41.1"
+  },
+  "author": "GitHub",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.0.0",
+    "@actions/exec": "^1.0.0",
+    "@actions/github": "^1.0.0",
+    "@actions/io": "^1.0.0",
+    "@actions/tool-cache": "^1.0.0",
+    "@types/cpx": "^1.5.0",
+    "@types/glob": "^7.1.1",
+    "axios": "^0.19.0",
+    "cpx": "^1.5.0",
+    "glob": "^7.1.4",
+    "make-dir": "^3.0.0",
+    "node-zip": "^1.1.1",
+    "reg-cli": "^0.15.7",
+    "semver": "^6.1.1"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/jest": "^24.0.13",
+    "@types/make-dir": "^2.1.0",
+    "@types/node": "^12.0.4",
+    "@types/semver": "^6.0.0",
+    "jest": "^24.8.0",
+    "jest-circus": "^24.7.1",
+    "ts-jest": "^24.0.2",
+    "ts-loader": "^6.2.1",
+    "typescript": "^3.5.1"
+  }
+}
