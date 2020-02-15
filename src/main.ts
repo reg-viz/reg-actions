@@ -112,8 +112,7 @@ const run = async () => {
     actualDir: "./__reg__/actual",
     expectedDir: "./__reg__/expected",
     diffDir: "./__reg__/diff",
-    json: "./__reg__/reg.json",
-    report: "./__reg__/index.html",
+    json: "./__reg__/0",
     update: false,
     ignoreChange: true,
     urlPrefix: ""
