@@ -1,4 +1,0 @@
-test/
-.circleci
-.travis.yml
-.yarn.lock

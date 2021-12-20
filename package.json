@@ -26,19 +26,19 @@
     "@actions/tool-cache": "^1.0.0",
     "@types/cpx": "^1.5.0",
     "@types/glob": "^7.1.1",
-    "axios": "^0.19.0",
+    "axios": "^0.24.0",
     "cpx": "^1.5.0",
-    "glob": "^7.1.4",
-    "make-dir": "^3.0.0",
+    "glob": "^7.2.0",
+    "make-dir": "^3.1.0",
     "node-zip": "^1.1.1",
-    "reg-cli": "^0.15.7",
-    "semver": "^6.1.1"
+    "reg-cli": "^0.17.4",
+    "semver": "^7.3.5"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
     "@types/make-dir": "^2.1.0",
-    "@types/node": "^12.0.4",
-    "@types/semver": "^6.0.0",
-    "typescript": "^3.5.1"
+    "@types/node": "^17.0.1",
+    "@types/semver": "^7.3.9",
+    "typescript": "^4.5.4"
   }
 }

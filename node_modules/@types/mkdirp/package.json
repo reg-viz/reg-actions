@@ -1,0 +1,32 @@
+{
+    "name": "@types/mkdirp",
+    "version": "1.0.2",
+    "description": "TypeScript definitions for mkdirp",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/mkdirp",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Bart van der Schoor",
+            "url": "https://github.com/Bartvds",
+            "githubUsername": "Bartvds"
+        },
+        {
+            "name": "mrmlnc",
+            "url": "https://github.com/mrmlnc",
+            "githubUsername": "mrmlnc"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/mkdirp"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "7f5bc215635b5c62815f048547ad4801a2168aaf866704f2ab174588cc8c1715",
+    "typeScriptVersion": "3.6"
+}
