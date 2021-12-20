@@ -2,7 +2,7 @@ name: "Test"
 description: "Action Tests"
 author: "bokuweb"
 inputs:
-  actual_directory_path:
+  actual-directory-path:
     description: "Path to actual images directory."
     required: true
 runs:
