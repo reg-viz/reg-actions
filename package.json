@@ -6,7 +6,7 @@
   "main": "lib/main.js",
   "scripts": {
     "tsc": "tsc",
-    "package": "ncc build --source-map --license licenses.txt",
+    "package": "npm run tsc && ncc build --source-map --license licenses.txt",
     "test": "jest"
   },
   "repository": {
