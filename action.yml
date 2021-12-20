@@ -7,4 +7,4 @@ inputs:
     required: true
 runs:
   using: "node16"
-  main: "dist/main.js"
+  main: "dist/index.js"

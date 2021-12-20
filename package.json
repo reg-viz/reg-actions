@@ -15,7 +15,8 @@
   "scripts": {
     "tsc": "tsc --skipLibCheck",
     "build": "parcel build src/main.ts",
-    "package": "npm run tsc && ncc build --source-map --license licenses.txt",
+    "package": "npm run tsc && npm run package:diff & ncc build --source-map --license licenses.txt",
+    "package:diff": "ncc build node_modules/reg-cli/dist/diff.js -o dist && mv ./dist/index.js ./dist/diff.js",
     "test": "jest"
   },
   "repository": {
