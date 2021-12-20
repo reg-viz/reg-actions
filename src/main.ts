@@ -17,7 +17,7 @@ const writeFileAsync = promisify(fs.writeFile);
 
 const { repo } = github.context;
 
-let event;
+let event: any;
 try {
   if (process.env.GITHUB_EVENT_PATH) {
     event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
@@ -123,7 +123,7 @@ const run = async () => {
     async (compareItem: { type: string; path: string }) => {}
   );
 
-  emitter.on("complete", async (result) => {
+  emitter.on("complete", async () => {
     const [owner, repo] = event.repository.full_name.split("/");
     const url = `https://bokuweb.github.io/reg-action-report/?owner=${owner}&repository=${repo}&run_id=${currentRun.id}`;
 

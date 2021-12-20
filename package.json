@@ -5,7 +5,7 @@
   "description": "Node 12 template action",
   "main": "lib/main.js",
   "scripts": {
-    "tsc": "tsc",
+    "tsc": "tsc --skipLibCheck",
     "package": "npm run tsc && ncc build --source-map --license licenses.txt",
     "test": "jest"
   },
