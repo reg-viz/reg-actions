@@ -5,8 +5,7 @@
   "description": "Node 12 template action",
   "main": "lib/main.js",
   "scripts": {
-    "build": "tsc",
-    "test": "jest"
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
@@ -17,9 +16,6 @@
     "node",
     "setup"
   ],
-  "resolutions": {
-    "**/@octokit/rest": "16.41.1"
-  },
   "author": "GitHub",
   "license": "MIT",
   "dependencies": {
@@ -40,14 +36,9 @@
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
-    "@types/jest": "^24.0.13",
     "@types/make-dir": "^2.1.0",
     "@types/node": "^12.0.4",
     "@types/semver": "^6.0.0",
-    "jest": "^24.8.0",
-    "jest-circus": "^24.7.1",
-    "ts-jest": "^24.0.2",
-    "ts-loader": "^6.2.1",
     "typescript": "^3.5.1"
   }
 }
