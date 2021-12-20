@@ -1,10 +1,10 @@
-name: "Test"
+name: "reg-actions"
 description: "Action Tests"
 author: "bokuweb"
 inputs:
   actual_directory_path:
-    description: "Path to actual images directory."
+    description: "Path to images directory."
     required: true
 runs:
-  using: "node12"
-  main: "lib/main.js"
+  using: "node16"
+  main: "dist/index.js"

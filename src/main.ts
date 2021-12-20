@@ -34,17 +34,18 @@ const actual = core.getInput("actual-directory-path");
 const run = async () => {
   const runs = await octokit.actions.listRepoWorkflowRuns({
     ...repo,
-    per_page: 100
+    per_page: 100,
   });
 
-  const currentHash = (
-    event.after ||
-    (event.pull_request &&
-      event.pull_request.head &&
-      event.pull_request.head.sha)
-  ).slice(0, 7);
+  const sha = event.after || event.pull_request?.head?.sha;
 
-  const currentRun = runs.data.workflow_runs.find(run =>
+  if (!sha) {
+    return;
+  }
+
+  const currentHash = sha.slice(0, 7);
+
+  const currentRun = runs.data.workflow_runs.find((run) =>
     run.head_sha.startsWith(currentHash)
   );
 
@@ -57,7 +58,6 @@ const run = async () => {
 
   // Not PR
   if (typeof event.number === "undefined") {
-    //    await publish();
     return;
   }
 
@@ -66,7 +66,7 @@ const run = async () => {
     { encoding: "utf8" }
   ).slice(0, 7);
 
-  const targetRun = runs.data.workflow_runs.find(run =>
+  const targetRun = runs.data.workflow_runs.find((run) =>
     run.head_sha.startsWith(targetHash)
   );
 
@@ -79,7 +79,7 @@ const run = async () => {
   const res = await octokit.actions.listWorkflowRunArtifacts({
     ...repo,
     run_id: targetRun.id,
-    per_page: 100
+    per_page: 100,
   });
 
   // Octokit's type definition is wrong now.
@@ -89,19 +89,19 @@ const run = async () => {
   const zip = await octokit.actions.downloadArtifact({
     ...repo,
     artifact_id: latest.id,
-    archive_format: "zip"
+    archive_format: "zip",
   });
 
   const files = new NodeZip(zip.data, {
     base64: false,
-    checkCRC32: true
+    checkCRC32: true,
   });
 
   await Promise.all(
     Object.keys(files.files)
-      .map(key => files.files[key])
-      .filter(file => !file.dir)
-      .map(async file => {
+      .map((key) => files.files[key])
+      .filter((file) => !file.dir)
+      .map(async (file) => {
         const f = path.join("__reg__", "expected", path.basename(file.name));
         await makeDir(path.dirname(f));
         await writeFileAsync(f, str2ab(file._data));
@@ -115,7 +115,7 @@ const run = async () => {
     json: "./__reg__/0",
     update: false,
     ignoreChange: true,
-    urlPrefix: ""
+    urlPrefix: "",
   });
 
   emitter.on(
@@ -123,21 +123,21 @@ const run = async () => {
     async (compareItem: { type: string; path: string }) => {}
   );
 
-  emitter.on("complete", async result => {
-    const [owner, reponame] = event.repository.full_name.split("/");
-    const url = `https://bokuweb.github.io/reg-action-report/?owner=${owner}&repository=${reponame}&run_id=${currentRun.id}`;
+  emitter.on("complete", async (result) => {
+    const [owner, repo] = event.repository.full_name.split("/");
+    const url = `https://bokuweb.github.io/reg-action-report/?owner=${owner}&repository=${repo}&run_id=${currentRun.id}`;
 
     await octokit.issues.createComment({
       ...repo,
       issue_number: event.number,
-      body: url
+      body: url,
     });
   });
 };
 
 run();
 
-function str2ab(str) {
+function str2ab(str: string) {
   const array = new Uint8Array(str.length);
   for (var i = 0; i < str.length; i++) {
     array[i] = str.charCodeAt(i);
