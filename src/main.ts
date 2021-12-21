@@ -19,12 +19,24 @@ const writeFileAsync = promisify(fs.writeFile);
 
 const { repo } = github.context;
 
-let event;
-try {
-  if (process.env.GITHUB_EVENT_PATH) {
-    event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
-  }
-} catch (e) {}
+type Event = {
+  before: string | null;
+  after: string | null;
+  pull_request: components['schemas']['pull-request'] | null;
+  app: components['schemas']['nullable-integration'];
+  repository: components['schemas']['minimal-repository'];
+  number?: number;
+};
+
+const readEvent = (): Event | undefined => {
+  try {
+    if (process.env.GITHUB_EVENT_PATH) {
+      return JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+    }
+  } catch (e) {}
+};
+
+const event = readEvent();
 
 log.info(`event = `, event);
 
@@ -40,8 +52,9 @@ type Run = components['schemas']['workflow-run'];
 const findCurrentAndTargetRuns = async (): Promise<{ current: Run; target: Run } | null> => {
   let currentRun: Run | null = null;
 
-  const currentHash = (event.after || event.pull_request?.head?.sha).slice(0, 7);
+  const currentHash = (event.after ?? event?.pull_request?.head?.sha)?.slice(0, 7);
   log.info(`event.after = ${event.after} head sha = ${event.pull_request?.head?.sha}`);
+  if (!currentHash) return null;
 
   let page = 0;
   while (true) {
@@ -58,6 +71,7 @@ const findCurrentAndTargetRuns = async (): Promise<{ current: Run; target: Run }
         log.info(`currentRun = `, currentRun);
       }
     }
+    if (!event.pull_request) return null;
     const targetHash = execSync(
       `git merge-base -a origin/${event.pull_request.base.ref} origin/${event.pull_request.head.ref}`,
       { encoding: 'utf8' },
@@ -85,7 +99,6 @@ const copyImages = () => {
   cpx.copySync(path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), './__reg__/actual');
 };
 
-// TODO: fetch all run
 const run = async () => {
   if (typeof event.number === 'undefined') {
     return;
@@ -122,10 +135,7 @@ const run = async () => {
     archive_format: 'zip',
   });
 
-  const files = new NodeZip(zip.data, {
-    base64: false,
-    checkCRC32: true,
-  });
+  const files = new NodeZip(zip.data, { base64: false, checkCRC32: true });
 
   await Promise.all(
     Object.keys(files.files)
@@ -153,12 +163,32 @@ const run = async () => {
   emitter.on('complete', async result => {
     log.debug('compare result', result);
     const [owner, reponame] = event.repository.full_name.split('/');
-    const url = `https://bokuweb.github.io/reg-action-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
+    const url = `https://bokuweb.github.io/reg-actions-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
+
+    if (event.number == null) return;
+
+    let body = '';
+    if (result.failedItems.length === 0 && result.newItems === 0 && result.deletedItems === 0) {
+      body = `✨✨ That's perfect, there is no visual difference! ✨✨
+      Check out the report [here](${url}).`;
+    } else {
+      body = `Check out the report [here](${url}).
+          
+| Left align | Right align | Center align |
+|:-----------|------------:|:------------:|
+| This       | This        | This         |
+| column     | column      | column       |
+| will       | will        | will         |
+| be         | be          | be           |
+| left       | right       | center       |
+| aligned    | aligned     | aligned      |
+      `;
+    }
 
     await octokit.rest.issues.createComment({
       ...repo,
       issue_number: event.number,
-      body: url,
+      body,
     });
   });
 };
