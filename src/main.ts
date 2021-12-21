@@ -153,7 +153,7 @@ const run = async () => {
   emitter.on('complete', async result => {
     log.debug('compare result', result);
     const [owner, reponame] = event.repository.full_name.split('/');
-    const url = `https://bokuweb.github.io/reg-action-report/?owner=${owner}&repository=${reponame}&run_id=${currentRun.id}`;
+    const url = `https://bokuweb.github.io/reg-action-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
 
     await octokit.rest.issues.createComment({
       ...repo,
