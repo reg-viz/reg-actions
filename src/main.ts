@@ -12,7 +12,7 @@ const NodeZip = require('node-zip');
 
 const token = core.getInput('secret');
 
-const octokit = new github.GitHub(token);
+const octokit = github.getOctokit(token);
 const writeFileAsync = promisify(fs.writeFile);
 
 const { repo } = github.context;
@@ -32,7 +32,7 @@ const actual = core.getInput('actual-directory-path');
 
 // TODO: fetch all run
 const run = async () => {
-  const runs = await octokit.actions.listRepoWorkflowRuns({
+  const runs = await octokit.rest.actions.listWorkflowRunsForRepo({
     ...repo,
     per_page: 100,
   });
@@ -67,7 +67,7 @@ const run = async () => {
   }
 
   // TODO: fetch all artifacts
-  const res = await octokit.actions.listWorkflowRunArtifacts({
+  const res = await octokit.rest.actions.listWorkflowRunArtifacts({
     ...repo,
     run_id: targetRun.id,
     per_page: 100,
@@ -77,7 +77,7 @@ const run = async () => {
   const { artifacts } = res.data as any;
   const latest = artifacts[artifacts.length - 1];
 
-  const zip = await octokit.actions.downloadArtifact({
+  const zip = await octokit.rest.actions.downloadArtifact({
     ...repo,
     artifact_id: latest.id,
     archive_format: 'zip',
@@ -115,7 +115,7 @@ const run = async () => {
     const [owner, reponame] = event.repository.full_name.split('/');
     const url = `https://bokuweb.github.io/reg-action-report/?owner=${owner}&repository=${reponame}&run_id=${currentRun.id}`;
 
-    await octokit.issues.createComment({
+    await octokit.rest.issues.createComment({
       ...repo,
       issue_number: event.number,
       body: url,
