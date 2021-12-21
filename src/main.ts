@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
+import { components } from '@octokit/openapi-types';
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
@@ -25,7 +26,7 @@ try {
   }
 } catch (e) {}
 
-log.info(`event = ${event}`);
+log.info(`event = `, event);
 
 if (!event) {
   throw new Error('Failed to get github event.json..');
@@ -34,54 +35,77 @@ if (!event) {
 const actual = core.getInput('actual-directory-path');
 log.info(`actual directory is ${actual}`);
 
-// TODO: fetch all run
-const run = async () => {
-  const runs = await octokit.rest.actions.listWorkflowRunsForRepo({
-    ...repo,
-    per_page: 100,
-  });
+type Run = components['schemas']['workflow-run'];
 
-  log.info(`runs = ${runs}`);
+const findCurrentAndTargetRuns = async (): Promise<{ current: Run; target: Run } | null> => {
+  let currentRun: Run | null = null;
 
   const currentHash = (event.after || event.pull_request?.head?.sha).slice(0, 7);
-
   log.info(`event.after = ${event.after} head sha = ${event.pull_request?.head?.sha}`);
 
-  const currentRun = runs.data.workflow_runs.find(run => run.head_sha.startsWith(currentHash));
+  let page = 0;
+  while (true) {
+    const runs = await octokit.rest.actions.listWorkflowRunsForRepo({
+      ...repo,
+      per_page: 100,
+      page: page++,
+    });
 
-  log.info(`currentRun = `, currentRun);
+    if (!currentRun) {
+      const run = runs.data.workflow_runs.find(run => run.head_sha.startsWith(currentHash));
+      if (run) {
+        currentRun = run;
+        log.info(`currentRun = `, currentRun);
+      }
+    }
+    const targetHash = execSync(
+      `git merge-base -a origin/${event.pull_request.base.ref} origin/${event.pull_request.head.ref}`,
+      { encoding: 'utf8' },
+    ).slice(0, 7);
 
-  if (!currentRun) return;
+    log.info(`targetHash = ${targetHash}`);
 
+    const targetRun = runs.data.workflow_runs.find(run => run.head_sha.startsWith(targetHash));
+
+    log.debug('runs = ', runs.data.workflow_runs.length);
+    log.info(`targetRun = `, targetRun);
+
+    if (targetRun && currentRun) {
+      return { current: currentRun, target: targetRun };
+    }
+
+    if (runs.data.workflow_runs.length < 100) {
+      log.info('Failed to find target run');
+      return null;
+    }
+  }
+};
+
+const copyImages = () => {
   cpx.copySync(path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), './__reg__/actual');
+};
 
-  // Not PR
+// TODO: fetch all run
+const run = async () => {
   if (typeof event.number === 'undefined') {
-    //    await publish();
     return;
   }
 
-  const targetHash = execSync(
-    `git merge-base -a origin/${event.pull_request.base.ref} origin/${event.pull_request.head.ref}`,
-    { encoding: 'utf8' },
-  ).slice(0, 7);
+  const runs = await findCurrentAndTargetRuns();
 
-  log.info(`targetHash = ${targetHash}`);
-
-  const targetRun = runs.data.workflow_runs.find(run => run.head_sha.startsWith(targetHash));
-
-  log.debug('runs = ', runs.data.workflow_runs.length);
-  log.info(`targetRun = `, targetRun);
-
-  if (!targetRun) {
-    console.error('Failed to find target run');
+  if (!runs) {
+    log.error('Failed to find current or target runs');
     return;
   }
 
-  // TODO: fetch all artifacts
+  log.info(`currentRun = `, runs.current);
+
+  // Copy actual images
+  copyImages();
+
   const res = await octokit.rest.actions.listWorkflowRunArtifacts({
     ...repo,
-    run_id: targetRun.id,
+    run_id: runs.target.id,
     per_page: 100,
   });
 
