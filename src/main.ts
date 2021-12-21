@@ -6,6 +6,7 @@ import { execSync } from 'child_process';
 import cpx from 'cpx';
 import makeDir from 'make-dir';
 import { promisify } from 'util';
+import { log } from './logger';
 
 const compare = require('reg-cli');
 const NodeZip = require('node-zip');
@@ -24,11 +25,14 @@ try {
   }
 } catch (e) {}
 
+log.info(`event = ${event}`);
+
 if (!event) {
   throw new Error('Failed to get github event.json..');
 }
 
 const actual = core.getInput('actual-directory-path');
+log.info(`actual directory is ${actual}`);
 
 // TODO: fetch all run
 const run = async () => {
@@ -37,12 +41,15 @@ const run = async () => {
     per_page: 100,
   });
 
-  const currentHash = (
-    event.after ||
-    (event.pull_request && event.pull_request.head && event.pull_request.head.sha)
-  ).slice(0, 7);
+  log.info(`runs = ${runs}`);
+
+  const currentHash = (event.after || event.pull_request?.head?.sha).slice(0, 7);
+
+  log.info(`event.after = ${event.after} head sha = ${event.pull_request?.head?.sha}`);
 
   const currentRun = runs.data.workflow_runs.find(run => run.head_sha.startsWith(currentHash));
+
+  log.info(`currentRun = `, currentRun);
 
   if (!currentRun) return;
 
@@ -59,7 +66,12 @@ const run = async () => {
     { encoding: 'utf8' },
   ).slice(0, 7);
 
+  log.info(`targetHash = ${targetHash}`);
+
   const targetRun = runs.data.workflow_runs.find(run => run.head_sha.startsWith(targetHash));
+
+  log.debug('runs = ', runs.data.workflow_runs);
+  log.info(`targetRun = `, targetRun);
 
   if (!targetRun) {
     console.error('Failed to find target run');
@@ -73,9 +85,12 @@ const run = async () => {
     per_page: 100,
   });
 
-  // Octokit's type definition is wrong now.
-  const { artifacts } = res.data as any;
+  log.debug('res = ', res);
+
+  const { artifacts } = res.data;
   const latest = artifacts[artifacts.length - 1];
+
+  log.debug('latest artifact = ', latest);
 
   const zip = await octokit.rest.actions.downloadArtifact({
     ...repo,
@@ -112,6 +127,7 @@ const run = async () => {
   emitter.on('compare', async (compareItem: { type: string; path: string }) => {});
 
   emitter.on('complete', async result => {
+    log.debug('compare result', result);
     const [owner, reponame] = event.repository.full_name.split('/');
     const url = `https://bokuweb.github.io/reg-action-report/?owner=${owner}&repository=${reponame}&run_id=${currentRun.id}`;
 
