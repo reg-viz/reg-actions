@@ -70,7 +70,7 @@ const run = async () => {
 
   const targetRun = runs.data.workflow_runs.find(run => run.head_sha.startsWith(targetHash));
 
-  log.debug('runs = ', runs.data.workflow_runs);
+  log.debug('runs = ', runs.data.workflow_runs.length);
   log.info(`targetRun = `, targetRun);
 
   if (!targetRun) {
