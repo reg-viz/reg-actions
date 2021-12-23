@@ -2,9 +2,9 @@ name: "Test"
 description: "Action Tests"
 author: "bokuweb"
 inputs:
-  actual-directory-path:
+  image-directory-path:
     description: "Path to actual images directory."
     required: true
 runs:
-  using: "node12"
+  using: "node16"
   main: "lib/main.js"

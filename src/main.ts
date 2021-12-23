@@ -1,16 +1,20 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
+import * as artifact from '@actions/artifact';
 import { components } from '@octokit/openapi-types';
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import cpx from 'cpx';
+import { sync as globSync } from 'glob';
 import makeDir from 'make-dir';
 import { promisify } from 'util';
 import { log } from './logger';
 
 const compare = require('reg-cli');
 const NodeZip = require('node-zip');
+
+const artifactClient = artifact.create();
 
 const token = core.getInput('secret');
 
@@ -44,7 +48,7 @@ if (!event) {
   throw new Error('Failed to get github event.json..');
 }
 
-const actual = core.getInput('actual-directory-path');
+const actual = core.getInput('image-directory-path');
 log.info(`actual directory is ${actual}`);
 
 type Run = components['schemas']['workflow-run'];
@@ -100,6 +104,8 @@ const copyImages = () => {
 };
 
 const run = async () => {
+  await makeDir('./__reg__');
+
   if (typeof event.number === 'undefined') {
     return;
   }
@@ -158,12 +164,26 @@ const run = async () => {
     urlPrefix: '',
   });
 
-  emitter.on('compare', async (compareItem: { type: string; path: string }) => {});
+  // emitter.on('compare', async (compareItem: { type: string; path: string }) => {});
 
   emitter.on('complete', async result => {
     log.debug('compare result', result);
     const [owner, reponame] = event.repository.full_name.split('/');
     const url = `https://bokuweb.github.io/reg-actions-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
+
+    const files = globSync('./__reg__/**/*');
+
+    log.info('Start upload artifact');
+    log.debug(files);
+
+    try {
+      await artifactClient.uploadArtifact('reg', files, './__reg__');
+    } catch (e) {
+      log.error(e);
+      throw new Error('Failed to upload artifact');
+    }
+
+    log.info('Succeeded to upload artifact');
 
     if (event.number == null) return;
 
@@ -174,14 +194,12 @@ const run = async () => {
     } else {
       body = `Check out the report [here](${url}).
           
-| Left align | Right align | Center align |
-|:-----------|------------:|:------------:|
-| This       | This        | This         |
-| column     | column      | column       |
-| will       | will        | will         |
-| be         | be          | be           |
-| left       | right       | center       |
-| aligned    | aligned     | aligned      |
+| item | number |  |
+|:-----------|:------------:|:------------:|
+| pass       | ${result.passedItems.length}        |   |
+| change       | ${result.failedItems.length}        |   |
+| new   | ${result.newItems.length}     |     |
+| delete  | ${result.deletedItems.length}     |     |
       `;
     }
 
