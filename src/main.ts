@@ -99,11 +99,11 @@ const findCurrentAndTargetRuns = async (): Promise<{ current: Run; target: Run }
 };
 
 const copyImages = () => {
-  cpx.copySync(path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), './__reg__/actual');
+  cpx.copySync(path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), path.join(__dirname, './__reg__/actual'));
 };
 
 const run = async () => {
-  await makeDir('./__reg__');
+  await makeDir(path.join(__dirname, './__reg__'));
 
   if (typeof event.number === 'undefined') {
     return;
@@ -147,17 +147,17 @@ const run = async () => {
       .map(key => files.files[key])
       .filter(file => !file.dir)
       .map(async file => {
-        const f = path.join('__reg__', 'expected', path.basename(file.name));
+        const f = path.join(__dirname, '__reg__', 'expected', path.basename(file.name));
         await makeDir(path.dirname(f));
         await writeFileAsync(f, str2ab(file._data));
       }),
   );
 
   const emitter = compare({
-    actualDir: './__reg__/actual',
-    expectedDir: './__reg__/expected',
-    diffDir: './__reg__/diff',
-    json: './__reg__/0',
+    actualDir: path.join(__dirname, './__reg__/actual'),
+    expectedDir: path.join(__dirname, './__reg__/expected'),
+    diffDir: path.join(__dirname, './__reg__/diff'),
+    json: path.join(__dirname, './__reg__/0'),
     update: false,
     ignoreChange: true,
     urlPrefix: '',
@@ -172,7 +172,7 @@ const run = async () => {
 
     const files = [
       path.join(__dirname, './__reg__/0'),
-      result.actualItems.map(p => `./__reg__/actual/${p}`),
+      result.actualItems.map(p => path.join(__dirname, `./__reg__/actual`, p)),
       // result.expectedItems.map(p => path.join('./__reg__/expected', p)),
       // result.diffItems.map(p => path.join('./__reg__/diff', p)),
     ];
@@ -180,7 +180,7 @@ const run = async () => {
     log.info('Start upload artifact');
 
     try {
-      await artifactClient.uploadArtifact('reg', files, './');
+      await artifactClient.uploadArtifact('reg', files, __dirname);
     } catch (e) {
       log.error(e);
       throw new Error('Failed to upload artifact.');
