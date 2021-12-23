@@ -172,14 +172,14 @@ const run = async () => {
 
     const files = [
       path.join(__dirname, './__reg__/0'),
-      result.actualItems.map(p => path.join(__dirname, './__reg__/actual', p)),
+      result.actualItems.map(p => `./__reg__/actual/${p}`),
       // result.expectedItems.map(p => path.join('./__reg__/expected', p)),
       // result.diffItems.map(p => path.join('./__reg__/diff', p)),
     ];
 
     log.info('Start upload artifact');
 
-    await artifactClient.uploadArtifact('reg', files, __dirname).catch(e => {
+    await artifactClient.uploadArtifact('reg', files, './').catch(e => {
       log.error(e);
       throw new Error(e);
     });
