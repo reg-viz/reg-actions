@@ -8,7 +8,7 @@ It's usually `PATH`, but on Windows it can be any casing like `Path`...
 ## Install
 
 ```
-$ npm install --save path-key
+$ npm install path-key
 ```
 
 
@@ -30,6 +30,8 @@ const PATH = process.env[key];
 ### pathKey([options])
 
 #### options
+
+Type: `Object`
 
 ##### env
 
