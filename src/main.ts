@@ -177,7 +177,7 @@ const run = async () => {
     log.debug(files);
 
     try {
-      await artifactClient.uploadArtifact('reg', files, './');
+      await artifactClient.uploadArtifact('reg', files, './__reg__');
     } catch (e) {
       log.error(e);
       throw new Error('Failed to upload artifact');
@@ -196,8 +196,8 @@ const run = async () => {
           
 | item | number |  |
 |:-----------|:------------:|:------------:|
-| passed       | ${result.passedItems.length}        |   |
-| failed       | ${result.failedItems.length}        |   |
+| pass       | ${result.passedItems.length}        |   |
+| change       | ${result.failedItems.length}        |   |
 | new   | ${result.newItems.length}     |     |
 | delete  | ${result.deletedItems.length}     |     |
       `;
