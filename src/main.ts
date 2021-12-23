@@ -179,10 +179,12 @@ const run = async () => {
 
     log.info('Start upload artifact');
 
-    await artifactClient.uploadArtifact('reg', files, './').catch(e => {
+    try {
+      await artifactClient.uploadArtifact('reg', files, './');
+    } catch (e) {
       log.error(e);
-      throw new Error(e);
-    });
+      throw new Error('Failed to upload artifact.');
+    }
 
     log.info('Succeeded to upload artifact');
 
