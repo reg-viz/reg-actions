@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
+import * as artifact from '@actions/artifact';
 import { components } from '@octokit/openapi-types';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -11,6 +12,8 @@ import { log } from './logger';
 
 const compare = require('reg-cli');
 const NodeZip = require('node-zip');
+
+const artifactClient = artifact.create();
 
 const token = core.getInput('secret');
 
@@ -100,6 +103,8 @@ const copyImages = () => {
 };
 
 const run = async () => {
+  await makeDir('./__reg__');
+
   if (typeof event.number === 'undefined') {
     return;
   }
@@ -165,6 +170,19 @@ const run = async () => {
     const [owner, reponame] = event.repository.full_name.split('/');
     const url = `https://bokuweb.github.io/reg-actions-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
 
+    const files = [
+      './__reg__/0',
+      result.actualItems.map(p => path.join('./__reg__', p)),
+      result.expectedItems.map(p => path.join('./__reg__', p)),
+      result.diffItems.map(p => path.join('./__reg__', p)),
+    ];
+
+    log.info('Start upload artifact');
+
+    await artifactClient.uploadArtifact('reg', files, './');
+
+    log.info('Succeeded to upload artifact');
+
     if (event.number == null) return;
 
     let body = '';
@@ -174,14 +192,12 @@ const run = async () => {
     } else {
       body = `Check out the report [here](${url}).
           
-| Left align | Right align | Center align |
-|:-----------|------------:|:------------:|
-| This       | This        | This         |
-| column     | column      | column       |
-| will       | will        | will         |
-| be         | be          | be           |
-| left       | right       | center       |
-| aligned    | aligned     | aligned      |
+| item | number |  |
+|:-----------|:------------:|:------------:|
+| passed       | ${result.passedItems.length}        |   |
+| failed       | ${result.failedItems.length}        |   |
+| new   | ${result.newItems.length}     |     |
+| delete  | ${result.deletedItems.length}     |     |
       `;
     }
 
