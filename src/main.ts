@@ -171,7 +171,7 @@ const run = async () => {
     const [owner, reponame] = event.repository.full_name.split('/');
     const url = `https://bokuweb.github.io/reg-actions-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
 
-    const files = globSync('./__reg__/*');
+    const files = globSync('./__reg__/**/*');
 
     log.info('Start upload artifact');
     log.debug(files);
