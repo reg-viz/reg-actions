@@ -48,7 +48,7 @@ if (!event) {
   throw new Error('Failed to get github event.json..');
 }
 
-const actual = core.getInput('actual-directory-path');
+const actual = core.getInput('image-directory-path');
 log.info(`actual directory is ${actual}`);
 
 type Run = components['schemas']['workflow-run'];
