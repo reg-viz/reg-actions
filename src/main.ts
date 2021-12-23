@@ -172,7 +172,7 @@ const run = async () => {
 
     const files = [
       './__reg__/0',
-      // result.actualItems.map(p => path.join('./__reg__/actual', p)),
+      result.actualItems.map(p => path.join(__dirname, './__reg__/actual', p)),
       // result.expectedItems.map(p => path.join('./__reg__/expected', p)),
       // result.diffItems.map(p => path.join('./__reg__/diff', p)),
     ];
