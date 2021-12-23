@@ -171,7 +171,7 @@ const run = async () => {
     const url = `https://bokuweb.github.io/reg-actions-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
 
     const files = [
-      './__reg__/0',
+      path.join(__dirname, './__reg__/0'),
       result.actualItems.map(p => path.join(__dirname, './__reg__/actual', p)),
       // result.expectedItems.map(p => path.join('./__reg__/expected', p)),
       // result.diffItems.map(p => path.join('./__reg__/diff', p)),
@@ -179,7 +179,7 @@ const run = async () => {
 
     log.info('Start upload artifact');
 
-    await artifactClient.uploadArtifact('reg', files, './').catch(e => {
+    await artifactClient.uploadArtifact('reg', files, __dirname).catch(e => {
       log.error(e);
       throw new Error(e);
     });
