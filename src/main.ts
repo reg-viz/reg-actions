@@ -145,6 +145,11 @@ const compareAndUpload = async () =>
       update: false,
       ignoreChange: true,
       urlPrefix: '',
+      threshold: 0, // this._config.threshold,
+      thresholdPixel: 0, // this._config.thresholdPixel,
+      thresholdRate: 0, // this._config.thresholdRate,
+      matchingThreshold: 0, // this._config.matchingThreshold ?? 0, // matchingThreshold should not be undefined
+      enableAntialias: true, // this._config.enableAntialias,
     }).on('complete', async result => {
       log.debug('compare result', result);
 
