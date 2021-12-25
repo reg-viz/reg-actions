@@ -1,15 +1,16 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import * as artifact from '@actions/artifact';
+import { exec } from '@actions/exec';
 import { components } from '@octokit/openapi-types';
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
 import cpx from 'cpx';
 import { sync as globSync } from 'glob';
 import makeDir from 'make-dir';
 import { promisify } from 'util';
 import { log } from './logger';
+import { findTargetHash } from './git';
 
 const compare = require('reg-cli');
 const NodeZip = require('node-zip');
@@ -37,6 +38,39 @@ type Event = {
   app: components['schemas']['nullable-integration'];
   repository: components['schemas']['minimal-repository'];
   number?: number;
+};
+
+interface ExecResult {
+  stdout: string;
+  stderr: string;
+  code: number | null;
+}
+
+const capture = async (cmd: string, args: string[]): Promise<ExecResult> => {
+  const res: ExecResult = {
+    stdout: '',
+    stderr: '',
+    code: null,
+  };
+
+  try {
+    const code = await exec(cmd, args, {
+      listeners: {
+        stdout(data) {
+          res.stdout += data.toString();
+        },
+        stderr(data) {
+          res.stderr += data.toString();
+        },
+      },
+    });
+    res.code = code;
+    return res;
+  } catch (err) {
+    const msg = `Command '${cmd}' failed with args '${args.join(' ')}': ${res.stderr}: ${err}`;
+    core.debug(`@actions/exec.exec() threw an error: ${msg}`);
+    throw new Error(msg);
+  }
 };
 
 const readEvent = (): Event | undefined => {
@@ -83,10 +117,8 @@ const findCurrentAndTargetRuns = async (): Promise<{ current: Run; target: Run }
       }
     }
     if (!event.pull_request) return null;
-    const targetHash = execSync(
-      `git merge-base -a origin/${event.pull_request.base.ref} origin/${event.pull_request.head.ref}`,
-      { encoding: 'utf8' },
-    ).slice(0, 7);
+
+    const targetHash = await findTargetHash(event.pull_request.base.ref, event.pull_request.head.ref);
 
     log.info(`targetHash = ${targetHash}`);
 
