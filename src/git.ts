@@ -35,7 +35,7 @@ const capture = async (cmd: string, args: string[]): Promise<ExecResult> => {
 };
 
 export const findTargetHash = async (baseRef: string, headRef: string): Promise<string> => {
-  const args = ['merge-base', '-a', `origin/${baseRef} origin/${headRef}`];
+  const args = ['merge-base', '-a', `origin/${baseRef}`, `origin/${headRef}`];
 
   const res = await capture('git', args);
 
