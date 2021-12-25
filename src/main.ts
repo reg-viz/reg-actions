@@ -121,7 +121,7 @@ const downloadExpectedImages = async (
     Object.keys(files.files)
       .map(key => files.files[key])
       .filter(file => {
-        return !file.dir && file.startsWith(ACTUAL_DIR_NAME);
+        return !file.dir && file.name.startsWith(ACTUAL_DIR_NAME);
       })
       .map(async file => {
         const f = path.join('__reg__', 'expected', path.basename(file.name));
