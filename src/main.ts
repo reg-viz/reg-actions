@@ -14,6 +14,8 @@ import { log } from './logger';
 const compare = require('reg-cli');
 const NodeZip = require('node-zip');
 
+const ACTUAL_DIR_NAME = 'actual';
+
 const artifactClient = artifact.create();
 
 const token = core.getInput('secret');
@@ -119,8 +121,7 @@ const downloadExpectedImages = async (
     Object.keys(files.files)
       .map(key => files.files[key])
       .filter(file => {
-        console.log(file);
-        return !file.dir;
+        return !file.dir && file.startsWith(ACTUAL_DIR_NAME);
       })
       .map(async file => {
         const f = path.join('__reg__', 'expected', path.basename(file.name));
@@ -131,13 +132,13 @@ const downloadExpectedImages = async (
 };
 
 const copyImages = () => {
-  cpx.copySync(path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), './__reg__/actual');
+  cpx.copySync(path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), `./__reg__/${ACTUAL_DIR_NAME}`);
 };
 
 const compareAndUpload = async () =>
   new Promise<void>(resolve => {
     compare({
-      actualDir: './__reg__/actual',
+      actualDir: `./__reg__/${ACTUAL_DIR_NAME}`,
       expectedDir: './__reg__/expected',
       diffDir: './__reg__/diff',
       json: './__reg__/0',
