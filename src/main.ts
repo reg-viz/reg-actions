@@ -118,7 +118,10 @@ const downloadExpectedImages = async (
   await Promise.all(
     Object.keys(files.files)
       .map(key => files.files[key])
-      .filter(file => !file.dir)
+      .filter(file => {
+        console.log(file);
+        return !file.dir;
+      })
       .map(async file => {
         const f = path.join('__reg__', 'expected', path.basename(file.name));
         await makeDir(path.dirname(f));
@@ -206,7 +209,7 @@ const run = async () => {
   const [owner, reponame] = event.repository.full_name.split('/');
   const url = `https://bokuweb.github.io/reg-actions-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
   log.info(`This report URL is ${url}`);
-  
+
   let body = '';
   if (result.failedItems.length === 0 && result.newItems === 0 && result.deletedItems === 0) {
     body = `✨✨ That's perfect, there is no visual difference! ✨✨
