@@ -138,9 +138,9 @@ const copyImages = () => {
 const compareAndUpload = async () =>
   new Promise<void>(resolve => {
     compare({
-      actualDir: `./__reg__/${ACTUAL_DIR_NAME}`,
-      expectedDir: './__reg__/expected',
-      diffDir: './__reg__/diff',
+      actualDir: `./__reg__/1_${ACTUAL_DIR_NAME}`,
+      expectedDir: './__reg__/2_expected',
+      diffDir: './__reg__/0_diff',
       json: './__reg__/0',
       update: false,
       ignoreChange: true,
