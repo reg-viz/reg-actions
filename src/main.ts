@@ -14,6 +14,10 @@ import { log } from './logger';
 const compare = require('reg-cli');
 const NodeZip = require('node-zip');
 
+const DIFF_DIR_NAME = '0_diff';
+const ACTUAL_DIR_NAME = '1_actual';
+const EXPECTED_DIR_NAME = '2_expected';
+
 const artifactClient = artifact.create();
 
 const token = core.getInput('secret');
@@ -118,9 +122,11 @@ const downloadExpectedImages = async (
   await Promise.all(
     Object.keys(files.files)
       .map(key => files.files[key])
-      .filter(file => !file.dir)
+      .filter(file => {
+        return !file.dir && file.name.startsWith(ACTUAL_DIR_NAME);
+      })
       .map(async file => {
-        const f = path.join('__reg__', 'expected', path.basename(file.name));
+        const f = path.join('__reg__', EXPECTED_DIR_NAME, path.basename(file.name));
         await makeDir(path.dirname(f));
         await writeFileAsync(f, str2ab(file._data));
       }),
@@ -128,19 +134,24 @@ const downloadExpectedImages = async (
 };
 
 const copyImages = () => {
-  cpx.copySync(path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), './__reg__/actual');
+  cpx.copySync(path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), `./__reg__/${ACTUAL_DIR_NAME}`);
 };
 
 const compareAndUpload = async () =>
   new Promise<void>(resolve => {
     compare({
-      actualDir: './__reg__/actual',
-      expectedDir: './__reg__/expected',
-      diffDir: './__reg__/diff',
+      actualDir: `./__reg__/${ACTUAL_DIR_NAME}`,
+      expectedDir: `./__reg__/${EXPECTED_DIR_NAME}`,
+      diffDir: `./__reg__/${DIFF_DIR_NAME}`,
       json: './__reg__/0',
       update: false,
       ignoreChange: true,
       urlPrefix: '',
+      threshold: 0, // this._config.threshold,
+      thresholdPixel: 0, // this._config.thresholdPixel,
+      thresholdRate: 0, // this._config.thresholdRate,
+      matchingThreshold: 0, // this._config.matchingThreshold ?? 0, // matchingThreshold should not be undefined
+      enableAntialias: true, // this._config.enableAntialias,
     }).on('complete', async result => {
       log.debug('compare result', result);
 
@@ -206,7 +217,7 @@ const run = async () => {
   const [owner, reponame] = event.repository.full_name.split('/');
   const url = `https://bokuweb.github.io/reg-actions-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
   log.info(`This report URL is ${url}`);
-  
+
   let body = '';
   if (result.failedItems.length === 0 && result.newItems === 0 && result.deletedItems === 0) {
     body = `✨✨ That's perfect, there is no visual difference! ✨✨
