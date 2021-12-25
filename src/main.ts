@@ -131,10 +131,45 @@ const copyImages = () => {
   cpx.copySync(path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), './__reg__/actual');
 };
 
+const compareAndUpload = async () =>
+  new Promise<void>(resolve => {
+    compare({
+      actualDir: './__reg__/actual',
+      expectedDir: './__reg__/expected',
+      diffDir: './__reg__/diff',
+      json: './__reg__/0',
+      update: false,
+      ignoreChange: true,
+      urlPrefix: '',
+    }).on('complete', async result => {
+      log.debug('compare result', result);
+
+      const files = globSync('./__reg__/**/*');
+
+      log.info('Start upload artifact');
+      log.debug(files);
+
+      try {
+        await artifactClient.uploadArtifact('reg', files, './__reg__');
+      } catch (e) {
+        log.error(e);
+        throw new Error('Failed to upload artifact');
+      }
+
+      log.info('Succeeded to upload artifact');
+      resolve(result);
+    });
+  });
+
 const run = async () => {
   await makeDir('./__reg__');
 
+  // Copy actual images
+  copyImages();
+
   if (typeof event.number === 'undefined') {
+    log.info(`event number is not detected.`);
+    await compareAndUpload();
     return;
   }
 
@@ -142,13 +177,11 @@ const run = async () => {
 
   if (!runs) {
     log.error('Failed to find current or target runs');
+    await compareAndUpload();
     return;
   }
 
   log.info(`currentRun = `, runs.current);
-
-  // Copy actual images
-  copyImages();
 
   const res = await octokit.rest.actions.listWorkflowRunArtifacts({
     ...repo,
@@ -166,44 +199,20 @@ const run = async () => {
   if (latest) {
     await downloadExpectedImages(octokit, repo, latest.id);
   }
+  const result: any = await compareAndUpload();
 
-  const emitter = compare({
-    actualDir: './__reg__/actual',
-    expectedDir: './__reg__/expected',
-    diffDir: './__reg__/diff',
-    json: './__reg__/0',
-    update: false,
-    ignoreChange: true,
-    urlPrefix: '',
-  });
+  if (event.number == null) return;
 
-  emitter.on('complete', async result => {
-    log.debug('compare result', result);
-    const [owner, reponame] = event.repository.full_name.split('/');
-    const url = `https://bokuweb.github.io/reg-actions-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
-
-    const files = globSync('./__reg__/**/*');
-
-    log.info('Start upload artifact');
-    log.debug(files);
-
-    try {
-      await artifactClient.uploadArtifact('reg', files, './__reg__');
-    } catch (e) {
-      log.error(e);
-      throw new Error('Failed to upload artifact');
-    }
-
-    log.info('Succeeded to upload artifact');
-
-    if (event.number == null) return;
-
-    let body = '';
-    if (result.failedItems.length === 0 && result.newItems === 0 && result.deletedItems === 0) {
-      body = `✨✨ That's perfect, there is no visual difference! ✨✨
+  const [owner, reponame] = event.repository.full_name.split('/');
+  const url = `https://bokuweb.github.io/reg-actions-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
+  log.info(`This report URL is ${url}`);
+  
+  let body = '';
+  if (result.failedItems.length === 0 && result.newItems === 0 && result.deletedItems === 0) {
+    body = `✨✨ That's perfect, there is no visual difference! ✨✨
       Check out the report [here](${url}).`;
-    } else {
-      body = `Check out the report [here](${url}).
+  } else {
+    body = `Check out the report [here](${url}).
           
 | item | number |  |
 |:-----------|:------------:|:------------:|
@@ -212,14 +221,9 @@ const run = async () => {
 | new   | ${result.newItems.length}     |     |
 | delete  | ${result.deletedItems.length}     |     |
       `;
-    }
+  }
 
-    await octokit.rest.issues.createComment({
-      ...repo,
-      issue_number: event.number,
-      body,
-    });
-  });
+  await octokit.rest.issues.createComment({ ...repo, issue_number: event.number, body });
 };
 
 run();
