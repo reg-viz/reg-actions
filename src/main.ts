@@ -19,9 +19,12 @@ const artifactClient = artifact.create();
 const token = core.getInput('secret');
 
 const octokit = github.getOctokit(token);
+
 const writeFileAsync = promisify(fs.writeFile);
 
 const { repo } = github.context;
+
+type Octokit = ReturnType<typeof github.getOctokit>;
 
 type Event = {
   before: string | null;
@@ -99,6 +102,31 @@ const findCurrentAndTargetRuns = async (): Promise<{ current: Run; target: Run }
   }
 };
 
+const downloadExpectedImages = async (
+  octokit: Octokit,
+  repo: { owner: string; repo: string },
+  latestArtifactId: number,
+) => {
+  const zip = await octokit.rest.actions.downloadArtifact({
+    ...repo,
+    artifact_id: latestArtifactId,
+    archive_format: 'zip',
+  });
+
+  const files = new NodeZip(zip.data, { base64: false, checkCRC32: true });
+
+  await Promise.all(
+    Object.keys(files.files)
+      .map(key => files.files[key])
+      .filter(file => !file.dir)
+      .map(async file => {
+        const f = path.join('__reg__', 'expected', path.basename(file.name));
+        await makeDir(path.dirname(f));
+        await writeFileAsync(f, str2ab(file._data));
+      }),
+  );
+};
+
 const copyImages = () => {
   cpx.copySync(path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), './__reg__/actual');
 };
@@ -135,24 +163,9 @@ const run = async () => {
 
   log.debug('latest artifact = ', latest);
 
-  const zip = await octokit.rest.actions.downloadArtifact({
-    ...repo,
-    artifact_id: latest.id,
-    archive_format: 'zip',
-  });
-
-  const files = new NodeZip(zip.data, { base64: false, checkCRC32: true });
-
-  await Promise.all(
-    Object.keys(files.files)
-      .map(key => files.files[key])
-      .filter(file => !file.dir)
-      .map(async file => {
-        const f = path.join('__reg__', 'expected', path.basename(file.name));
-        await makeDir(path.dirname(f));
-        await writeFileAsync(f, str2ab(file._data));
-      }),
-  );
+  if (latest) {
+    await downloadExpectedImages(octokit, repo, latest.id);
+  }
 
   const emitter = compare({
     actualDir: './__reg__/actual',
@@ -163,8 +176,6 @@ const run = async () => {
     ignoreChange: true,
     urlPrefix: '',
   });
-
-  // emitter.on('compare', async (compareItem: { type: string; path: string }) => {});
 
   emitter.on('complete', async result => {
     log.debug('compare result', result);
