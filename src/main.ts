@@ -154,11 +154,9 @@ const downloadExpectedImages = async (
   await Promise.all(
     Object.keys(files.files)
       .map(key => files.files[key])
-      .filter(file => {
-        return !file.dir && file.name.startsWith(ACTUAL_DIR_NAME);
-      })
+      .filter(file => !file.dir && file.name.startsWith(ACTUAL_DIR_NAME))
       .map(async file => {
-        const f = path.join('__reg__', EXPECTED_DIR_NAME, path.basename(file.name));
+        const f = path.join('__reg__', file.name.replace(ACTUAL_DIR_NAME, EXPECTED_DIR_NAME));
         await makeDir(path.dirname(f));
         await writeFileAsync(f, str2ab(file._data));
       }),
