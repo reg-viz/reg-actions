@@ -11,4 +11,4 @@ jobs:
       - uses: ./
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
-          image-directory-path: "images"
+          image-directory-path: "./images"
