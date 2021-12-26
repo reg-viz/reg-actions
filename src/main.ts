@@ -1,7 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import * as artifact from '@actions/artifact';
-import { exec } from '@actions/exec';
 import { components } from '@octokit/openapi-types';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -21,7 +20,7 @@ const EXPECTED_DIR_NAME = '2_expected';
 
 const artifactClient = artifact.create();
 
-const token = core.getInput('secret');
+const token = core.getInput('github-token');
 
 const octokit = github.getOctokit(token);
 
@@ -38,39 +37,6 @@ type Event = {
   app: components['schemas']['nullable-integration'];
   repository: components['schemas']['minimal-repository'];
   number?: number;
-};
-
-interface ExecResult {
-  stdout: string;
-  stderr: string;
-  code: number | null;
-}
-
-const capture = async (cmd: string, args: string[]): Promise<ExecResult> => {
-  const res: ExecResult = {
-    stdout: '',
-    stderr: '',
-    code: null,
-  };
-
-  try {
-    const code = await exec(cmd, args, {
-      listeners: {
-        stdout(data) {
-          res.stdout += data.toString();
-        },
-        stderr(data) {
-          res.stderr += data.toString();
-        },
-      },
-    });
-    res.code = code;
-    return res;
-  } catch (err) {
-    const msg = `Command '${cmd}' failed with args '${args.join(' ')}': ${res.stderr}: ${err}`;
-    core.debug(`@actions/exec.exec() threw an error: ${msg}`);
-    throw new Error(msg);
-  }
 };
 
 const readEvent = (): Event | undefined => {
@@ -249,7 +215,7 @@ const run = async () => {
   log.info(`This report URL is ${url}`);
 
   let body = '';
-  if (result.failedItems.length === 0 && result.newItems === 0 && result.deletedItems === 0) {
+  if (result.failedItems.length === 0 && result.newItems.length === 0 && result.deletedItems.length === 0) {
     body = `✨✨ That's perfect, there is no visual difference! ✨✨
       Check out the report [here](${url}).`;
   } else {
