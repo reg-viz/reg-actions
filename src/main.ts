@@ -84,7 +84,7 @@ const findCurrentAndTargetRuns = async (): Promise<{ current: Run; target: Run }
     }
     if (!event.pull_request) return null;
 
-    const targetHash = await findTargetHash(event.pull_request.base.ref, event.pull_request.head.ref);
+    const targetHash = await findTargetHash(event.pull_request.base.sha, event.pull_request.head.sha);
 
     log.info(`targetHash = ${targetHash}`);
 
