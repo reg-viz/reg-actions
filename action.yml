@@ -1,9 +1,12 @@
-name: "Test"
-description: "Action Tests"
+name: "reg-actions"
+description: "Action"
 author: "bokuweb"
 inputs:
   image-directory-path:
-    description: "Path to actual images directory."
+    description: "Path to images directory.The images stored in this directory will be compared with the expected images from the last upload."
+    required: true
+  github-token:
+    description: 'GitHub API token. It is used to upload/download artifacts and add comment to pull request.'
     required: true
 runs:
   using: "node16"
