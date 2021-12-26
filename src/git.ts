@@ -36,6 +36,8 @@ const capture = async (cmd: string, args: string[]): Promise<ExecResult> => {
 
 export const findTargetHash = async (baseSha: string, headSha: string): Promise<string> => {
   core.info(`base sha is ${baseSha}, head sha is ${headSha}`);
+  await capture('git', ['fetch', '--all']);
+
   const args = ['merge-base', '-a', `${baseSha}`, `${headSha}`];
 
   const res = await capture('git', args);
