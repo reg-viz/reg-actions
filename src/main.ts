@@ -10,6 +10,7 @@ import makeDir from 'make-dir';
 import { promisify } from 'util';
 import { log } from './logger';
 import { findTargetHash } from './git';
+import { createReportURL } from './report';
 
 const compare = require('reg-cli');
 const NodeZip = require('node-zip');
@@ -211,7 +212,7 @@ const run = async () => {
   if (event.number == null) return;
 
   const [owner, reponame] = event.repository.full_name.split('/');
-  const url = `https://bokuweb.github.io/reg-actions-report/?owner=${owner}&repository=${reponame}&run_id=${runs.current.id}`;
+  const url = createReportURL(owner, reponame, runs.current.id);
   log.info(`This report URL is ${url}`);
 
   let body = '';
