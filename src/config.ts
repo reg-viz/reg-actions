@@ -40,20 +40,21 @@ const getBoolInput = (name: string): boolean => {
 };
 
 const getNumberInput = (name: string): number | null => {
-  const n = core.getInput(name);
-  if (!n) return null;
+  const v = core.getInput(name);
+  if (!v) return null;
+  const n = Number(v);
   if (typeof n === 'number') return n;
   throw new Error(`'${name}' input must be number value but got '${n}'`);
 };
 
 const validateMatchingThreshold = (n: number) => {
-  if (n < 0 || n > 1) {
+  if (!(n >= 0 && n <= 1)) {
     throw new Error(`'matching-threshold' input must be 0 to 1 '${n}'`);
   }
 };
 
 const validateThresholdRate = (n: number) => {
-  if (n < 0 || n > 1) {
+  if (!(n >= 0 && n <= 1)) {
     throw new Error(`'threshold-rate' input must be 0 to 1 '${n}'`);
   }
 };

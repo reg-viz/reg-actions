@@ -46,6 +46,6 @@ export const findTargetHash = async (baseSha: string, headSha: string): Promise<
     throw new Error(`Command 'git ${args.join(' ')}' failed: ${JSON.stringify(res)}`);
   }
 
-  const targetHash = res.stdout.slice(0, 7);
+  const targetHash = res.stdout;
   return targetHash;
 };
