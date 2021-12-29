@@ -1,4 +1,3 @@
-import * as core from '@actions/core';
 import * as github from '@actions/github';
 import * as artifact from '@actions/artifact';
 import { components } from '@octokit/openapi-types';
@@ -7,10 +6,11 @@ import * as path from 'path';
 import cpx from 'cpx';
 import { sync as globSync } from 'glob';
 import makeDir from 'make-dir';
-import { promisify } from 'util';
+
 import { log } from './logger';
 import { findTargetHash } from './git';
 import { createReportURL } from './report';
+import { getConfig } from './config';
 
 const compare = require('reg-cli');
 const NodeZip = require('node-zip');
@@ -19,13 +19,11 @@ const DIFF_DIR_NAME = '0_diff';
 const ACTUAL_DIR_NAME = '1_actual';
 const EXPECTED_DIR_NAME = '2_expected';
 
+const config = getConfig();
+
 const artifactClient = artifact.create();
 
-const token = core.getInput('github-token');
-
-const octokit = github.getOctokit(token);
-
-const writeFileAsync = promisify(fs.writeFile);
+const octokit = github.getOctokit(config.githubToken);
 
 const { repo } = github.context;
 
@@ -53,10 +51,10 @@ const event = readEvent();
 log.info(`event = `, event);
 
 if (!event) {
-  throw new Error('Failed to get github event.json..');
+  throw new Error('Failed to get github event.json.');
 }
 
-const actual = core.getInput('image-directory-path');
+const actual = config.imageDirectoryPath;
 log.info(`actual directory is ${actual}`);
 
 type Run = components['schemas']['workflow-run'];
@@ -125,7 +123,7 @@ const downloadExpectedImages = async (
       .map(async file => {
         const f = path.join('__reg__', file.name.replace(ACTUAL_DIR_NAME, EXPECTED_DIR_NAME));
         await makeDir(path.dirname(f));
-        await writeFileAsync(f, str2ab(file._data));
+        await fs.promises.writeFile(f, str2ab(file._data));
       }),
   );
 };
@@ -144,11 +142,10 @@ const compareAndUpload = async () =>
       update: false,
       ignoreChange: true,
       urlPrefix: '',
-      threshold: 0, // this._config.threshold,
-      thresholdPixel: 0, // this._config.thresholdPixel,
-      thresholdRate: 0, // this._config.thresholdRate,
-      matchingThreshold: 0, // this._config.matchingThreshold ?? 0, // matchingThreshold should not be undefined
-      enableAntialias: true, // this._config.enableAntialias,
+      thresholdPixel: config.thresholdPixel,
+      thresholdRate: config.thresholdRate,
+      matchingThreshold: config.matchingThreshold,
+      enableAntialias: config.enableAntialias,
     }).on('complete', async result => {
       log.debug('compare result', result);
 
