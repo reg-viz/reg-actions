@@ -1,4 +1,4 @@
-<p align="center"><img src ="https://github.com/bokuweb/reg-actions/blob/master/logo.png?raw=true" /></p>
+<p align="center"><img src ="https://github.com/bokuweb/reg-actions/blob/main/logo.png?raw=true" /></p>
 
 <p align="center">
     A visual regression test tool for github actions :octocat:.
