@@ -2,7 +2,7 @@ name: "reg-actions"
 author: "bokuweb"
 description: 'A visual regression test tool for github actions.'
 branding:
-  icon: 'fast-forward'
+  icon: 'aperture'
   color: 'red'
 inputs:
   github-token:
