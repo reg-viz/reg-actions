@@ -13,6 +13,7 @@
 
 * [How to use](#how-to-use)
   * [Minimal setup](#minimal-setup)
+  * [Action inputs](#action-inputs)
 * [Contribute](#contribute)
 * [License](#license)
 
@@ -55,9 +56,35 @@ It is used to upload test report and add comment to pull request.
 - Type: String
 - Default: N/A
 
-Specify the directory path where the image to be tested is stored.
-See also [test.yml](./.github/workflows/test.yml).
+Path to images directory.The images stored in this directory will be compared with the expected images from the last upload.
 
+#### `enable-antialias` (Optional)
+
+- Type: Boolean
+- Default: `false`
+
+Enable antialias. If omitted false.
+
+#### `matching-threshold` (Optional)
+
+- Type: Number
+- Default: N/A
+
+Matching threshold, ranges from 0 to 1. Smaller values make the comparison more sensitive. 0 by default.
+
+#### `threshold-rate` (Optional)
+
+- Type: Number
+- Default: N/A
+
+The rate threshold at which the image is considered changed. When the difference ratio of the image is larger than the set rate detects the change. Applied after `matchingThreshold`. 0 by default.
+
+#### `threshold-pixel` (Optional)
+
+- Type: Number
+- Default: N/A
+
+The pixel threshold at which the image is considered changed. When the difference pixel of the image is larger than the set pixel detects the change. This value takes precedence over `thresholdRate`. Applied after `matchingThreshold`. 0 by default.
 
 ## Contribute
 
