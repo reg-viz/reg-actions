@@ -8,8 +8,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: ./
+      - run: yarn install && yarn package
+      - uses: ./dist
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           image-directory-path: "./images"
-
