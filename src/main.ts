@@ -102,7 +102,7 @@ const downloadExpectedImages = async (
       const f = path.join('__reg__', file.name.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
       await makeDir(path.dirname(f));
       await fs.promises.writeFile(f, file.getData());
-    }),
+    });
 };
 
 const copyImages = () => {
