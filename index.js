@@ -19248,405 +19248,1445 @@ function expand(str, isTop) {
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
-/*!
- * braces <https://github.com/jonschlinkert/braces>
- *
- * Copyright (c) 2014-2015, Jon Schlinkert.
- * Licensed under the MIT license.
- */
-
 
 
 /**
  * Module dependencies
  */
 
-var expand = __nccwpck_require__(48947);
-var repeat = __nccwpck_require__(73301);
-var tokens = __nccwpck_require__(109);
+var toRegex = __nccwpck_require__(16855);
+var unique = __nccwpck_require__(40340);
+var extend = __nccwpck_require__(67512);
 
 /**
- * Expose `braces`
+ * Local dependencies
  */
 
-module.exports = function(str, options) {
-  if (typeof str !== 'string') {
-    throw new Error('braces expects a string');
+var compilers = __nccwpck_require__(17076);
+var parsers = __nccwpck_require__(32829);
+var Braces = __nccwpck_require__(47075);
+var utils = __nccwpck_require__(45207);
+var MAX_LENGTH = 1024 * 64;
+var cache = {};
+
+/**
+ * Convert the given `braces` pattern into a regex-compatible string. By default, only one string is generated for every input string. Set `options.expand` to true to return an array of patterns (similar to Bash or minimatch. Before using `options.expand`, it's recommended that you read the [performance notes](#performance)).
+ *
+ * ```js
+ * var braces = require('braces');
+ * console.log(braces('{a,b,c}'));
+ * //=> ['(a|b|c)']
+ *
+ * console.log(braces('{a,b,c}', {expand: true}));
+ * //=> ['a', 'b', 'c']
+ * ```
+ * @param {String} `str`
+ * @param {Object} `options`
+ * @return {String}
+ * @api public
+ */
+
+function braces(pattern, options) {
+  var key = utils.createKey(String(pattern), options);
+  var arr = [];
+
+  var disabled = options && options.cache === false;
+  if (!disabled && cache.hasOwnProperty(key)) {
+    return cache[key];
   }
-  return braces(str, options);
+
+  if (Array.isArray(pattern)) {
+    for (var i = 0; i < pattern.length; i++) {
+      arr.push.apply(arr, braces.create(pattern[i], options));
+    }
+  } else {
+    arr = braces.create(pattern, options);
+  }
+
+  if (options && options.nodupes === true) {
+    arr = unique(arr);
+  }
+
+  if (!disabled) {
+    cache[key] = arr;
+  }
+  return arr;
+}
+
+/**
+ * Expands a brace pattern into an array. This method is called by the main [braces](#braces) function when `options.expand` is true. Before using this method it's recommended that you read the [performance notes](#performance)) and advantages of using [.optimize](#optimize) instead.
+ *
+ * ```js
+ * var braces = require('braces');
+ * console.log(braces.expand('a/{b,c}/d'));
+ * //=> ['a/b/d', 'a/c/d'];
+ * ```
+ * @param {String} `pattern` Brace pattern
+ * @param {Object} `options`
+ * @return {Array} Returns an array of expanded values.
+ * @api public
+ */
+
+braces.expand = function(pattern, options) {
+  return braces.create(pattern, extend({}, options, {expand: true}));
 };
 
 /**
- * Expand `{foo,bar}` or `{1..5}` braces in the
- * given `string`.
+ * Expands a brace pattern into a regex-compatible, optimized string. This method is called by the main [braces](#braces) function by default.
  *
- * @param  {String} `str`
- * @param  {Array} `arr`
- * @param  {Object} `options`
- * @return {Array}
+ * ```js
+ * var braces = require('braces');
+ * console.log(braces.expand('a/{b,c}/d'));
+ * //=> ['a/(b|c)/d']
+ * ```
+ * @param {String} `pattern` Brace pattern
+ * @param {Object} `options`
+ * @return {Array} Returns an array of expanded values.
+ * @api public
  */
 
-function braces(str, arr, options) {
-  if (str === '') {
-    return [];
-  }
-
-  if (!Array.isArray(arr)) {
-    options = arr;
-    arr = [];
-  }
-
-  var opts = options || {};
-  arr = arr || [];
-
-  if (typeof opts.nodupes === 'undefined') {
-    opts.nodupes = true;
-  }
-
-  var fn = opts.fn;
-  var es6;
-
-  if (typeof opts === 'function') {
-    fn = opts;
-    opts = {};
-  }
-
-  if (!(patternRe instanceof RegExp)) {
-    patternRe = patternRegex();
-  }
-
-  var matches = str.match(patternRe) || [];
-  var m = matches[0];
-
-  switch(m) {
-    case '\\,':
-      return escapeCommas(str, arr, opts);
-    case '\\.':
-      return escapeDots(str, arr, opts);
-    case '\/.':
-      return escapePaths(str, arr, opts);
-    case ' ':
-      return splitWhitespace(str);
-    case '{,}':
-      return exponential(str, opts, braces);
-    case '{}':
-      return emptyBraces(str, arr, opts);
-    case '\\{':
-    case '\\}':
-      return escapeBraces(str, arr, opts);
-    case '${':
-      if (!/\{[^{]+\{/.test(str)) {
-        return arr.concat(str);
-      } else {
-        es6 = true;
-        str = tokens.before(str, es6Regex());
-      }
-  }
-
-  if (!(braceRe instanceof RegExp)) {
-    braceRe = braceRegex();
-  }
-
-  var match = braceRe.exec(str);
-  if (match == null) {
-    return [str];
-  }
-
-  var outter = match[1];
-  var inner = match[2];
-  if (inner === '') { return [str]; }
-
-  var segs, segsLength;
-
-  if (inner.indexOf('..') !== -1) {
-    segs = expand(inner, opts, fn) || inner.split(',');
-    segsLength = segs.length;
-
-  } else if (inner[0] === '"' || inner[0] === '\'') {
-    return arr.concat(str.split(/['"]/).join(''));
-
-  } else {
-    segs = inner.split(',');
-    if (opts.makeRe) {
-      return braces(str.replace(outter, wrap(segs, '|')), opts);
-    }
-
-    segsLength = segs.length;
-    if (segsLength === 1 && opts.bash) {
-      segs[0] = wrap(segs[0], '\\');
-    }
-  }
-
-  var len = segs.length;
-  var i = 0, val;
-
-  while (len--) {
-    var path = segs[i++];
-
-    if (/(\.[^.\/])/.test(path)) {
-      if (segsLength > 1) {
-        return segs;
-      } else {
-        return [str];
-      }
-    }
-
-    val = splice(str, outter, path);
-
-    if (/\{[^{}]+?\}/.test(val)) {
-      arr = braces(val, arr, opts);
-    } else if (val !== '') {
-      if (opts.nodupes && arr.indexOf(val) !== -1) { continue; }
-      arr.push(es6 ? tokens.after(val) : val);
-    }
-  }
-
-  if (opts.strict) { return filter(arr, filterEmpty); }
-  return arr;
-}
+braces.optimize = function(pattern, options) {
+  return braces.create(pattern, options);
+};
 
 /**
- * Expand exponential ranges
+ * Processes a brace pattern and returns either an expanded array (if `options.expand` is true), a highly optimized regex-compatible string. This method is called by the main [braces](#braces) function.
  *
- *   `a{,}{,}` => ['a', 'a', 'a', 'a']
+ * ```js
+ * var braces = require('braces');
+ * console.log(braces.create('user-{200..300}/project-{a,b,c}-{1..10}'))
+ * //=> 'user-(20[0-9]|2[1-9][0-9]|300)/project-(a|b|c)-([1-9]|10)'
+ * ```
+ * @param {String} `pattern` Brace pattern
+ * @param {Object} `options`
+ * @return {Array} Returns an array of expanded values.
+ * @api public
  */
 
-function exponential(str, options, fn) {
-  if (typeof options === 'function') {
-    fn = options;
-    options = null;
+braces.create = function(pattern, options) {
+  if (typeof pattern !== 'string') {
+    throw new TypeError('expected a string');
   }
 
-  var opts = options || {};
-  var esc = '__ESC_EXP__';
-  var exp = 0;
-  var res;
-
-  var parts = str.split('{,}');
-  if (opts.nodupes) {
-    return fn(parts.join(''), opts);
+  var maxLength = (options && options.maxLength) || MAX_LENGTH;
+  if (pattern.length >= maxLength) {
+    throw new Error('expected pattern to be less than ' + maxLength + ' characters');
   }
 
-  exp = parts.length - 1;
-  res = fn(parts.join(esc), opts);
-  var len = res.length;
-  var arr = [];
-  var i = 0;
-
-  while (len--) {
-    var ele = res[i++];
-    var idx = ele.indexOf(esc);
-
-    if (idx === -1) {
-      arr.push(ele);
-
-    } else {
-      ele = ele.split('__ESC_EXP__').join('');
-      if (!!ele && opts.nodupes !== false) {
-        arr.push(ele);
-
-      } else {
-        var num = Math.pow(2, exp);
-        arr.push.apply(arr, repeat(ele, num));
-      }
+  function create() {
+    if (pattern === '' || pattern.length < 3) {
+      return [pattern];
     }
+
+    if (utils.isEmptySets(pattern)) {
+      return [];
+    }
+
+    if (utils.isQuotedString(pattern)) {
+      return [pattern.slice(1, -1)];
+    }
+
+    var proto = new Braces(options);
+    var result = !options || options.expand !== true
+      ? proto.optimize(pattern, options)
+      : proto.expand(pattern, options);
+
+    // get the generated pattern(s)
+    var arr = result.output;
+
+    // filter out empty strings if specified
+    if (options && options.noempty === true) {
+      arr = arr.filter(Boolean);
+    }
+
+    // filter out duplicates if specified
+    if (options && options.nodupes === true) {
+      arr = unique(arr);
+    }
+
+    Object.defineProperty(arr, 'result', {
+      enumerable: false,
+      value: result
+    });
+
+    return arr;
   }
-  return arr;
-}
+
+  return memoize('create', pattern, options, create);
+};
 
 /**
- * Wrap a value with parens, brackets or braces,
- * based on the given character/separator.
+ * Create a regular expression from the given string `pattern`.
  *
- * @param  {String|Array} `val`
- * @param  {String} `ch`
- * @return {String}
+ * ```js
+ * var braces = require('braces');
+ *
+ * console.log(braces.makeRe('id-{200..300}'));
+ * //=> /^(?:id-(20[0-9]|2[1-9][0-9]|300))$/
+ * ```
+ * @param {String} `pattern` The pattern to convert to regex.
+ * @param {Object} `options`
+ * @return {RegExp}
+ * @api public
  */
 
-function wrap(val, ch) {
-  if (ch === '|') {
-    return '(' + val.join(ch) + ')';
+braces.makeRe = function(pattern, options) {
+  if (typeof pattern !== 'string') {
+    throw new TypeError('expected a string');
   }
-  if (ch === ',') {
-    return '{' + val.join(ch) + '}';
+
+  var maxLength = (options && options.maxLength) || MAX_LENGTH;
+  if (pattern.length >= maxLength) {
+    throw new Error('expected pattern to be less than ' + maxLength + ' characters');
   }
-  if (ch === '-') {
-    return '[' + val.join(ch) + ']';
+
+  function makeRe() {
+    var arr = braces(pattern, options);
+    var opts = extend({strictErrors: false}, options);
+    return toRegex(arr, opts);
   }
-  if (ch === '\\') {
-    return '\\{' + val + '\\}';
-  }
-}
+
+  return memoize('makeRe', pattern, options, makeRe);
+};
 
 /**
- * Handle empty braces: `{}`
+ * Parse the given `str` with the given `options`.
+ *
+ * ```js
+ * var braces = require('braces');
+ * var ast = braces.parse('a/{b,c}/d');
+ * console.log(ast);
+ * // { type: 'root',
+ * //   errors: [],
+ * //   input: 'a/{b,c}/d',
+ * //   nodes:
+ * //    [ { type: 'bos', val: '' },
+ * //      { type: 'text', val: 'a/' },
+ * //      { type: 'brace',
+ * //        nodes:
+ * //         [ { type: 'brace.open', val: '{' },
+ * //           { type: 'text', val: 'b,c' },
+ * //           { type: 'brace.close', val: '}' } ] },
+ * //      { type: 'text', val: '/d' },
+ * //      { type: 'eos', val: '' } ] }
+ * ```
+ * @param {String} `pattern` Brace pattern to parse
+ * @param {Object} `options`
+ * @return {Object} Returns an AST
+ * @api public
  */
 
-function emptyBraces(str, arr, opts) {
-  return braces(str.split('{}').join('\\{\\}'), arr, opts);
-}
+braces.parse = function(pattern, options) {
+  var proto = new Braces(options);
+  return proto.parse(pattern, options);
+};
 
 /**
- * Filter out empty-ish values
+ * Compile the given `ast` or string with the given `options`.
+ *
+ * ```js
+ * var braces = require('braces');
+ * var ast = braces.parse('a/{b,c}/d');
+ * console.log(braces.compile(ast));
+ * // { options: { source: 'string' },
+ * //   state: {},
+ * //   compilers:
+ * //    { eos: [Function],
+ * //      noop: [Function],
+ * //      bos: [Function],
+ * //      brace: [Function],
+ * //      'brace.open': [Function],
+ * //      text: [Function],
+ * //      'brace.close': [Function] },
+ * //   output: [ 'a/(b|c)/d' ],
+ * //   ast:
+ * //    { ... },
+ * //   parsingErrors: [] }
+ * ```
+ * @param {Object|String} `ast` AST from [.parse](#parse). If a string is passed it will be parsed first.
+ * @param {Object} `options`
+ * @return {Object} Returns an object that has an `output` property with the compiled string.
+ * @api public
  */
 
-function filterEmpty(ele) {
-  return !!ele && ele !== '\\';
-}
+braces.compile = function(ast, options) {
+  var proto = new Braces(options);
+  return proto.compile(ast, options);
+};
 
 /**
- * Handle patterns with whitespace
+ * Clear the regex cache.
+ *
+ * ```js
+ * braces.clearCache();
+ * ```
+ * @api public
  */
 
-function splitWhitespace(str) {
-  var segs = str.split(' ');
-  var len = segs.length;
-  var res = [];
-  var i = 0;
+braces.clearCache = function() {
+  cache = braces.cache = {};
+};
 
-  while (len--) {
-    res.push.apply(res, braces(segs[i++]));
+/**
+ * Memoize a generated regex or function. A unique key is generated
+ * from the method name, pattern, and user-defined options. Set
+ * options.memoize to false to disable.
+ */
+
+function memoize(type, pattern, options, fn) {
+  var key = utils.createKey(type + ':' + pattern, options);
+  var disabled = options && options.cache === false;
+  if (disabled) {
+    braces.clearCache();
+    return fn(pattern, options);
   }
+
+  if (cache.hasOwnProperty(key)) {
+    return cache[key];
+  }
+
+  var res = fn(pattern, options);
+  cache[key] = res;
   return res;
 }
 
 /**
- * Handle escaped braces: `\\{foo,bar}`
+ * Expose `Braces` constructor and methods
+ * @type {Function}
  */
 
-function escapeBraces(str, arr, opts) {
-  if (!/\{[^{]+\{/.test(str)) {
-    return arr.concat(str.split('\\').join(''));
-  } else {
-    str = str.split('\\{').join('__LT_BRACE__');
-    str = str.split('\\}').join('__RT_BRACE__');
-    return map(braces(str, arr, opts), function(ele) {
-      ele = ele.split('__LT_BRACE__').join('{');
-      return ele.split('__RT_BRACE__').join('}');
-    });
-  }
+braces.Braces = Braces;
+braces.compilers = compilers;
+braces.parsers = parsers;
+braces.cache = cache;
+
+/**
+ * Expose `braces`
+ * @type {Function}
+ */
+
+module.exports = braces;
+
+
+/***/ }),
+
+/***/ 47075:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var extend = __nccwpck_require__(67512);
+var Snapdragon = __nccwpck_require__(52403);
+var compilers = __nccwpck_require__(17076);
+var parsers = __nccwpck_require__(32829);
+var utils = __nccwpck_require__(45207);
+
+/**
+ * Customize Snapdragon parser and renderer
+ */
+
+function Braces(options) {
+  this.options = extend({}, options);
 }
 
 /**
- * Handle escaped dots: `{1\\.2}`
+ * Initialize braces
  */
 
-function escapeDots(str, arr, opts) {
-  if (!/[^\\]\..+\\\./.test(str)) {
-    return arr.concat(str.split('\\').join(''));
-  } else {
-    str = str.split('\\.').join('__ESC_DOT__');
-    return map(braces(str, arr, opts), function(ele) {
-      return ele.split('__ESC_DOT__').join('.');
-    });
-  }
-}
+Braces.prototype.init = function(options) {
+  if (this.isInitialized) return;
+  this.isInitialized = true;
+  var opts = utils.createOptions({}, this.options, options);
+  this.snapdragon = this.options.snapdragon || new Snapdragon(opts);
+  this.compiler = this.snapdragon.compiler;
+  this.parser = this.snapdragon.parser;
 
-/**
- * Handle escaped dots: `{1\\.2}`
- */
+  compilers(this.snapdragon, opts);
+  parsers(this.snapdragon, opts);
 
-function escapePaths(str, arr, opts) {
-  str = str.split('\/.').join('__ESC_PATH__');
-  return map(braces(str, arr, opts), function(ele) {
-    return ele.split('__ESC_PATH__').join('\/.');
+  /**
+   * Call Snapdragon `.parse` method. When AST is returned, we check to
+   * see if any unclosed braces are left on the stack and, if so, we iterate
+   * over the stack and correct the AST so that compilers are called in the correct
+   * order and unbalance braces are properly escaped.
+   */
+
+  utils.define(this.snapdragon, 'parse', function(pattern, options) {
+    var parsed = Snapdragon.prototype.parse.apply(this, arguments);
+    this.parser.ast.input = pattern;
+
+    var stack = this.parser.stack;
+    while (stack.length) {
+      addParent({type: 'brace.close', val: ''}, stack.pop());
+    }
+
+    function addParent(node, parent) {
+      utils.define(node, 'parent', parent);
+      parent.nodes.push(node);
+    }
+
+    // add non-enumerable parser reference
+    utils.define(parsed, 'parser', this.parser);
+    return parsed;
   });
-}
+};
 
 /**
- * Handle escaped commas: `{a\\,b}`
+ * Decorate `.parse` method
  */
 
-function escapeCommas(str, arr, opts) {
-  if (!/\w,/.test(str)) {
-    return arr.concat(str.split('\\').join(''));
+Braces.prototype.parse = function(ast, options) {
+  if (ast && typeof ast === 'object' && ast.nodes) return ast;
+  this.init(options);
+  return this.snapdragon.parse(ast, options);
+};
+
+/**
+ * Decorate `.compile` method
+ */
+
+Braces.prototype.compile = function(ast, options) {
+  if (typeof ast === 'string') {
+    ast = this.parse(ast, options);
   } else {
-    str = str.split('\\,').join('__ESC_COMMA__');
-    return map(braces(str, arr, opts), function(ele) {
-      return ele.split('__ESC_COMMA__').join(',');
+    this.init(options);
+  }
+  return this.snapdragon.compile(ast, options);
+};
+
+/**
+ * Expand
+ */
+
+Braces.prototype.expand = function(pattern) {
+  var ast = this.parse(pattern, {expand: true});
+  return this.compile(ast, {expand: true});
+};
+
+/**
+ * Optimize
+ */
+
+Braces.prototype.optimize = function(pattern) {
+  var ast = this.parse(pattern, {optimize: true});
+  return this.compile(ast, {optimize: true});
+};
+
+/**
+ * Expose `Braces`
+ */
+
+module.exports = Braces;
+
+
+/***/ }),
+
+/***/ 17076:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var utils = __nccwpck_require__(45207);
+
+module.exports = function(braces, options) {
+  braces.compiler
+
+    /**
+     * bos
+     */
+
+    .set('bos', function() {
+      if (this.output) return;
+      this.ast.queue = isEscaped(this.ast) ? [this.ast.val] : [];
+      this.ast.count = 1;
+    })
+
+    /**
+     * Square brackets
+     */
+
+    .set('bracket', function(node) {
+      var close = node.close;
+      var open = !node.escaped ? '[' : '\\[';
+      var negated = node.negated;
+      var inner = node.inner;
+
+      inner = inner.replace(/\\(?=[\\\w]|$)/g, '\\\\');
+      if (inner === ']-') {
+        inner = '\\]\\-';
+      }
+
+      if (negated && inner.indexOf('.') === -1) {
+        inner += '.';
+      }
+      if (negated && inner.indexOf('/') === -1) {
+        inner += '/';
+      }
+
+      var val = open + negated + inner + close;
+      var queue = node.parent.queue;
+      var last = utils.arrayify(queue.pop());
+
+      queue.push(utils.join(last, val));
+      queue.push.apply(queue, []);
+    })
+
+    /**
+     * Brace
+     */
+
+    .set('brace', function(node) {
+      node.queue = isEscaped(node) ? [node.val] : [];
+      node.count = 1;
+      return this.mapVisit(node.nodes);
+    })
+
+    /**
+     * Open
+     */
+
+    .set('brace.open', function(node) {
+      node.parent.open = node.val;
+    })
+
+    /**
+     * Inner
+     */
+
+    .set('text', function(node) {
+      var queue = node.parent.queue;
+      var escaped = node.escaped;
+      var segs = [node.val];
+
+      if (node.optimize === false) {
+        options = utils.extend({}, options, {optimize: false});
+      }
+
+      if (node.multiplier > 1) {
+        node.parent.count *= node.multiplier;
+      }
+
+      if (options.quantifiers === true && utils.isQuantifier(node.val)) {
+        escaped = true;
+
+      } else if (node.val.length > 1) {
+        if (isType(node.parent, 'brace') && !isEscaped(node)) {
+          var expanded = utils.expand(node.val, options);
+          segs = expanded.segs;
+
+          if (expanded.isOptimized) {
+            node.parent.isOptimized = true;
+          }
+
+          // if nothing was expanded, we probably have a literal brace
+          if (!segs.length) {
+            var val = (expanded.val || node.val);
+            if (options.unescape !== false) {
+              // unescape unexpanded brace sequence/set separators
+              val = val.replace(/\\([,.])/g, '$1');
+              // strip quotes
+              val = val.replace(/["'`]/g, '');
+            }
+
+            segs = [val];
+            escaped = true;
+          }
+        }
+
+      } else if (node.val === ',') {
+        if (options.expand) {
+          node.parent.queue.push(['']);
+          segs = [''];
+        } else {
+          segs = ['|'];
+        }
+      } else {
+        escaped = true;
+      }
+
+      if (escaped && isType(node.parent, 'brace')) {
+        if (node.parent.nodes.length <= 4 && node.parent.count === 1) {
+          node.parent.escaped = true;
+        } else if (node.parent.length <= 3) {
+          node.parent.escaped = true;
+        }
+      }
+
+      if (!hasQueue(node.parent)) {
+        node.parent.queue = segs;
+        return;
+      }
+
+      var last = utils.arrayify(queue.pop());
+      if (node.parent.count > 1 && options.expand) {
+        last = multiply(last, node.parent.count);
+        node.parent.count = 1;
+      }
+
+      queue.push(utils.join(utils.flatten(last), segs.shift()));
+      queue.push.apply(queue, segs);
+    })
+
+    /**
+     * Close
+     */
+
+    .set('brace.close', function(node) {
+      var queue = node.parent.queue;
+      var prev = node.parent.parent;
+      var last = prev.queue.pop();
+      var open = node.parent.open;
+      var close = node.val;
+
+      if (open && close && isOptimized(node, options)) {
+        open = '(';
+        close = ')';
+      }
+
+      // if a close brace exists, and the previous segment is one character
+      // don't wrap the result in braces or parens
+      var ele = utils.last(queue);
+      if (node.parent.count > 1 && options.expand) {
+        ele = multiply(queue.pop(), node.parent.count);
+        node.parent.count = 1;
+        queue.push(ele);
+      }
+
+      if (close && typeof ele === 'string' && ele.length === 1) {
+        open = '';
+        close = '';
+      }
+
+      if ((isLiteralBrace(node, options) || noInner(node)) && !node.parent.hasEmpty) {
+        queue.push(utils.join(open, queue.pop() || ''));
+        queue = utils.flatten(utils.join(queue, close));
+      }
+
+      if (typeof last === 'undefined') {
+        prev.queue = [queue];
+      } else {
+        prev.queue.push(utils.flatten(utils.join(last, queue)));
+      }
+    })
+
+    /**
+     * eos
+     */
+
+    .set('eos', function(node) {
+      if (this.input) return;
+
+      if (options.optimize !== false) {
+        this.output = utils.last(utils.flatten(this.ast.queue));
+      } else if (Array.isArray(utils.last(this.ast.queue))) {
+        this.output = utils.flatten(this.ast.queue.pop());
+      } else {
+        this.output = utils.flatten(this.ast.queue);
+      }
+
+      if (node.parent.count > 1 && options.expand) {
+        this.output = multiply(this.output, node.parent.count);
+      }
+
+      this.output = utils.arrayify(this.output);
+      this.ast.queue = [];
     });
+
+};
+
+/**
+ * Multiply the segments in the current brace level
+ */
+
+function multiply(queue, n, options) {
+  return utils.flatten(utils.repeat(utils.arrayify(queue), n));
+}
+
+/**
+ * Return true if `node` is escaped
+ */
+
+function isEscaped(node) {
+  return node.escaped === true;
+}
+
+/**
+ * Returns true if regex parens should be used for sets. If the parent `type`
+ * is not `brace`, then we're on a root node, which means we should never
+ * expand segments and open/close braces should be `{}` (since this indicates
+ * a brace is missing from the set)
+ */
+
+function isOptimized(node, options) {
+  if (node.parent.isOptimized) return true;
+  return isType(node.parent, 'brace')
+    && !isEscaped(node.parent)
+    && options.expand !== true;
+}
+
+/**
+ * Returns true if the value in `node` should be wrapped in a literal brace.
+ * @return {Boolean}
+ */
+
+function isLiteralBrace(node, options) {
+  return isEscaped(node.parent) || options.optimize !== false;
+}
+
+/**
+ * Returns true if the given `node` does not have an inner value.
+ * @return {Boolean}
+ */
+
+function noInner(node, type) {
+  if (node.parent.queue.length === 1) {
+    return true;
   }
+  var nodes = node.parent.nodes;
+  return nodes.length === 3
+    && isType(nodes[0], 'brace.open')
+    && !isType(nodes[1], 'text')
+    && isType(nodes[2], 'brace.close');
 }
 
 /**
- * Regex for common patterns
+ * Returns true if the given `node` is the given `type`
+ * @return {Boolean}
  */
 
-function patternRegex() {
-  return /\${|( (?=[{,}])|(?=[{,}]) )|{}|{,}|\\,(?=.*[{}])|\/\.(?=.*[{}])|\\\.(?={)|\\{|\\}/;
+function isType(node, type) {
+  return typeof node !== 'undefined' && node.type === type;
 }
 
 /**
- * Braces regex.
+ * Returns true if the given `node` has a non-empty queue.
+ * @return {Boolean}
  */
 
-function braceRegex() {
-  return /.*(\\?\{([^}]+)\})/;
+function hasQueue(node) {
+  return Array.isArray(node.queue) && node.queue.length;
+}
+
+
+/***/ }),
+
+/***/ 32829:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var Node = __nccwpck_require__(55244);
+var utils = __nccwpck_require__(45207);
+
+/**
+ * Braces parsers
+ */
+
+module.exports = function(braces, options) {
+  braces.parser
+    .set('bos', function() {
+      if (!this.parsed) {
+        this.ast = this.nodes[0] = new Node(this.ast);
+      }
+    })
+
+    /**
+     * Character parsers
+     */
+
+    .set('escape', function() {
+      var pos = this.position();
+      var m = this.match(/^(?:\\(.)|\$\{)/);
+      if (!m) return;
+
+      var prev = this.prev();
+      var last = utils.last(prev.nodes);
+
+      var node = pos(new Node({
+        type: 'text',
+        multiplier: 1,
+        val: m[0]
+      }));
+
+      if (node.val === '\\\\') {
+        return node;
+      }
+
+      if (node.val === '${') {
+        var str = this.input;
+        var idx = -1;
+        var ch;
+
+        while ((ch = str[++idx])) {
+          this.consume(1);
+          node.val += ch;
+          if (ch === '\\') {
+            node.val += str[++idx];
+            continue;
+          }
+          if (ch === '}') {
+            break;
+          }
+        }
+      }
+
+      if (this.options.unescape !== false) {
+        node.val = node.val.replace(/\\([{}])/g, '$1');
+      }
+
+      if (last.val === '"' && this.input.charAt(0) === '"') {
+        last.val = node.val;
+        this.consume(1);
+        return;
+      }
+
+      return concatNodes.call(this, pos, node, prev, options);
+    })
+
+    /**
+     * Brackets: "[...]" (basic, this is overridden by
+     * other parsers in more advanced implementations)
+     */
+
+    .set('bracket', function() {
+      var isInside = this.isInside('brace');
+      var pos = this.position();
+      var m = this.match(/^(?:\[([!^]?)([^\]]{2,}|\]-)(\]|[^*+?]+)|\[)/);
+      if (!m) return;
+
+      var prev = this.prev();
+      var val = m[0];
+      var negated = m[1] ? '^' : '';
+      var inner = m[2] || '';
+      var close = m[3] || '';
+
+      if (isInside && prev.type === 'brace') {
+        prev.text = prev.text || '';
+        prev.text += val;
+      }
+
+      var esc = this.input.slice(0, 2);
+      if (inner === '' && esc === '\\]') {
+        inner += esc;
+        this.consume(2);
+
+        var str = this.input;
+        var idx = -1;
+        var ch;
+
+        while ((ch = str[++idx])) {
+          this.consume(1);
+          if (ch === ']') {
+            close = ch;
+            break;
+          }
+          inner += ch;
+        }
+      }
+
+      return pos(new Node({
+        type: 'bracket',
+        val: val,
+        escaped: close !== ']',
+        negated: negated,
+        inner: inner,
+        close: close
+      }));
+    })
+
+    /**
+     * Empty braces (we capture these early to
+     * speed up processing in the compiler)
+     */
+
+    .set('multiplier', function() {
+      var isInside = this.isInside('brace');
+      var pos = this.position();
+      var m = this.match(/^\{((?:,|\{,+\})+)\}/);
+      if (!m) return;
+
+      this.multiplier = true;
+      var prev = this.prev();
+      var val = m[0];
+
+      if (isInside && prev.type === 'brace') {
+        prev.text = prev.text || '';
+        prev.text += val;
+      }
+
+      var node = pos(new Node({
+        type: 'text',
+        multiplier: 1,
+        match: m,
+        val: val
+      }));
+
+      return concatNodes.call(this, pos, node, prev, options);
+    })
+
+    /**
+     * Open
+     */
+
+    .set('brace.open', function() {
+      var pos = this.position();
+      var m = this.match(/^\{(?!(?:[^\\}]?|,+)\})/);
+      if (!m) return;
+
+      var prev = this.prev();
+      var last = utils.last(prev.nodes);
+
+      // if the last parsed character was an extglob character
+      // we need to _not optimize_ the brace pattern because
+      // it might be mistaken for an extglob by a downstream parser
+      if (last && last.val && isExtglobChar(last.val.slice(-1))) {
+        last.optimize = false;
+      }
+
+      var open = pos(new Node({
+        type: 'brace.open',
+        val: m[0]
+      }));
+
+      var node = pos(new Node({
+        type: 'brace',
+        nodes: []
+      }));
+
+      node.push(open);
+      prev.push(node);
+      this.push('brace', node);
+    })
+
+    /**
+     * Close
+     */
+
+    .set('brace.close', function() {
+      var pos = this.position();
+      var m = this.match(/^\}/);
+      if (!m || !m[0]) return;
+
+      var brace = this.pop('brace');
+      var node = pos(new Node({
+        type: 'brace.close',
+        val: m[0]
+      }));
+
+      if (!this.isType(brace, 'brace')) {
+        if (this.options.strict) {
+          throw new Error('missing opening "{"');
+        }
+        node.type = 'text';
+        node.multiplier = 0;
+        node.escaped = true;
+        return node;
+      }
+
+      var prev = this.prev();
+      var last = utils.last(prev.nodes);
+      if (last.text) {
+        var lastNode = utils.last(last.nodes);
+        if (lastNode.val === ')' && /[!@*?+]\(/.test(last.text)) {
+          var open = last.nodes[0];
+          var text = last.nodes[1];
+          if (open.type === 'brace.open' && text && text.type === 'text') {
+            text.optimize = false;
+          }
+        }
+      }
+
+      if (brace.nodes.length > 2) {
+        var first = brace.nodes[1];
+        if (first.type === 'text' && first.val === ',') {
+          brace.nodes.splice(1, 1);
+          brace.nodes.push(first);
+        }
+      }
+
+      brace.push(node);
+    })
+
+    /**
+     * Capture boundary characters
+     */
+
+    .set('boundary', function() {
+      var pos = this.position();
+      var m = this.match(/^[$^](?!\{)/);
+      if (!m) return;
+      return pos(new Node({
+        type: 'text',
+        val: m[0]
+      }));
+    })
+
+    /**
+     * One or zero, non-comma characters wrapped in braces
+     */
+
+    .set('nobrace', function() {
+      var isInside = this.isInside('brace');
+      var pos = this.position();
+      var m = this.match(/^\{[^,]?\}/);
+      if (!m) return;
+
+      var prev = this.prev();
+      var val = m[0];
+
+      if (isInside && prev.type === 'brace') {
+        prev.text = prev.text || '';
+        prev.text += val;
+      }
+
+      return pos(new Node({
+        type: 'text',
+        multiplier: 0,
+        val: val
+      }));
+    })
+
+    /**
+     * Text
+     */
+
+    .set('text', function() {
+      var isInside = this.isInside('brace');
+      var pos = this.position();
+      var m = this.match(/^((?!\\)[^${}[\]])+/);
+      if (!m) return;
+
+      var prev = this.prev();
+      var val = m[0];
+
+      if (isInside && prev.type === 'brace') {
+        prev.text = prev.text || '';
+        prev.text += val;
+      }
+
+      var node = pos(new Node({
+        type: 'text',
+        multiplier: 1,
+        val: val
+      }));
+
+      return concatNodes.call(this, pos, node, prev, options);
+    });
+};
+
+/**
+ * Returns true if the character is an extglob character.
+ */
+
+function isExtglobChar(ch) {
+  return ch === '!' || ch === '@' || ch === '*' || ch === '?' || ch === '+';
 }
 
 /**
- * es6 delimiter regex.
+ * Combine text nodes, and calculate empty sets (`{,,}`)
+ * @param {Function} `pos` Function to calculate node position
+ * @param {Object} `node` AST node
+ * @return {Object}
  */
 
-function es6Regex() {
-  return /\$\{([^}]+)\}/;
-}
+function concatNodes(pos, node, parent, options) {
+  node.orig = node.val;
+  var prev = this.prev();
+  var last = utils.last(prev.nodes);
+  var isEscaped = false;
 
-var braceRe;
-var patternRe;
+  if (node.val.length > 1) {
+    var a = node.val.charAt(0);
+    var b = node.val.slice(-1);
 
-/**
- * Faster alternative to `String.replace()` when the
- * index of the token to be replaces can't be supplied
- */
-
-function splice(str, token, replacement) {
-  var i = str.indexOf(token);
-  return str.substr(0, i) + replacement
-    + str.substr(i + token.length);
-}
-
-/**
- * Fast array map
- */
-
-function map(arr, fn) {
-  if (arr == null) {
-    return [];
+    isEscaped = (a === '"' && b === '"')
+      || (a === "'" && b === "'")
+      || (a === '`' && b === '`');
   }
 
-  var len = arr.length;
-  var res = new Array(len);
-  var i = -1;
-
-  while (++i < len) {
-    res[i] = fn(arr[i], i, arr);
+  if (isEscaped && options.unescape !== false) {
+    node.val = node.val.slice(1, node.val.length - 1);
+    node.escaped = true;
   }
 
-  return res;
+  if (node.match) {
+    var match = node.match[1];
+    if (!match || match.indexOf('}') === -1) {
+      match = node.match[0];
+    }
+
+    // replace each set with a single ","
+    var val = match.replace(/\{/g, ',').replace(/\}/g, '');
+    node.multiplier *= val.length;
+    node.val = '';
+  }
+
+  var simpleText = last.type === 'text'
+    && last.multiplier === 1
+    && node.multiplier === 1
+    && node.val;
+
+  if (simpleText) {
+    last.val += node.val;
+    return;
+  }
+
+  prev.push(node);
 }
 
+
+/***/ }),
+
+/***/ 45207:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var splitString = __nccwpck_require__(84960);
+var utils = module.exports;
+
 /**
- * Fast array filter
+ * Module dependencies
  */
 
-function filter(arr, cb) {
-  if (arr == null) return [];
-  if (typeof cb !== 'function') {
-    throw new TypeError('braces: filter expects a callback function.');
+utils.extend = __nccwpck_require__(67512);
+utils.flatten = __nccwpck_require__(57493);
+utils.isObject = __nccwpck_require__(5509);
+utils.fillRange = __nccwpck_require__(6330);
+utils.repeat = __nccwpck_require__(73301);
+utils.unique = __nccwpck_require__(40340);
+
+utils.define = function(obj, key, val) {
+  Object.defineProperty(obj, key, {
+    writable: true,
+    configurable: true,
+    enumerable: false,
+    value: val
+  });
+};
+
+/**
+ * Returns true if the given string contains only empty brace sets.
+ */
+
+utils.isEmptySets = function(str) {
+  return /^(?:\{,\})+$/.test(str);
+};
+
+/**
+ * Returns true if the given string contains only empty brace sets.
+ */
+
+utils.isQuotedString = function(str) {
+  var open = str.charAt(0);
+  if (open === '\'' || open === '"' || open === '`') {
+    return str.slice(-1) === open;
   }
+  return false;
+};
 
-  var len = arr.length;
-  var res = arr.slice();
-  var i = 0;
+/**
+ * Create the key to use for memoization. The unique key is generated
+ * by iterating over the options and concatenating key-value pairs
+ * to the pattern string.
+ */
 
-  while (len--) {
-    if (!cb(arr[len], i++)) {
-      res.splice(len, 1);
+utils.createKey = function(pattern, options) {
+  var id = pattern;
+  if (typeof options === 'undefined') {
+    return id;
+  }
+  var keys = Object.keys(options);
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    id += ';' + key + '=' + String(options[key]);
+  }
+  return id;
+};
+
+/**
+ * Normalize options
+ */
+
+utils.createOptions = function(options) {
+  var opts = utils.extend.apply(null, arguments);
+  if (typeof opts.expand === 'boolean') {
+    opts.optimize = !opts.expand;
+  }
+  if (typeof opts.optimize === 'boolean') {
+    opts.expand = !opts.optimize;
+  }
+  if (opts.optimize === true) {
+    opts.makeRe = true;
+  }
+  return opts;
+};
+
+/**
+ * Join patterns in `a` to patterns in `b`
+ */
+
+utils.join = function(a, b, options) {
+  options = options || {};
+  a = utils.arrayify(a);
+  b = utils.arrayify(b);
+
+  if (!a.length) return b;
+  if (!b.length) return a;
+
+  var len = a.length;
+  var idx = -1;
+  var arr = [];
+
+  while (++idx < len) {
+    var val = a[idx];
+    if (Array.isArray(val)) {
+      for (var i = 0; i < val.length; i++) {
+        val[i] = utils.join(val[i], b, options);
+      }
+      arr.push(val);
+      continue;
+    }
+
+    for (var j = 0; j < b.length; j++) {
+      var bval = b[j];
+
+      if (Array.isArray(bval)) {
+        arr.push(utils.join(val, bval, options));
+      } else {
+        arr.push(val + bval);
+      }
     }
   }
-  return res;
-}
+  return arr;
+};
+
+/**
+ * Split the given string on `,` if not escaped.
+ */
+
+utils.split = function(str, options) {
+  var opts = utils.extend({sep: ','}, options);
+  if (typeof opts.keepQuotes !== 'boolean') {
+    opts.keepQuotes = true;
+  }
+  if (opts.unescape === false) {
+    opts.keepEscaping = true;
+  }
+  return splitString(str, opts, utils.escapeBrackets(opts));
+};
+
+/**
+ * Expand ranges or sets in the given `pattern`.
+ *
+ * @param {String} `str`
+ * @param {Object} `options`
+ * @return {Object}
+ */
+
+utils.expand = function(str, options) {
+  var opts = utils.extend({rangeLimit: 10000}, options);
+  var segs = utils.split(str, opts);
+  var tok = { segs: segs };
+
+  if (utils.isQuotedString(str)) {
+    return tok;
+  }
+
+  if (opts.rangeLimit === true) {
+    opts.rangeLimit = 10000;
+  }
+
+  if (segs.length > 1) {
+    if (opts.optimize === false) {
+      tok.val = segs[0];
+      return tok;
+    }
+
+    tok.segs = utils.stringifyArray(tok.segs);
+  } else if (segs.length === 1) {
+    var arr = str.split('..');
+
+    if (arr.length === 1) {
+      tok.val = tok.segs[tok.segs.length - 1] || tok.val || str;
+      tok.segs = [];
+      return tok;
+    }
+
+    if (arr.length === 2 && arr[0] === arr[1]) {
+      tok.escaped = true;
+      tok.val = arr[0];
+      tok.segs = [];
+      return tok;
+    }
+
+    if (arr.length > 1) {
+      if (opts.optimize !== false) {
+        opts.optimize = true;
+        delete opts.expand;
+      }
+
+      if (opts.optimize !== true) {
+        var min = Math.min(arr[0], arr[1]);
+        var max = Math.max(arr[0], arr[1]);
+        var step = arr[2] || 1;
+
+        if (opts.rangeLimit !== false && ((max - min) / step >= opts.rangeLimit)) {
+          throw new RangeError('expanded array length exceeds range limit. Use options.rangeLimit to increase or disable the limit.');
+        }
+      }
+
+      arr.push(opts);
+      tok.segs = utils.fillRange.apply(null, arr);
+
+      if (!tok.segs.length) {
+        tok.escaped = true;
+        tok.val = str;
+        return tok;
+      }
+
+      if (opts.optimize === true) {
+        tok.segs = utils.stringifyArray(tok.segs);
+      }
+
+      if (tok.segs === '') {
+        tok.val = str;
+      } else {
+        tok.val = tok.segs[0];
+      }
+      return tok;
+    }
+  } else {
+    tok.val = str;
+  }
+  return tok;
+};
+
+/**
+ * Ensure commas inside brackets and parens are not split.
+ * @param {Object} `tok` Token from the `split-string` module
+ * @return {undefined}
+ */
+
+utils.escapeBrackets = function(options) {
+  return function(tok) {
+    if (tok.escaped && tok.val === 'b') {
+      tok.val = '\\b';
+      return;
+    }
+
+    if (tok.val !== '(' && tok.val !== '[') return;
+    var opts = utils.extend({}, options);
+    var brackets = [];
+    var parens = [];
+    var stack = [];
+    var val = tok.val;
+    var str = tok.str;
+    var i = tok.idx - 1;
+
+    while (++i < str.length) {
+      var ch = str[i];
+
+      if (ch === '\\') {
+        val += (opts.keepEscaping === false ? '' : ch) + str[++i];
+        continue;
+      }
+
+      if (ch === '(') {
+        parens.push(ch);
+        stack.push(ch);
+      }
+
+      if (ch === '[') {
+        brackets.push(ch);
+        stack.push(ch);
+      }
+
+      if (ch === ')') {
+        parens.pop();
+        stack.pop();
+        if (!stack.length) {
+          val += ch;
+          break;
+        }
+      }
+
+      if (ch === ']') {
+        brackets.pop();
+        stack.pop();
+        if (!stack.length) {
+          val += ch;
+          break;
+        }
+      }
+      val += ch;
+    }
+
+    tok.split = false;
+    tok.val = val.slice(1);
+    tok.idx = i;
+  };
+};
+
+/**
+ * Returns true if the given string looks like a regex quantifier
+ * @return {Boolean}
+ */
+
+utils.isQuantifier = function(str) {
+  return /^(?:[0-9]?,[0-9]|[0-9],)$/.test(str);
+};
+
+/**
+ * Cast `val` to an array.
+ * @param {*} `val`
+ */
+
+utils.stringifyArray = function(arr) {
+  return [utils.arrayify(arr).join('|')];
+};
+
+/**
+ * Cast `val` to an array.
+ * @param {*} `val`
+ */
+
+utils.arrayify = function(arr) {
+  if (typeof arr === 'undefined') {
+    return [];
+  }
+  if (typeof arr === 'string') {
+    return [arr];
+  }
+  return arr;
+};
+
+/**
+ * Returns true if the given `str` is a non-empty string
+ * @return {Boolean}
+ */
+
+utils.isString = function(str) {
+  return str != null && typeof str === 'string';
+};
+
+/**
+ * Get the last element from `array`
+ * @param {Array} `array`
+ * @return {*}
+ */
+
+utils.last = function(arr, n) {
+  return arr[arr.length - (n || 1)];
+};
+
+utils.escapeRegex = function(str) {
+  return str.replace(/\\?([!^*?()[\]{}+?/])/g, '\\$1');
+};
 
 
 /***/ }),
@@ -31024,522 +32064,6 @@ brackets.match = function(arr, pattern) {
 
 /***/ }),
 
-/***/ 48947:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-/*!
- * expand-range <https://github.com/jonschlinkert/expand-range>
- *
- * Copyright (c) 2014-2015, Jon Schlinkert.
- * Licensed under the MIT license.
- */
-
-
-
-var fill = __nccwpck_require__(8928);
-
-module.exports = function expandRange(str, options, fn) {
-  if (typeof str !== 'string') {
-    throw new TypeError('expand-range expects a string.');
-  }
-
-  if (typeof options === 'function') {
-    fn = options;
-    options = {};
-  }
-
-  if (typeof options === 'boolean') {
-    options = {};
-    options.makeRe = true;
-  }
-
-  // create arguments to pass to fill-range
-  var opts = options || {};
-  var args = str.split('..');
-  var len = args.length;
-  if (len > 3) { return str; }
-
-  // if only one argument, it can't expand so return it
-  if (len === 1) { return args; }
-
-  // if `true`, tell fill-range to regexify the string
-  if (typeof fn === 'boolean' && fn === true) {
-    opts.makeRe = true;
-  }
-
-  args.push(opts);
-  return fill.apply(null, args.concat(fn));
-};
-
-
-/***/ }),
-
-/***/ 8928:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-/*!
- * fill-range <https://github.com/jonschlinkert/fill-range>
- *
- * Copyright (c) 2014-2018, Jon Schlinkert.
- * Released under the MIT License.
- */
-
-
-
-var isObject = __nccwpck_require__(12937);
-var isNumber = __nccwpck_require__(67821);
-var randomize = __nccwpck_require__(34875);
-var repeatStr = __nccwpck_require__(96976);
-var repeat = __nccwpck_require__(73301);
-
-/**
- * Expose `fillRange`
- */
-
-module.exports = fillRange;
-
-/**
- * Return a range of numbers or letters.
- *
- * @param  {String} `a` Start of the range
- * @param  {String} `b` End of the range
- * @param  {String} `step` Increment or decrement to use.
- * @param  {Function} `fn` Custom function to modify each element in the range.
- * @return {Array}
- */
-
-function fillRange(a, b, step, options, fn) {
-  if (a == null || b == null) {
-    throw new Error('fill-range expects the first and second args to be strings.');
-  }
-
-  if (typeof step === 'function') {
-    fn = step; options = {}; step = null;
-  }
-
-  if (typeof options === 'function') {
-    fn = options; options = {};
-  }
-
-  if (isObject(step)) {
-    options = step; step = '';
-  }
-
-  var expand, regex = false, sep = '';
-  var opts = options || {};
-
-  if (typeof opts.silent === 'undefined') {
-    opts.silent = true;
-  }
-
-  step = step || opts.step;
-
-  // store a ref to unmodified arg
-  var origA = a, origB = b;
-
-  b = (b.toString() === '-0') ? 0 : b;
-
-  if (opts.optimize || opts.makeRe) {
-    step = step ? (step += '~') : step;
-    expand = true;
-    regex = true;
-    sep = '~';
-  }
-
-  // handle special step characters
-  if (typeof step === 'string') {
-    var match = stepRe().exec(step);
-
-    if (match) {
-      var i = match.index;
-      var m = match[0];
-
-      // repeat string
-      if (m === '+') {
-        return repeat(a, b);
-
-      // randomize a, `b` times
-      } else if (m === '?') {
-        return [randomize(a, b)];
-
-      // expand right, no regex reduction
-      } else if (m === '>') {
-        step = step.substr(0, i) + step.substr(i + 1);
-        expand = true;
-
-      // expand to an array, or if valid create a reduced
-      // string for a regex logic `or`
-      } else if (m === '|') {
-        step = step.substr(0, i) + step.substr(i + 1);
-        expand = true;
-        regex = true;
-        sep = m;
-
-      // expand to an array, or if valid create a reduced
-      // string for a regex range
-      } else if (m === '~') {
-        step = step.substr(0, i) + step.substr(i + 1);
-        expand = true;
-        regex = true;
-        sep = m;
-      }
-    } else if (!isNumber(step)) {
-      if (!opts.silent) {
-        throw new TypeError('fill-range: invalid step.');
-      }
-      return null;
-    }
-  }
-
-  if (/[.&*()[\]^%$#@!]/.test(a) || /[.&*()[\]^%$#@!]/.test(b)) {
-    if (!opts.silent) {
-      throw new RangeError('fill-range: invalid range arguments.');
-    }
-    return null;
-  }
-
-  // has neither a letter nor number, or has both letters and numbers
-  // this needs to be after the step logic
-  if (!noAlphaNum(a) || !noAlphaNum(b) || hasBoth(a) || hasBoth(b)) {
-    if (!opts.silent) {
-      throw new RangeError('fill-range: invalid range arguments.');
-    }
-    return null;
-  }
-
-  // validate arguments
-  var isNumA = isNumber(zeros(a));
-  var isNumB = isNumber(zeros(b));
-
-  if ((!isNumA && isNumB) || (isNumA && !isNumB)) {
-    if (!opts.silent) {
-      throw new TypeError('fill-range: first range argument is incompatible with second.');
-    }
-    return null;
-  }
-
-  // by this point both are the same, so we
-  // can use A to check going forward.
-  var isNum = isNumA;
-  var num = formatStep(step);
-
-  // is the range alphabetical? or numeric?
-  if (isNum) {
-    // if numeric, coerce to an integer
-    a = +a; b = +b;
-  } else {
-    // otherwise, get the charCode to expand alpha ranges
-    a = a.charCodeAt(0);
-    b = b.charCodeAt(0);
-  }
-
-  // is the pattern descending?
-  var isDescending = a > b;
-
-  // don't create a character class if the args are < 0
-  if (a < 0 || b < 0) {
-    expand = false;
-    regex = false;
-  }
-
-  // detect padding
-  var padding = isPadded(origA, origB);
-  var res, pad, arr = [];
-  var ii = 0;
-
-  // character classes, ranges and logical `or`
-  if (regex) {
-    if (shouldExpand(a, b, num, isNum, padding, opts)) {
-      // make sure the correct separator is used
-      if (sep === '|' || sep === '~') {
-        sep = detectSeparator(a, b, num, isNum, isDescending);
-      }
-      return wrap([origA, origB], sep, opts);
-    }
-  }
-
-  while (isDescending ? (a >= b) : (a <= b)) {
-    if (padding && isNum) {
-      pad = padding(a);
-    }
-
-    // custom function
-    if (typeof fn === 'function') {
-      res = fn(a, isNum, pad, ii++);
-
-    // letters
-    } else if (!isNum) {
-      if (regex && isInvalidChar(a)) {
-        res = null;
-      } else {
-        res = String.fromCharCode(a);
-      }
-
-    // numbers
-    } else {
-      res = formatPadding(a, pad);
-    }
-
-    // add result to the array, filtering any nulled values
-    if (res !== null) arr.push(res);
-
-    // increment or decrement
-    if (isDescending) {
-      a -= num;
-    } else {
-      a += num;
-    }
-  }
-
-  // now that the array is expanded, we need to handle regex
-  // character classes, ranges or logical `or` that wasn't
-  // already handled before the loop
-  if ((regex || expand) && !opts.noexpand) {
-    // make sure the correct separator is used
-    if (sep === '|' || sep === '~') {
-      sep = detectSeparator(a, b, num, isNum, isDescending);
-    }
-    if (arr.length === 1 || a < 0 || b < 0) { return arr; }
-    return wrap(arr, sep, opts);
-  }
-
-  return arr;
-}
-
-/**
- * Wrap the string with the correct regex
- * syntax.
- */
-
-function wrap(arr, sep, opts) {
-  if (sep === '~') { sep = '-'; }
-  var str = arr.join(sep);
-  var pre = opts && opts.regexPrefix;
-
-  // regex logical `or`
-  if (sep === '|') {
-    str = pre ? pre + str : str;
-    str = '(' + str + ')';
-  }
-
-  // regex character class
-  if (sep === '-') {
-    str = (pre && pre === '^')
-      ? pre + str
-      : str;
-    str = '[' + str + ']';
-  }
-  return [str];
-}
-
-/**
- * Check for invalid characters
- */
-
-function isCharClass(a, b, step, isNum, isDescending) {
-  if (isDescending) { return false; }
-  if (isNum) { return a <= 9 && b <= 9; }
-  if (a < b) { return step === 1; }
-  return false;
-}
-
-/**
- * Detect the correct separator to use
- */
-
-function shouldExpand(a, b, num, isNum, padding, opts) {
-  if (isNum && (a > 9 || b > 9)) { return false; }
-  return !padding && num === 1 && a < b;
-}
-
-/**
- * Detect the correct separator to use
- */
-
-function detectSeparator(a, b, step, isNum, isDescending) {
-  var isChar = isCharClass(a, b, step, isNum, isDescending);
-  if (!isChar) {
-    return '|';
-  }
-  return '~';
-}
-
-/**
- * Correctly format the step based on type
- */
-
-function formatStep(step) {
-  return Math.abs(step >> 0) || 1;
-}
-
-/**
- * Format padding, taking leading `-` into account
- */
-
-function formatPadding(ch, pad) {
-  var res = pad ? pad + ch : ch;
-  if (pad && ch.toString().charAt(0) === '-') {
-    res = '-' + pad + ch.toString().substr(1);
-  }
-  return res.toString();
-}
-
-/**
- * Check for invalid characters
- */
-
-function isInvalidChar(str) {
-  var ch = toStr(str);
-  return ch === '\\'
-    || ch === '['
-    || ch === ']'
-    || ch === '^'
-    || ch === '('
-    || ch === ')'
-    || ch === '`';
-}
-
-/**
- * Convert to a string from a charCode
- */
-
-function toStr(ch) {
-  return String.fromCharCode(ch);
-}
-
-
-/**
- * Step regex
- */
-
-function stepRe() {
-  return /\?|>|\||\+|\~/g;
-}
-
-/**
- * Return true if `val` has either a letter
- * or a number
- */
-
-function noAlphaNum(val) {
-  return /[a-z0-9]/i.test(val);
-}
-
-/**
- * Return true if `val` has both a letter and
- * a number (invalid)
- */
-
-function hasBoth(val) {
-  return /[a-z][0-9]|[0-9][a-z]/i.test(val);
-}
-
-/**
- * Normalize zeros for checks
- */
-
-function zeros(val) {
-  if (/^-*0+$/.test(val.toString())) {
-    return '0';
-  }
-  return val;
-}
-
-/**
- * Return true if `val` has leading zeros,
- * or a similar valid pattern.
- */
-
-function hasZeros(val) {
-  return /[^.]\.|^-*0+[0-9]/.test(val);
-}
-
-/**
- * If the string is padded, returns a curried function with
- * the a cached padding string, or `false` if no padding.
- *
- * @param  {*} `origA` String or number.
- * @return {String|Boolean}
- */
-
-function isPadded(origA, origB) {
-  if (hasZeros(origA) || hasZeros(origB)) {
-    var alen = length(origA);
-    var blen = length(origB);
-
-    var len = alen >= blen
-      ? alen
-      : blen;
-
-    return function (a) {
-      return repeatStr('0', len - length(a));
-    };
-  }
-  return false;
-}
-
-/**
- * Get the string length of `val`
- */
-
-function length(val) {
-  return val.toString().length;
-}
-
-
-/***/ }),
-
-/***/ 67821:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-/*!
- * is-number <https://github.com/jonschlinkert/is-number>
- *
- * Copyright (c) 2014-2015, Jon Schlinkert.
- * Licensed under the MIT License.
- */
-
-
-
-var typeOf = __nccwpck_require__(86961);
-
-module.exports = function isNumber(num) {
-  var type = typeOf(num);
-  if (type !== 'number' && type !== 'string') {
-    return false;
-  }
-  var n = +num;
-  return (n - n + 1) >= 0 && num !== '';
-};
-
-
-/***/ }),
-
-/***/ 12937:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-/*!
- * isobject <https://github.com/jonschlinkert/isobject>
- *
- * Copyright (c) 2014-2015, Jon Schlinkert.
- * Licensed under the MIT License.
- */
-
-
-
-var isArray = __nccwpck_require__(20893);
-
-module.exports = function isObject(val) {
-  return val != null && typeof val === 'object' && isArray(val) === false;
-};
-
-
-/***/ }),
-
 /***/ 67512:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -31767,1219 +32291,6 @@ function toRegex(pattern, contains, isNegated) {
 
 /***/ }),
 
-/***/ 35582:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-const stringify = __nccwpck_require__(64810);
-const compile = __nccwpck_require__(7123);
-const expand = __nccwpck_require__(46944);
-const parse = __nccwpck_require__(79889);
-
-/**
- * Expand the given pattern or create a regex-compatible string.
- *
- * ```js
- * const braces = require('braces');
- * console.log(braces('{a,b,c}', { compile: true })); //=> ['(a|b|c)']
- * console.log(braces('{a,b,c}')); //=> ['a', 'b', 'c']
- * ```
- * @param {String} `str`
- * @param {Object} `options`
- * @return {String}
- * @api public
- */
-
-const braces = (input, options = {}) => {
-  let output = [];
-
-  if (Array.isArray(input)) {
-    for (let pattern of input) {
-      let result = braces.create(pattern, options);
-      if (Array.isArray(result)) {
-        output.push(...result);
-      } else {
-        output.push(result);
-      }
-    }
-  } else {
-    output = [].concat(braces.create(input, options));
-  }
-
-  if (options && options.expand === true && options.nodupes === true) {
-    output = [...new Set(output)];
-  }
-  return output;
-};
-
-/**
- * Parse the given `str` with the given `options`.
- *
- * ```js
- * // braces.parse(pattern, [, options]);
- * const ast = braces.parse('a/{b,c}/d');
- * console.log(ast);
- * ```
- * @param {String} pattern Brace pattern to parse
- * @param {Object} options
- * @return {Object} Returns an AST
- * @api public
- */
-
-braces.parse = (input, options = {}) => parse(input, options);
-
-/**
- * Creates a braces string from an AST, or an AST node.
- *
- * ```js
- * const braces = require('braces');
- * let ast = braces.parse('foo/{a,b}/bar');
- * console.log(stringify(ast.nodes[2])); //=> '{a,b}'
- * ```
- * @param {String} `input` Brace pattern or AST.
- * @param {Object} `options`
- * @return {Array} Returns an array of expanded values.
- * @api public
- */
-
-braces.stringify = (input, options = {}) => {
-  if (typeof input === 'string') {
-    return stringify(braces.parse(input, options), options);
-  }
-  return stringify(input, options);
-};
-
-/**
- * Compiles a brace pattern into a regex-compatible, optimized string.
- * This method is called by the main [braces](#braces) function by default.
- *
- * ```js
- * const braces = require('braces');
- * console.log(braces.compile('a/{b,c}/d'));
- * //=> ['a/(b|c)/d']
- * ```
- * @param {String} `input` Brace pattern or AST.
- * @param {Object} `options`
- * @return {Array} Returns an array of expanded values.
- * @api public
- */
-
-braces.compile = (input, options = {}) => {
-  if (typeof input === 'string') {
-    input = braces.parse(input, options);
-  }
-  return compile(input, options);
-};
-
-/**
- * Expands a brace pattern into an array. This method is called by the
- * main [braces](#braces) function when `options.expand` is true. Before
- * using this method it's recommended that you read the [performance notes](#performance))
- * and advantages of using [.compile](#compile) instead.
- *
- * ```js
- * const braces = require('braces');
- * console.log(braces.expand('a/{b,c}/d'));
- * //=> ['a/b/d', 'a/c/d'];
- * ```
- * @param {String} `pattern` Brace pattern
- * @param {Object} `options`
- * @return {Array} Returns an array of expanded values.
- * @api public
- */
-
-braces.expand = (input, options = {}) => {
-  if (typeof input === 'string') {
-    input = braces.parse(input, options);
-  }
-
-  let result = expand(input, options);
-
-  // filter out empty strings if specified
-  if (options.noempty === true) {
-    result = result.filter(Boolean);
-  }
-
-  // filter out duplicates if specified
-  if (options.nodupes === true) {
-    result = [...new Set(result)];
-  }
-
-  return result;
-};
-
-/**
- * Processes a brace pattern and returns either an expanded array
- * (if `options.expand` is true), a highly optimized regex-compatible string.
- * This method is called by the main [braces](#braces) function.
- *
- * ```js
- * const braces = require('braces');
- * console.log(braces.create('user-{200..300}/project-{a,b,c}-{1..10}'))
- * //=> 'user-(20[0-9]|2[1-9][0-9]|300)/project-(a|b|c)-([1-9]|10)'
- * ```
- * @param {String} `pattern` Brace pattern
- * @param {Object} `options`
- * @return {Array} Returns an array of expanded values.
- * @api public
- */
-
-braces.create = (input, options = {}) => {
-  if (input === '' || input.length < 3) {
-    return [input];
-  }
-
- return options.expand !== true
-    ? braces.compile(input, options)
-    : braces.expand(input, options);
-};
-
-/**
- * Expose "braces"
- */
-
-module.exports = braces;
-
-
-/***/ }),
-
-/***/ 7123:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-const fill = __nccwpck_require__(90791);
-const utils = __nccwpck_require__(27691);
-
-const compile = (ast, options = {}) => {
-  let walk = (node, parent = {}) => {
-    let invalidBlock = utils.isInvalidBrace(parent);
-    let invalidNode = node.invalid === true && options.escapeInvalid === true;
-    let invalid = invalidBlock === true || invalidNode === true;
-    let prefix = options.escapeInvalid === true ? '\\' : '';
-    let output = '';
-
-    if (node.isOpen === true) {
-      return prefix + node.value;
-    }
-    if (node.isClose === true) {
-      return prefix + node.value;
-    }
-
-    if (node.type === 'open') {
-      return invalid ? (prefix + node.value) : '(';
-    }
-
-    if (node.type === 'close') {
-      return invalid ? (prefix + node.value) : ')';
-    }
-
-    if (node.type === 'comma') {
-      return node.prev.type === 'comma' ? '' : (invalid ? node.value : '|');
-    }
-
-    if (node.value) {
-      return node.value;
-    }
-
-    if (node.nodes && node.ranges > 0) {
-      let args = utils.reduce(node.nodes);
-      let range = fill(...args, { ...options, wrap: false, toRegex: true });
-
-      if (range.length !== 0) {
-        return args.length > 1 && range.length > 1 ? `(${range})` : range;
-      }
-    }
-
-    if (node.nodes) {
-      for (let child of node.nodes) {
-        output += walk(child, node);
-      }
-    }
-    return output;
-  };
-
-  return walk(ast);
-};
-
-module.exports = compile;
-
-
-/***/ }),
-
-/***/ 45412:
-/***/ ((module) => {
-
-"use strict";
-
-
-module.exports = {
-  MAX_LENGTH: 1024 * 64,
-
-  // Digits
-  CHAR_0: '0', /* 0 */
-  CHAR_9: '9', /* 9 */
-
-  // Alphabet chars.
-  CHAR_UPPERCASE_A: 'A', /* A */
-  CHAR_LOWERCASE_A: 'a', /* a */
-  CHAR_UPPERCASE_Z: 'Z', /* Z */
-  CHAR_LOWERCASE_Z: 'z', /* z */
-
-  CHAR_LEFT_PARENTHESES: '(', /* ( */
-  CHAR_RIGHT_PARENTHESES: ')', /* ) */
-
-  CHAR_ASTERISK: '*', /* * */
-
-  // Non-alphabetic chars.
-  CHAR_AMPERSAND: '&', /* & */
-  CHAR_AT: '@', /* @ */
-  CHAR_BACKSLASH: '\\', /* \ */
-  CHAR_BACKTICK: '`', /* ` */
-  CHAR_CARRIAGE_RETURN: '\r', /* \r */
-  CHAR_CIRCUMFLEX_ACCENT: '^', /* ^ */
-  CHAR_COLON: ':', /* : */
-  CHAR_COMMA: ',', /* , */
-  CHAR_DOLLAR: '$', /* . */
-  CHAR_DOT: '.', /* . */
-  CHAR_DOUBLE_QUOTE: '"', /* " */
-  CHAR_EQUAL: '=', /* = */
-  CHAR_EXCLAMATION_MARK: '!', /* ! */
-  CHAR_FORM_FEED: '\f', /* \f */
-  CHAR_FORWARD_SLASH: '/', /* / */
-  CHAR_HASH: '#', /* # */
-  CHAR_HYPHEN_MINUS: '-', /* - */
-  CHAR_LEFT_ANGLE_BRACKET: '<', /* < */
-  CHAR_LEFT_CURLY_BRACE: '{', /* { */
-  CHAR_LEFT_SQUARE_BRACKET: '[', /* [ */
-  CHAR_LINE_FEED: '\n', /* \n */
-  CHAR_NO_BREAK_SPACE: '\u00A0', /* \u00A0 */
-  CHAR_PERCENT: '%', /* % */
-  CHAR_PLUS: '+', /* + */
-  CHAR_QUESTION_MARK: '?', /* ? */
-  CHAR_RIGHT_ANGLE_BRACKET: '>', /* > */
-  CHAR_RIGHT_CURLY_BRACE: '}', /* } */
-  CHAR_RIGHT_SQUARE_BRACKET: ']', /* ] */
-  CHAR_SEMICOLON: ';', /* ; */
-  CHAR_SINGLE_QUOTE: '\'', /* ' */
-  CHAR_SPACE: ' ', /*   */
-  CHAR_TAB: '\t', /* \t */
-  CHAR_UNDERSCORE: '_', /* _ */
-  CHAR_VERTICAL_LINE: '|', /* | */
-  CHAR_ZERO_WIDTH_NOBREAK_SPACE: '\uFEFF' /* \uFEFF */
-};
-
-
-/***/ }),
-
-/***/ 46944:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-const fill = __nccwpck_require__(90791);
-const stringify = __nccwpck_require__(64810);
-const utils = __nccwpck_require__(27691);
-
-const append = (queue = '', stash = '', enclose = false) => {
-  let result = [];
-
-  queue = [].concat(queue);
-  stash = [].concat(stash);
-
-  if (!stash.length) return queue;
-  if (!queue.length) {
-    return enclose ? utils.flatten(stash).map(ele => `{${ele}}`) : stash;
-  }
-
-  for (let item of queue) {
-    if (Array.isArray(item)) {
-      for (let value of item) {
-        result.push(append(value, stash, enclose));
-      }
-    } else {
-      for (let ele of stash) {
-        if (enclose === true && typeof ele === 'string') ele = `{${ele}}`;
-        result.push(Array.isArray(ele) ? append(item, ele, enclose) : (item + ele));
-      }
-    }
-  }
-  return utils.flatten(result);
-};
-
-const expand = (ast, options = {}) => {
-  let rangeLimit = options.rangeLimit === void 0 ? 1000 : options.rangeLimit;
-
-  let walk = (node, parent = {}) => {
-    node.queue = [];
-
-    let p = parent;
-    let q = parent.queue;
-
-    while (p.type !== 'brace' && p.type !== 'root' && p.parent) {
-      p = p.parent;
-      q = p.queue;
-    }
-
-    if (node.invalid || node.dollar) {
-      q.push(append(q.pop(), stringify(node, options)));
-      return;
-    }
-
-    if (node.type === 'brace' && node.invalid !== true && node.nodes.length === 2) {
-      q.push(append(q.pop(), ['{}']));
-      return;
-    }
-
-    if (node.nodes && node.ranges > 0) {
-      let args = utils.reduce(node.nodes);
-
-      if (utils.exceedsLimit(...args, options.step, rangeLimit)) {
-        throw new RangeError('expanded array length exceeds range limit. Use options.rangeLimit to increase or disable the limit.');
-      }
-
-      let range = fill(...args, options);
-      if (range.length === 0) {
-        range = stringify(node, options);
-      }
-
-      q.push(append(q.pop(), range));
-      node.nodes = [];
-      return;
-    }
-
-    let enclose = utils.encloseBrace(node);
-    let queue = node.queue;
-    let block = node;
-
-    while (block.type !== 'brace' && block.type !== 'root' && block.parent) {
-      block = block.parent;
-      queue = block.queue;
-    }
-
-    for (let i = 0; i < node.nodes.length; i++) {
-      let child = node.nodes[i];
-
-      if (child.type === 'comma' && node.type === 'brace') {
-        if (i === 1) queue.push('');
-        queue.push('');
-        continue;
-      }
-
-      if (child.type === 'close') {
-        q.push(append(q.pop(), queue, enclose));
-        continue;
-      }
-
-      if (child.value && child.type !== 'open') {
-        queue.push(append(queue.pop(), child.value));
-        continue;
-      }
-
-      if (child.nodes) {
-        walk(child, node);
-      }
-    }
-
-    return queue;
-  };
-
-  return utils.flatten(walk(ast));
-};
-
-module.exports = expand;
-
-
-/***/ }),
-
-/***/ 79889:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-const stringify = __nccwpck_require__(64810);
-
-/**
- * Constants
- */
-
-const {
-  MAX_LENGTH,
-  CHAR_BACKSLASH, /* \ */
-  CHAR_BACKTICK, /* ` */
-  CHAR_COMMA, /* , */
-  CHAR_DOT, /* . */
-  CHAR_LEFT_PARENTHESES, /* ( */
-  CHAR_RIGHT_PARENTHESES, /* ) */
-  CHAR_LEFT_CURLY_BRACE, /* { */
-  CHAR_RIGHT_CURLY_BRACE, /* } */
-  CHAR_LEFT_SQUARE_BRACKET, /* [ */
-  CHAR_RIGHT_SQUARE_BRACKET, /* ] */
-  CHAR_DOUBLE_QUOTE, /* " */
-  CHAR_SINGLE_QUOTE, /* ' */
-  CHAR_NO_BREAK_SPACE,
-  CHAR_ZERO_WIDTH_NOBREAK_SPACE
-} = __nccwpck_require__(45412);
-
-/**
- * parse
- */
-
-const parse = (input, options = {}) => {
-  if (typeof input !== 'string') {
-    throw new TypeError('Expected a string');
-  }
-
-  let opts = options || {};
-  let max = typeof opts.maxLength === 'number' ? Math.min(MAX_LENGTH, opts.maxLength) : MAX_LENGTH;
-  if (input.length > max) {
-    throw new SyntaxError(`Input length (${input.length}), exceeds max characters (${max})`);
-  }
-
-  let ast = { type: 'root', input, nodes: [] };
-  let stack = [ast];
-  let block = ast;
-  let prev = ast;
-  let brackets = 0;
-  let length = input.length;
-  let index = 0;
-  let depth = 0;
-  let value;
-  let memo = {};
-
-  /**
-   * Helpers
-   */
-
-  const advance = () => input[index++];
-  const push = node => {
-    if (node.type === 'text' && prev.type === 'dot') {
-      prev.type = 'text';
-    }
-
-    if (prev && prev.type === 'text' && node.type === 'text') {
-      prev.value += node.value;
-      return;
-    }
-
-    block.nodes.push(node);
-    node.parent = block;
-    node.prev = prev;
-    prev = node;
-    return node;
-  };
-
-  push({ type: 'bos' });
-
-  while (index < length) {
-    block = stack[stack.length - 1];
-    value = advance();
-
-    /**
-     * Invalid chars
-     */
-
-    if (value === CHAR_ZERO_WIDTH_NOBREAK_SPACE || value === CHAR_NO_BREAK_SPACE) {
-      continue;
-    }
-
-    /**
-     * Escaped chars
-     */
-
-    if (value === CHAR_BACKSLASH) {
-      push({ type: 'text', value: (options.keepEscaping ? value : '') + advance() });
-      continue;
-    }
-
-    /**
-     * Right square bracket (literal): ']'
-     */
-
-    if (value === CHAR_RIGHT_SQUARE_BRACKET) {
-      push({ type: 'text', value: '\\' + value });
-      continue;
-    }
-
-    /**
-     * Left square bracket: '['
-     */
-
-    if (value === CHAR_LEFT_SQUARE_BRACKET) {
-      brackets++;
-
-      let closed = true;
-      let next;
-
-      while (index < length && (next = advance())) {
-        value += next;
-
-        if (next === CHAR_LEFT_SQUARE_BRACKET) {
-          brackets++;
-          continue;
-        }
-
-        if (next === CHAR_BACKSLASH) {
-          value += advance();
-          continue;
-        }
-
-        if (next === CHAR_RIGHT_SQUARE_BRACKET) {
-          brackets--;
-
-          if (brackets === 0) {
-            break;
-          }
-        }
-      }
-
-      push({ type: 'text', value });
-      continue;
-    }
-
-    /**
-     * Parentheses
-     */
-
-    if (value === CHAR_LEFT_PARENTHESES) {
-      block = push({ type: 'paren', nodes: [] });
-      stack.push(block);
-      push({ type: 'text', value });
-      continue;
-    }
-
-    if (value === CHAR_RIGHT_PARENTHESES) {
-      if (block.type !== 'paren') {
-        push({ type: 'text', value });
-        continue;
-      }
-      block = stack.pop();
-      push({ type: 'text', value });
-      block = stack[stack.length - 1];
-      continue;
-    }
-
-    /**
-     * Quotes: '|"|`
-     */
-
-    if (value === CHAR_DOUBLE_QUOTE || value === CHAR_SINGLE_QUOTE || value === CHAR_BACKTICK) {
-      let open = value;
-      let next;
-
-      if (options.keepQuotes !== true) {
-        value = '';
-      }
-
-      while (index < length && (next = advance())) {
-        if (next === CHAR_BACKSLASH) {
-          value += next + advance();
-          continue;
-        }
-
-        if (next === open) {
-          if (options.keepQuotes === true) value += next;
-          break;
-        }
-
-        value += next;
-      }
-
-      push({ type: 'text', value });
-      continue;
-    }
-
-    /**
-     * Left curly brace: '{'
-     */
-
-    if (value === CHAR_LEFT_CURLY_BRACE) {
-      depth++;
-
-      let dollar = prev.value && prev.value.slice(-1) === '$' || block.dollar === true;
-      let brace = {
-        type: 'brace',
-        open: true,
-        close: false,
-        dollar,
-        depth,
-        commas: 0,
-        ranges: 0,
-        nodes: []
-      };
-
-      block = push(brace);
-      stack.push(block);
-      push({ type: 'open', value });
-      continue;
-    }
-
-    /**
-     * Right curly brace: '}'
-     */
-
-    if (value === CHAR_RIGHT_CURLY_BRACE) {
-      if (block.type !== 'brace') {
-        push({ type: 'text', value });
-        continue;
-      }
-
-      let type = 'close';
-      block = stack.pop();
-      block.close = true;
-
-      push({ type, value });
-      depth--;
-
-      block = stack[stack.length - 1];
-      continue;
-    }
-
-    /**
-     * Comma: ','
-     */
-
-    if (value === CHAR_COMMA && depth > 0) {
-      if (block.ranges > 0) {
-        block.ranges = 0;
-        let open = block.nodes.shift();
-        block.nodes = [open, { type: 'text', value: stringify(block) }];
-      }
-
-      push({ type: 'comma', value });
-      block.commas++;
-      continue;
-    }
-
-    /**
-     * Dot: '.'
-     */
-
-    if (value === CHAR_DOT && depth > 0 && block.commas === 0) {
-      let siblings = block.nodes;
-
-      if (depth === 0 || siblings.length === 0) {
-        push({ type: 'text', value });
-        continue;
-      }
-
-      if (prev.type === 'dot') {
-        block.range = [];
-        prev.value += value;
-        prev.type = 'range';
-
-        if (block.nodes.length !== 3 && block.nodes.length !== 5) {
-          block.invalid = true;
-          block.ranges = 0;
-          prev.type = 'text';
-          continue;
-        }
-
-        block.ranges++;
-        block.args = [];
-        continue;
-      }
-
-      if (prev.type === 'range') {
-        siblings.pop();
-
-        let before = siblings[siblings.length - 1];
-        before.value += prev.value + value;
-        prev = before;
-        block.ranges--;
-        continue;
-      }
-
-      push({ type: 'dot', value });
-      continue;
-    }
-
-    /**
-     * Text
-     */
-
-    push({ type: 'text', value });
-  }
-
-  // Mark imbalanced braces and brackets as invalid
-  do {
-    block = stack.pop();
-
-    if (block.type !== 'root') {
-      block.nodes.forEach(node => {
-        if (!node.nodes) {
-          if (node.type === 'open') node.isOpen = true;
-          if (node.type === 'close') node.isClose = true;
-          if (!node.nodes) node.type = 'text';
-          node.invalid = true;
-        }
-      });
-
-      // get the location of the block on parent.nodes (block's siblings)
-      let parent = stack[stack.length - 1];
-      let index = parent.nodes.indexOf(block);
-      // replace the (invalid) block with it's nodes
-      parent.nodes.splice(index, 1, ...block.nodes);
-    }
-  } while (stack.length > 0);
-
-  push({ type: 'eos' });
-  return ast;
-};
-
-module.exports = parse;
-
-
-/***/ }),
-
-/***/ 64810:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-const utils = __nccwpck_require__(27691);
-
-module.exports = (ast, options = {}) => {
-  let stringify = (node, parent = {}) => {
-    let invalidBlock = options.escapeInvalid && utils.isInvalidBrace(parent);
-    let invalidNode = node.invalid === true && options.escapeInvalid === true;
-    let output = '';
-
-    if (node.value) {
-      if ((invalidBlock || invalidNode) && utils.isOpenOrClose(node)) {
-        return '\\' + node.value;
-      }
-      return node.value;
-    }
-
-    if (node.value) {
-      return node.value;
-    }
-
-    if (node.nodes) {
-      for (let child of node.nodes) {
-        output += stringify(child);
-      }
-    }
-    return output;
-  };
-
-  return stringify(ast);
-};
-
-
-
-/***/ }),
-
-/***/ 27691:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-
-exports.isInteger = num => {
-  if (typeof num === 'number') {
-    return Number.isInteger(num);
-  }
-  if (typeof num === 'string' && num.trim() !== '') {
-    return Number.isInteger(Number(num));
-  }
-  return false;
-};
-
-/**
- * Find a node of the given type
- */
-
-exports.find = (node, type) => node.nodes.find(node => node.type === type);
-
-/**
- * Find a node of the given type
- */
-
-exports.exceedsLimit = (min, max, step = 1, limit) => {
-  if (limit === false) return false;
-  if (!exports.isInteger(min) || !exports.isInteger(max)) return false;
-  return ((Number(max) - Number(min)) / Number(step)) >= limit;
-};
-
-/**
- * Escape the given node with '\\' before node.value
- */
-
-exports.escapeNode = (block, n = 0, type) => {
-  let node = block.nodes[n];
-  if (!node) return;
-
-  if ((type && node.type === type) || node.type === 'open' || node.type === 'close') {
-    if (node.escaped !== true) {
-      node.value = '\\' + node.value;
-      node.escaped = true;
-    }
-  }
-};
-
-/**
- * Returns true if the given brace node should be enclosed in literal braces
- */
-
-exports.encloseBrace = node => {
-  if (node.type !== 'brace') return false;
-  if ((node.commas >> 0 + node.ranges >> 0) === 0) {
-    node.invalid = true;
-    return true;
-  }
-  return false;
-};
-
-/**
- * Returns true if a brace node is invalid.
- */
-
-exports.isInvalidBrace = block => {
-  if (block.type !== 'brace') return false;
-  if (block.invalid === true || block.dollar) return true;
-  if ((block.commas >> 0 + block.ranges >> 0) === 0) {
-    block.invalid = true;
-    return true;
-  }
-  if (block.open !== true || block.close !== true) {
-    block.invalid = true;
-    return true;
-  }
-  return false;
-};
-
-/**
- * Returns true if a node is an open or close node
- */
-
-exports.isOpenOrClose = node => {
-  if (node.type === 'open' || node.type === 'close') {
-    return true;
-  }
-  return node.open === true || node.close === true;
-};
-
-/**
- * Reduce an array of text nodes.
- */
-
-exports.reduce = nodes => nodes.reduce((acc, node) => {
-  if (node.type === 'text') acc.push(node.value);
-  if (node.type === 'range') node.type = 'text';
-  return acc;
-}, []);
-
-/**
- * Flatten an array
- */
-
-exports.flatten = (...args) => {
-  const result = [];
-  const flat = arr => {
-    for (let i = 0; i < arr.length; i++) {
-      let ele = arr[i];
-      Array.isArray(ele) ? flat(ele, result) : ele !== void 0 && result.push(ele);
-    }
-    return result;
-  };
-  flat(args);
-  return result;
-};
-
-
-/***/ }),
-
-/***/ 90791:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-/*!
- * fill-range <https://github.com/jonschlinkert/fill-range>
- *
- * Copyright (c) 2014-present, Jon Schlinkert.
- * Licensed under the MIT License.
- */
-
-
-
-const util = __nccwpck_require__(73837);
-const toRegexRange = __nccwpck_require__(76867);
-
-const isObject = val => val !== null && typeof val === 'object' && !Array.isArray(val);
-
-const transform = toNumber => {
-  return value => toNumber === true ? Number(value) : String(value);
-};
-
-const isValidValue = value => {
-  return typeof value === 'number' || (typeof value === 'string' && value !== '');
-};
-
-const isNumber = num => Number.isInteger(+num);
-
-const zeros = input => {
-  let value = `${input}`;
-  let index = -1;
-  if (value[0] === '-') value = value.slice(1);
-  if (value === '0') return false;
-  while (value[++index] === '0');
-  return index > 0;
-};
-
-const stringify = (start, end, options) => {
-  if (typeof start === 'string' || typeof end === 'string') {
-    return true;
-  }
-  return options.stringify === true;
-};
-
-const pad = (input, maxLength, toNumber) => {
-  if (maxLength > 0) {
-    let dash = input[0] === '-' ? '-' : '';
-    if (dash) input = input.slice(1);
-    input = (dash + input.padStart(dash ? maxLength - 1 : maxLength, '0'));
-  }
-  if (toNumber === false) {
-    return String(input);
-  }
-  return input;
-};
-
-const toMaxLen = (input, maxLength) => {
-  let negative = input[0] === '-' ? '-' : '';
-  if (negative) {
-    input = input.slice(1);
-    maxLength--;
-  }
-  while (input.length < maxLength) input = '0' + input;
-  return negative ? ('-' + input) : input;
-};
-
-const toSequence = (parts, options) => {
-  parts.negatives.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
-  parts.positives.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
-
-  let prefix = options.capture ? '' : '?:';
-  let positives = '';
-  let negatives = '';
-  let result;
-
-  if (parts.positives.length) {
-    positives = parts.positives.join('|');
-  }
-
-  if (parts.negatives.length) {
-    negatives = `-(${prefix}${parts.negatives.join('|')})`;
-  }
-
-  if (positives && negatives) {
-    result = `${positives}|${negatives}`;
-  } else {
-    result = positives || negatives;
-  }
-
-  if (options.wrap) {
-    return `(${prefix}${result})`;
-  }
-
-  return result;
-};
-
-const toRange = (a, b, isNumbers, options) => {
-  if (isNumbers) {
-    return toRegexRange(a, b, { wrap: false, ...options });
-  }
-
-  let start = String.fromCharCode(a);
-  if (a === b) return start;
-
-  let stop = String.fromCharCode(b);
-  return `[${start}-${stop}]`;
-};
-
-const toRegex = (start, end, options) => {
-  if (Array.isArray(start)) {
-    let wrap = options.wrap === true;
-    let prefix = options.capture ? '' : '?:';
-    return wrap ? `(${prefix}${start.join('|')})` : start.join('|');
-  }
-  return toRegexRange(start, end, options);
-};
-
-const rangeError = (...args) => {
-  return new RangeError('Invalid range arguments: ' + util.inspect(...args));
-};
-
-const invalidRange = (start, end, options) => {
-  if (options.strictRanges === true) throw rangeError([start, end]);
-  return [];
-};
-
-const invalidStep = (step, options) => {
-  if (options.strictRanges === true) {
-    throw new TypeError(`Expected step "${step}" to be a number`);
-  }
-  return [];
-};
-
-const fillNumbers = (start, end, step = 1, options = {}) => {
-  let a = Number(start);
-  let b = Number(end);
-
-  if (!Number.isInteger(a) || !Number.isInteger(b)) {
-    if (options.strictRanges === true) throw rangeError([start, end]);
-    return [];
-  }
-
-  // fix negative zero
-  if (a === 0) a = 0;
-  if (b === 0) b = 0;
-
-  let descending = a > b;
-  let startString = String(start);
-  let endString = String(end);
-  let stepString = String(step);
-  step = Math.max(Math.abs(step), 1);
-
-  let padded = zeros(startString) || zeros(endString) || zeros(stepString);
-  let maxLen = padded ? Math.max(startString.length, endString.length, stepString.length) : 0;
-  let toNumber = padded === false && stringify(start, end, options) === false;
-  let format = options.transform || transform(toNumber);
-
-  if (options.toRegex && step === 1) {
-    return toRange(toMaxLen(start, maxLen), toMaxLen(end, maxLen), true, options);
-  }
-
-  let parts = { negatives: [], positives: [] };
-  let push = num => parts[num < 0 ? 'negatives' : 'positives'].push(Math.abs(num));
-  let range = [];
-  let index = 0;
-
-  while (descending ? a >= b : a <= b) {
-    if (options.toRegex === true && step > 1) {
-      push(a);
-    } else {
-      range.push(pad(format(a, index), maxLen, toNumber));
-    }
-    a = descending ? a - step : a + step;
-    index++;
-  }
-
-  if (options.toRegex === true) {
-    return step > 1
-      ? toSequence(parts, options)
-      : toRegex(range, null, { wrap: false, ...options });
-  }
-
-  return range;
-};
-
-const fillLetters = (start, end, step = 1, options = {}) => {
-  if ((!isNumber(start) && start.length > 1) || (!isNumber(end) && end.length > 1)) {
-    return invalidRange(start, end, options);
-  }
-
-
-  let format = options.transform || (val => String.fromCharCode(val));
-  let a = `${start}`.charCodeAt(0);
-  let b = `${end}`.charCodeAt(0);
-
-  let descending = a > b;
-  let min = Math.min(a, b);
-  let max = Math.max(a, b);
-
-  if (options.toRegex && step === 1) {
-    return toRange(min, max, false, options);
-  }
-
-  let range = [];
-  let index = 0;
-
-  while (descending ? a >= b : a <= b) {
-    range.push(format(a, index));
-    a = descending ? a - step : a + step;
-    index++;
-  }
-
-  if (options.toRegex === true) {
-    return toRegex(range, null, { wrap: false, options });
-  }
-
-  return range;
-};
-
-const fill = (start, end, step, options = {}) => {
-  if (end == null && isValidValue(start)) {
-    return [start];
-  }
-
-  if (!isValidValue(start) || !isValidValue(end)) {
-    return invalidRange(start, end, options);
-  }
-
-  if (typeof step === 'function') {
-    return fill(start, end, 1, { transform: step });
-  }
-
-  if (isObject(step)) {
-    return fill(start, end, 0, step);
-  }
-
-  let opts = { ...options };
-  if (opts.capture === true) opts.wrap = true;
-  step = step || opts.step || 1;
-
-  if (!isNumber(step)) {
-    if (step != null && !isObject(step)) return invalidStep(step, opts);
-    return fill(start, end, 1, step);
-  }
-
-  if (isNumber(start) && isNumber(end)) {
-    return fillNumbers(start, end, step, opts);
-  }
-
-  return fillLetters(start, end, Math.max(Math.abs(step), 1), opts);
-};
-
-module.exports = fill;
-
-
-/***/ }),
-
-/***/ 12840:
-/***/ ((module) => {
-
-"use strict";
-/*!
- * is-number <https://github.com/jonschlinkert/is-number>
- *
- * Copyright (c) 2014-present, Jon Schlinkert.
- * Released under the MIT License.
- */
-
-
-
-module.exports = function(num) {
-  if (typeof num === 'number') {
-    return num - num === 0;
-  }
-  if (typeof num === 'string' && num.trim() !== '') {
-    return Number.isFinite ? Number.isFinite(+num) : isFinite(+num);
-  }
-  return false;
-};
-
-
-/***/ }),
-
 /***/ 23913:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -32987,7 +32298,7 @@ module.exports = function(num) {
 
 
 const util = __nccwpck_require__(73837);
-const braces = __nccwpck_require__(35582);
+const braces = __nccwpck_require__(50610);
 const picomatch = __nccwpck_require__(78569);
 const utils = __nccwpck_require__(30479);
 const isEmptyString = val => val === '' || val === './';
@@ -33451,302 +32762,6 @@ micromatch.braceExpand = (pattern, options) => {
  */
 
 module.exports = micromatch;
-
-
-/***/ }),
-
-/***/ 76867:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-/*!
- * to-regex-range <https://github.com/micromatch/to-regex-range>
- *
- * Copyright (c) 2015-present, Jon Schlinkert.
- * Released under the MIT License.
- */
-
-
-
-const isNumber = __nccwpck_require__(12840);
-
-const toRegexRange = (min, max, options) => {
-  if (isNumber(min) === false) {
-    throw new TypeError('toRegexRange: expected the first argument to be a number');
-  }
-
-  if (max === void 0 || min === max) {
-    return String(min);
-  }
-
-  if (isNumber(max) === false) {
-    throw new TypeError('toRegexRange: expected the second argument to be a number.');
-  }
-
-  let opts = { relaxZeros: true, ...options };
-  if (typeof opts.strictZeros === 'boolean') {
-    opts.relaxZeros = opts.strictZeros === false;
-  }
-
-  let relax = String(opts.relaxZeros);
-  let shorthand = String(opts.shorthand);
-  let capture = String(opts.capture);
-  let wrap = String(opts.wrap);
-  let cacheKey = min + ':' + max + '=' + relax + shorthand + capture + wrap;
-
-  if (toRegexRange.cache.hasOwnProperty(cacheKey)) {
-    return toRegexRange.cache[cacheKey].result;
-  }
-
-  let a = Math.min(min, max);
-  let b = Math.max(min, max);
-
-  if (Math.abs(a - b) === 1) {
-    let result = min + '|' + max;
-    if (opts.capture) {
-      return `(${result})`;
-    }
-    if (opts.wrap === false) {
-      return result;
-    }
-    return `(?:${result})`;
-  }
-
-  let isPadded = hasPadding(min) || hasPadding(max);
-  let state = { min, max, a, b };
-  let positives = [];
-  let negatives = [];
-
-  if (isPadded) {
-    state.isPadded = isPadded;
-    state.maxLen = String(state.max).length;
-  }
-
-  if (a < 0) {
-    let newMin = b < 0 ? Math.abs(b) : 1;
-    negatives = splitToPatterns(newMin, Math.abs(a), state, opts);
-    a = state.a = 0;
-  }
-
-  if (b >= 0) {
-    positives = splitToPatterns(a, b, state, opts);
-  }
-
-  state.negatives = negatives;
-  state.positives = positives;
-  state.result = collatePatterns(negatives, positives, opts);
-
-  if (opts.capture === true) {
-    state.result = `(${state.result})`;
-  } else if (opts.wrap !== false && (positives.length + negatives.length) > 1) {
-    state.result = `(?:${state.result})`;
-  }
-
-  toRegexRange.cache[cacheKey] = state;
-  return state.result;
-};
-
-function collatePatterns(neg, pos, options) {
-  let onlyNegative = filterPatterns(neg, pos, '-', false, options) || [];
-  let onlyPositive = filterPatterns(pos, neg, '', false, options) || [];
-  let intersected = filterPatterns(neg, pos, '-?', true, options) || [];
-  let subpatterns = onlyNegative.concat(intersected).concat(onlyPositive);
-  return subpatterns.join('|');
-}
-
-function splitToRanges(min, max) {
-  let nines = 1;
-  let zeros = 1;
-
-  let stop = countNines(min, nines);
-  let stops = new Set([max]);
-
-  while (min <= stop && stop <= max) {
-    stops.add(stop);
-    nines += 1;
-    stop = countNines(min, nines);
-  }
-
-  stop = countZeros(max + 1, zeros) - 1;
-
-  while (min < stop && stop <= max) {
-    stops.add(stop);
-    zeros += 1;
-    stop = countZeros(max + 1, zeros) - 1;
-  }
-
-  stops = [...stops];
-  stops.sort(compare);
-  return stops;
-}
-
-/**
- * Convert a range to a regex pattern
- * @param {Number} `start`
- * @param {Number} `stop`
- * @return {String}
- */
-
-function rangeToPattern(start, stop, options) {
-  if (start === stop) {
-    return { pattern: start, count: [], digits: 0 };
-  }
-
-  let zipped = zip(start, stop);
-  let digits = zipped.length;
-  let pattern = '';
-  let count = 0;
-
-  for (let i = 0; i < digits; i++) {
-    let [startDigit, stopDigit] = zipped[i];
-
-    if (startDigit === stopDigit) {
-      pattern += startDigit;
-
-    } else if (startDigit !== '0' || stopDigit !== '9') {
-      pattern += toCharacterClass(startDigit, stopDigit, options);
-
-    } else {
-      count++;
-    }
-  }
-
-  if (count) {
-    pattern += options.shorthand === true ? '\\d' : '[0-9]';
-  }
-
-  return { pattern, count: [count], digits };
-}
-
-function splitToPatterns(min, max, tok, options) {
-  let ranges = splitToRanges(min, max);
-  let tokens = [];
-  let start = min;
-  let prev;
-
-  for (let i = 0; i < ranges.length; i++) {
-    let max = ranges[i];
-    let obj = rangeToPattern(String(start), String(max), options);
-    let zeros = '';
-
-    if (!tok.isPadded && prev && prev.pattern === obj.pattern) {
-      if (prev.count.length > 1) {
-        prev.count.pop();
-      }
-
-      prev.count.push(obj.count[0]);
-      prev.string = prev.pattern + toQuantifier(prev.count);
-      start = max + 1;
-      continue;
-    }
-
-    if (tok.isPadded) {
-      zeros = padZeros(max, tok, options);
-    }
-
-    obj.string = zeros + obj.pattern + toQuantifier(obj.count);
-    tokens.push(obj);
-    start = max + 1;
-    prev = obj;
-  }
-
-  return tokens;
-}
-
-function filterPatterns(arr, comparison, prefix, intersection, options) {
-  let result = [];
-
-  for (let ele of arr) {
-    let { string } = ele;
-
-    // only push if _both_ are negative...
-    if (!intersection && !contains(comparison, 'string', string)) {
-      result.push(prefix + string);
-    }
-
-    // or _both_ are positive
-    if (intersection && contains(comparison, 'string', string)) {
-      result.push(prefix + string);
-    }
-  }
-  return result;
-}
-
-/**
- * Zip strings
- */
-
-function zip(a, b) {
-  let arr = [];
-  for (let i = 0; i < a.length; i++) arr.push([a[i], b[i]]);
-  return arr;
-}
-
-function compare(a, b) {
-  return a > b ? 1 : b > a ? -1 : 0;
-}
-
-function contains(arr, key, val) {
-  return arr.some(ele => ele[key] === val);
-}
-
-function countNines(min, len) {
-  return Number(String(min).slice(0, -len) + '9'.repeat(len));
-}
-
-function countZeros(integer, zeros) {
-  return integer - (integer % Math.pow(10, zeros));
-}
-
-function toQuantifier(digits) {
-  let [start = 0, stop = ''] = digits;
-  if (stop || start > 1) {
-    return `{${start + (stop ? ',' + stop : '')}}`;
-  }
-  return '';
-}
-
-function toCharacterClass(a, b, options) {
-  return `[${a}${(b - a === 1) ? '' : '-'}${b}]`;
-}
-
-function hasPadding(str) {
-  return /^-?(0+)\d/.test(str);
-}
-
-function padZeros(value, tok, options) {
-  if (!tok.isPadded) {
-    return value;
-  }
-
-  let diff = Math.abs(tok.maxLen - String(value).length);
-  let relax = options.relaxZeros !== false;
-
-  switch (diff) {
-    case 0:
-      return '';
-    case 1:
-      return relax ? '0?' : '0';
-    case 2:
-      return relax ? '0{0,2}' : '00';
-    default: {
-      return relax ? `0{0,${diff}}` : `0{${diff}}`;
-    }
-  }
-}
-
-/**
- * Cache
- */
-
-toRegexRange.cache = {};
-toRegexRange.clearCache = () => (toRegexRange.cache = {});
-
-/**
- * Expose `toRegexRange`
- */
-
-module.exports = toRegexRange;
 
 
 /***/ }),
@@ -58556,26 +57571,6 @@ function isObject(val) {
 
 /***/ }),
 
-/***/ 80297:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-var crypto = __nccwpck_require__(6113)
-var max = Math.pow(2, 32)
-
-module.exports = random
-module.exports.cryptographic = true
-
-function random () {
-  var buf = crypto
-    .randomBytes(4)
-    .readUInt32BE(0)
-
-  return buf / max
-}
-
-
-/***/ }),
-
 /***/ 82578:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -68717,67 +67712,6 @@ module.exports = {
 
 /***/ }),
 
-/***/ 109:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-/*!
- * preserve <https://github.com/jonschlinkert/preserve>
- *
- * Copyright (c) 2014-2015, Jon Schlinkert.
- * Licensed under the MIT license.
- */
-
-
-
-/**
- * Replace tokens in `str` with a temporary, heuristic placeholder.
- *
- * ```js
- * tokens.before('{a\\,b}');
- * //=> '{__ID1__}'
- * ```
- *
- * @param  {String} `str`
- * @return {String} String with placeholders.
- * @api public
- */
-
-exports.before = function before(str, re) {
-  return str.replace(re, function (match) {
-    var id = randomize();
-    cache[id] = match;
-    return '__ID' + id + '__';
-  });
-};
-
-/**
- * Replace placeholders in `str` with original tokens.
- *
- * ```js
- * tokens.after('{__ID1__}');
- * //=> '{a\\,b}'
- * ```
- *
- * @param  {String} `str` String with placeholders
- * @return {String} `str` String with original tokens.
- * @api public
- */
-
-exports.after = function after(str) {
-  return str.replace(/__ID(.{5})__/g, function (_, id) {
-    return cache[id];
-  });
-};
-
-function randomize() {
-  return Math.random().toString().slice(2, 7);
-}
-
-var cache = {};
-
-/***/ }),
-
 /***/ 47810:
 /***/ ((module) => {
 
@@ -68843,138 +67777,6 @@ module.exports = typeof queueMicrotask === 'function'
   : cb => (promise || (promise = Promise.resolve()))
     .then(cb)
     .catch(err => setTimeout(() => { throw err }, 0))
-
-
-/***/ }),
-
-/***/ 34875:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-/*!
- * randomatic <https://github.com/jonschlinkert/randomatic>
- *
- * Copyright (c) 2014-2017, Jon Schlinkert.
- * Released under the MIT License.
- */
-
-
-
-var isNumber = __nccwpck_require__(98847);
-var typeOf = __nccwpck_require__(86961);
-var mathRandom = __nccwpck_require__(80297);
-
-/**
- * Expose `randomatic`
- */
-
-module.exports = randomatic;
-module.exports.isCrypto = !!mathRandom.cryptographic;
-
-/**
- * Available mask characters
- */
-
-var type = {
-  lower: 'abcdefghijklmnopqrstuvwxyz',
-  upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-  number: '0123456789',
-  special: '~!@#$%^&()_+-={}[];\',.'
-};
-
-type.all = type.lower + type.upper + type.number + type.special;
-
-/**
- * Generate random character sequences of a specified `length`,
- * based on the given `pattern`.
- *
- * @param {String} `pattern` The pattern to use for generating the random string.
- * @param {String} `length` The length of the string to generate.
- * @param {String} `options`
- * @return {String}
- * @api public
- */
-
-function randomatic(pattern, length, options) {
-  if (typeof pattern === 'undefined') {
-    throw new Error('randomatic expects a string or number.');
-  }
-
-  var custom = false;
-  if (arguments.length === 1) {
-    if (typeof pattern === 'string') {
-      length = pattern.length;
-
-    } else if (isNumber(pattern)) {
-      options = {};
-      length = pattern;
-      pattern = '*';
-    }
-  }
-
-  if (typeOf(length) === 'object' && length.hasOwnProperty('chars')) {
-    options = length;
-    pattern = options.chars;
-    length = pattern.length;
-    custom = true;
-  }
-
-  var opts = options || {};
-  var mask = '';
-  var res = '';
-
-  // Characters to be used
-  if (pattern.indexOf('?') !== -1) mask += opts.chars;
-  if (pattern.indexOf('a') !== -1) mask += type.lower;
-  if (pattern.indexOf('A') !== -1) mask += type.upper;
-  if (pattern.indexOf('0') !== -1) mask += type.number;
-  if (pattern.indexOf('!') !== -1) mask += type.special;
-  if (pattern.indexOf('*') !== -1) mask += type.all;
-  if (custom) mask += pattern;
-
-  // Characters to exclude
-  if (opts.exclude) {
-    var exclude = typeOf(opts.exclude) === 'string' ? opts.exclude : opts.exclude.join('');
-    exclude = exclude.replace(new RegExp('[\\]]+', 'g'), '');
-    mask = mask.replace(new RegExp('[' + exclude + ']+', 'g'), '');
-    
-    if(opts.exclude.indexOf(']') !== -1) mask = mask.replace(new RegExp('[\\]]+', 'g'), '');
-  }
-
-  while (length--) {
-    res += mask.charAt(parseInt(mathRandom() * mask.length, 10));
-  }
-  return res;
-};
-
-
-/***/ }),
-
-/***/ 98847:
-/***/ ((module) => {
-
-"use strict";
-/*!
- * is-number <https://github.com/jonschlinkert/is-number>
- *
- * Copyright (c) 2014-2017, Jon Schlinkert.
- * Released under the MIT License.
- */
-
-
-
-module.exports = function isNumber(num) {
-  var type = typeof num;
-
-  if (type === 'string' || num instanceof String) {
-    // an empty string would be coerced to true with the below logic
-    if (!num.trim()) return false;
-  } else if (type !== 'number' && !(num instanceof Number)) {
-    return false;
-  }
-
-  return (num - num + 1) >= 0;
-};
 
 
 /***/ }),
@@ -71382,1515 +70184,6 @@ if (process.env.READABLE_STREAM === 'disable' && Stream) {
 
 /***/ }),
 
-/***/ 70192:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-/**
- * Module dependencies
- */
-
-var toRegex = __nccwpck_require__(16855);
-var unique = __nccwpck_require__(40340);
-var extend = __nccwpck_require__(43761);
-
-/**
- * Local dependencies
- */
-
-var compilers = __nccwpck_require__(29473);
-var parsers = __nccwpck_require__(92507);
-var Braces = __nccwpck_require__(67918);
-var utils = __nccwpck_require__(94733);
-var MAX_LENGTH = 1024 * 64;
-var cache = {};
-
-/**
- * Convert the given `braces` pattern into a regex-compatible string. By default, only one string is generated for every input string. Set `options.expand` to true to return an array of patterns (similar to Bash or minimatch. Before using `options.expand`, it's recommended that you read the [performance notes](#performance)).
- *
- * ```js
- * var braces = require('braces');
- * console.log(braces('{a,b,c}'));
- * //=> ['(a|b|c)']
- *
- * console.log(braces('{a,b,c}', {expand: true}));
- * //=> ['a', 'b', 'c']
- * ```
- * @param {String} `str`
- * @param {Object} `options`
- * @return {String}
- * @api public
- */
-
-function braces(pattern, options) {
-  var key = utils.createKey(String(pattern), options);
-  var arr = [];
-
-  var disabled = options && options.cache === false;
-  if (!disabled && cache.hasOwnProperty(key)) {
-    return cache[key];
-  }
-
-  if (Array.isArray(pattern)) {
-    for (var i = 0; i < pattern.length; i++) {
-      arr.push.apply(arr, braces.create(pattern[i], options));
-    }
-  } else {
-    arr = braces.create(pattern, options);
-  }
-
-  if (options && options.nodupes === true) {
-    arr = unique(arr);
-  }
-
-  if (!disabled) {
-    cache[key] = arr;
-  }
-  return arr;
-}
-
-/**
- * Expands a brace pattern into an array. This method is called by the main [braces](#braces) function when `options.expand` is true. Before using this method it's recommended that you read the [performance notes](#performance)) and advantages of using [.optimize](#optimize) instead.
- *
- * ```js
- * var braces = require('braces');
- * console.log(braces.expand('a/{b,c}/d'));
- * //=> ['a/b/d', 'a/c/d'];
- * ```
- * @param {String} `pattern` Brace pattern
- * @param {Object} `options`
- * @return {Array} Returns an array of expanded values.
- * @api public
- */
-
-braces.expand = function(pattern, options) {
-  return braces.create(pattern, extend({}, options, {expand: true}));
-};
-
-/**
- * Expands a brace pattern into a regex-compatible, optimized string. This method is called by the main [braces](#braces) function by default.
- *
- * ```js
- * var braces = require('braces');
- * console.log(braces.expand('a/{b,c}/d'));
- * //=> ['a/(b|c)/d']
- * ```
- * @param {String} `pattern` Brace pattern
- * @param {Object} `options`
- * @return {Array} Returns an array of expanded values.
- * @api public
- */
-
-braces.optimize = function(pattern, options) {
-  return braces.create(pattern, options);
-};
-
-/**
- * Processes a brace pattern and returns either an expanded array (if `options.expand` is true), a highly optimized regex-compatible string. This method is called by the main [braces](#braces) function.
- *
- * ```js
- * var braces = require('braces');
- * console.log(braces.create('user-{200..300}/project-{a,b,c}-{1..10}'))
- * //=> 'user-(20[0-9]|2[1-9][0-9]|300)/project-(a|b|c)-([1-9]|10)'
- * ```
- * @param {String} `pattern` Brace pattern
- * @param {Object} `options`
- * @return {Array} Returns an array of expanded values.
- * @api public
- */
-
-braces.create = function(pattern, options) {
-  if (typeof pattern !== 'string') {
-    throw new TypeError('expected a string');
-  }
-
-  var maxLength = (options && options.maxLength) || MAX_LENGTH;
-  if (pattern.length >= maxLength) {
-    throw new Error('expected pattern to be less than ' + maxLength + ' characters');
-  }
-
-  function create() {
-    if (pattern === '' || pattern.length < 3) {
-      return [pattern];
-    }
-
-    if (utils.isEmptySets(pattern)) {
-      return [];
-    }
-
-    if (utils.isQuotedString(pattern)) {
-      return [pattern.slice(1, -1)];
-    }
-
-    var proto = new Braces(options);
-    var result = !options || options.expand !== true
-      ? proto.optimize(pattern, options)
-      : proto.expand(pattern, options);
-
-    // get the generated pattern(s)
-    var arr = result.output;
-
-    // filter out empty strings if specified
-    if (options && options.noempty === true) {
-      arr = arr.filter(Boolean);
-    }
-
-    // filter out duplicates if specified
-    if (options && options.nodupes === true) {
-      arr = unique(arr);
-    }
-
-    Object.defineProperty(arr, 'result', {
-      enumerable: false,
-      value: result
-    });
-
-    return arr;
-  }
-
-  return memoize('create', pattern, options, create);
-};
-
-/**
- * Create a regular expression from the given string `pattern`.
- *
- * ```js
- * var braces = require('braces');
- *
- * console.log(braces.makeRe('id-{200..300}'));
- * //=> /^(?:id-(20[0-9]|2[1-9][0-9]|300))$/
- * ```
- * @param {String} `pattern` The pattern to convert to regex.
- * @param {Object} `options`
- * @return {RegExp}
- * @api public
- */
-
-braces.makeRe = function(pattern, options) {
-  if (typeof pattern !== 'string') {
-    throw new TypeError('expected a string');
-  }
-
-  var maxLength = (options && options.maxLength) || MAX_LENGTH;
-  if (pattern.length >= maxLength) {
-    throw new Error('expected pattern to be less than ' + maxLength + ' characters');
-  }
-
-  function makeRe() {
-    var arr = braces(pattern, options);
-    var opts = extend({strictErrors: false}, options);
-    return toRegex(arr, opts);
-  }
-
-  return memoize('makeRe', pattern, options, makeRe);
-};
-
-/**
- * Parse the given `str` with the given `options`.
- *
- * ```js
- * var braces = require('braces');
- * var ast = braces.parse('a/{b,c}/d');
- * console.log(ast);
- * // { type: 'root',
- * //   errors: [],
- * //   input: 'a/{b,c}/d',
- * //   nodes:
- * //    [ { type: 'bos', val: '' },
- * //      { type: 'text', val: 'a/' },
- * //      { type: 'brace',
- * //        nodes:
- * //         [ { type: 'brace.open', val: '{' },
- * //           { type: 'text', val: 'b,c' },
- * //           { type: 'brace.close', val: '}' } ] },
- * //      { type: 'text', val: '/d' },
- * //      { type: 'eos', val: '' } ] }
- * ```
- * @param {String} `pattern` Brace pattern to parse
- * @param {Object} `options`
- * @return {Object} Returns an AST
- * @api public
- */
-
-braces.parse = function(pattern, options) {
-  var proto = new Braces(options);
-  return proto.parse(pattern, options);
-};
-
-/**
- * Compile the given `ast` or string with the given `options`.
- *
- * ```js
- * var braces = require('braces');
- * var ast = braces.parse('a/{b,c}/d');
- * console.log(braces.compile(ast));
- * // { options: { source: 'string' },
- * //   state: {},
- * //   compilers:
- * //    { eos: [Function],
- * //      noop: [Function],
- * //      bos: [Function],
- * //      brace: [Function],
- * //      'brace.open': [Function],
- * //      text: [Function],
- * //      'brace.close': [Function] },
- * //   output: [ 'a/(b|c)/d' ],
- * //   ast:
- * //    { ... },
- * //   parsingErrors: [] }
- * ```
- * @param {Object|String} `ast` AST from [.parse](#parse). If a string is passed it will be parsed first.
- * @param {Object} `options`
- * @return {Object} Returns an object that has an `output` property with the compiled string.
- * @api public
- */
-
-braces.compile = function(ast, options) {
-  var proto = new Braces(options);
-  return proto.compile(ast, options);
-};
-
-/**
- * Clear the regex cache.
- *
- * ```js
- * braces.clearCache();
- * ```
- * @api public
- */
-
-braces.clearCache = function() {
-  cache = braces.cache = {};
-};
-
-/**
- * Memoize a generated regex or function. A unique key is generated
- * from the method name, pattern, and user-defined options. Set
- * options.memoize to false to disable.
- */
-
-function memoize(type, pattern, options, fn) {
-  var key = utils.createKey(type + ':' + pattern, options);
-  var disabled = options && options.cache === false;
-  if (disabled) {
-    braces.clearCache();
-    return fn(pattern, options);
-  }
-
-  if (cache.hasOwnProperty(key)) {
-    return cache[key];
-  }
-
-  var res = fn(pattern, options);
-  cache[key] = res;
-  return res;
-}
-
-/**
- * Expose `Braces` constructor and methods
- * @type {Function}
- */
-
-braces.Braces = Braces;
-braces.compilers = compilers;
-braces.parsers = parsers;
-braces.cache = cache;
-
-/**
- * Expose `braces`
- * @type {Function}
- */
-
-module.exports = braces;
-
-
-/***/ }),
-
-/***/ 67918:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var extend = __nccwpck_require__(43761);
-var Snapdragon = __nccwpck_require__(52403);
-var compilers = __nccwpck_require__(29473);
-var parsers = __nccwpck_require__(92507);
-var utils = __nccwpck_require__(94733);
-
-/**
- * Customize Snapdragon parser and renderer
- */
-
-function Braces(options) {
-  this.options = extend({}, options);
-}
-
-/**
- * Initialize braces
- */
-
-Braces.prototype.init = function(options) {
-  if (this.isInitialized) return;
-  this.isInitialized = true;
-  var opts = utils.createOptions({}, this.options, options);
-  this.snapdragon = this.options.snapdragon || new Snapdragon(opts);
-  this.compiler = this.snapdragon.compiler;
-  this.parser = this.snapdragon.parser;
-
-  compilers(this.snapdragon, opts);
-  parsers(this.snapdragon, opts);
-
-  /**
-   * Call Snapdragon `.parse` method. When AST is returned, we check to
-   * see if any unclosed braces are left on the stack and, if so, we iterate
-   * over the stack and correct the AST so that compilers are called in the correct
-   * order and unbalance braces are properly escaped.
-   */
-
-  utils.define(this.snapdragon, 'parse', function(pattern, options) {
-    var parsed = Snapdragon.prototype.parse.apply(this, arguments);
-    this.parser.ast.input = pattern;
-
-    var stack = this.parser.stack;
-    while (stack.length) {
-      addParent({type: 'brace.close', val: ''}, stack.pop());
-    }
-
-    function addParent(node, parent) {
-      utils.define(node, 'parent', parent);
-      parent.nodes.push(node);
-    }
-
-    // add non-enumerable parser reference
-    utils.define(parsed, 'parser', this.parser);
-    return parsed;
-  });
-};
-
-/**
- * Decorate `.parse` method
- */
-
-Braces.prototype.parse = function(ast, options) {
-  if (ast && typeof ast === 'object' && ast.nodes) return ast;
-  this.init(options);
-  return this.snapdragon.parse(ast, options);
-};
-
-/**
- * Decorate `.compile` method
- */
-
-Braces.prototype.compile = function(ast, options) {
-  if (typeof ast === 'string') {
-    ast = this.parse(ast, options);
-  } else {
-    this.init(options);
-  }
-  return this.snapdragon.compile(ast, options);
-};
-
-/**
- * Expand
- */
-
-Braces.prototype.expand = function(pattern) {
-  var ast = this.parse(pattern, {expand: true});
-  return this.compile(ast, {expand: true});
-};
-
-/**
- * Optimize
- */
-
-Braces.prototype.optimize = function(pattern) {
-  var ast = this.parse(pattern, {optimize: true});
-  return this.compile(ast, {optimize: true});
-};
-
-/**
- * Expose `Braces`
- */
-
-module.exports = Braces;
-
-
-/***/ }),
-
-/***/ 29473:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var utils = __nccwpck_require__(94733);
-
-module.exports = function(braces, options) {
-  braces.compiler
-
-    /**
-     * bos
-     */
-
-    .set('bos', function() {
-      if (this.output) return;
-      this.ast.queue = isEscaped(this.ast) ? [this.ast.val] : [];
-      this.ast.count = 1;
-    })
-
-    /**
-     * Square brackets
-     */
-
-    .set('bracket', function(node) {
-      var close = node.close;
-      var open = !node.escaped ? '[' : '\\[';
-      var negated = node.negated;
-      var inner = node.inner;
-
-      inner = inner.replace(/\\(?=[\\\w]|$)/g, '\\\\');
-      if (inner === ']-') {
-        inner = '\\]\\-';
-      }
-
-      if (negated && inner.indexOf('.') === -1) {
-        inner += '.';
-      }
-      if (negated && inner.indexOf('/') === -1) {
-        inner += '/';
-      }
-
-      var val = open + negated + inner + close;
-      var queue = node.parent.queue;
-      var last = utils.arrayify(queue.pop());
-
-      queue.push(utils.join(last, val));
-      queue.push.apply(queue, []);
-    })
-
-    /**
-     * Brace
-     */
-
-    .set('brace', function(node) {
-      node.queue = isEscaped(node) ? [node.val] : [];
-      node.count = 1;
-      return this.mapVisit(node.nodes);
-    })
-
-    /**
-     * Open
-     */
-
-    .set('brace.open', function(node) {
-      node.parent.open = node.val;
-    })
-
-    /**
-     * Inner
-     */
-
-    .set('text', function(node) {
-      var queue = node.parent.queue;
-      var escaped = node.escaped;
-      var segs = [node.val];
-
-      if (node.optimize === false) {
-        options = utils.extend({}, options, {optimize: false});
-      }
-
-      if (node.multiplier > 1) {
-        node.parent.count *= node.multiplier;
-      }
-
-      if (options.quantifiers === true && utils.isQuantifier(node.val)) {
-        escaped = true;
-
-      } else if (node.val.length > 1) {
-        if (isType(node.parent, 'brace') && !isEscaped(node)) {
-          var expanded = utils.expand(node.val, options);
-          segs = expanded.segs;
-
-          if (expanded.isOptimized) {
-            node.parent.isOptimized = true;
-          }
-
-          // if nothing was expanded, we probably have a literal brace
-          if (!segs.length) {
-            var val = (expanded.val || node.val);
-            if (options.unescape !== false) {
-              // unescape unexpanded brace sequence/set separators
-              val = val.replace(/\\([,.])/g, '$1');
-              // strip quotes
-              val = val.replace(/["'`]/g, '');
-            }
-
-            segs = [val];
-            escaped = true;
-          }
-        }
-
-      } else if (node.val === ',') {
-        if (options.expand) {
-          node.parent.queue.push(['']);
-          segs = [''];
-        } else {
-          segs = ['|'];
-        }
-      } else {
-        escaped = true;
-      }
-
-      if (escaped && isType(node.parent, 'brace')) {
-        if (node.parent.nodes.length <= 4 && node.parent.count === 1) {
-          node.parent.escaped = true;
-        } else if (node.parent.length <= 3) {
-          node.parent.escaped = true;
-        }
-      }
-
-      if (!hasQueue(node.parent)) {
-        node.parent.queue = segs;
-        return;
-      }
-
-      var last = utils.arrayify(queue.pop());
-      if (node.parent.count > 1 && options.expand) {
-        last = multiply(last, node.parent.count);
-        node.parent.count = 1;
-      }
-
-      queue.push(utils.join(utils.flatten(last), segs.shift()));
-      queue.push.apply(queue, segs);
-    })
-
-    /**
-     * Close
-     */
-
-    .set('brace.close', function(node) {
-      var queue = node.parent.queue;
-      var prev = node.parent.parent;
-      var last = prev.queue.pop();
-      var open = node.parent.open;
-      var close = node.val;
-
-      if (open && close && isOptimized(node, options)) {
-        open = '(';
-        close = ')';
-      }
-
-      // if a close brace exists, and the previous segment is one character
-      // don't wrap the result in braces or parens
-      var ele = utils.last(queue);
-      if (node.parent.count > 1 && options.expand) {
-        ele = multiply(queue.pop(), node.parent.count);
-        node.parent.count = 1;
-        queue.push(ele);
-      }
-
-      if (close && typeof ele === 'string' && ele.length === 1) {
-        open = '';
-        close = '';
-      }
-
-      if ((isLiteralBrace(node, options) || noInner(node)) && !node.parent.hasEmpty) {
-        queue.push(utils.join(open, queue.pop() || ''));
-        queue = utils.flatten(utils.join(queue, close));
-      }
-
-      if (typeof last === 'undefined') {
-        prev.queue = [queue];
-      } else {
-        prev.queue.push(utils.flatten(utils.join(last, queue)));
-      }
-    })
-
-    /**
-     * eos
-     */
-
-    .set('eos', function(node) {
-      if (this.input) return;
-
-      if (options.optimize !== false) {
-        this.output = utils.last(utils.flatten(this.ast.queue));
-      } else if (Array.isArray(utils.last(this.ast.queue))) {
-        this.output = utils.flatten(this.ast.queue.pop());
-      } else {
-        this.output = utils.flatten(this.ast.queue);
-      }
-
-      if (node.parent.count > 1 && options.expand) {
-        this.output = multiply(this.output, node.parent.count);
-      }
-
-      this.output = utils.arrayify(this.output);
-      this.ast.queue = [];
-    });
-
-};
-
-/**
- * Multiply the segments in the current brace level
- */
-
-function multiply(queue, n, options) {
-  return utils.flatten(utils.repeat(utils.arrayify(queue), n));
-}
-
-/**
- * Return true if `node` is escaped
- */
-
-function isEscaped(node) {
-  return node.escaped === true;
-}
-
-/**
- * Returns true if regex parens should be used for sets. If the parent `type`
- * is not `brace`, then we're on a root node, which means we should never
- * expand segments and open/close braces should be `{}` (since this indicates
- * a brace is missing from the set)
- */
-
-function isOptimized(node, options) {
-  if (node.parent.isOptimized) return true;
-  return isType(node.parent, 'brace')
-    && !isEscaped(node.parent)
-    && options.expand !== true;
-}
-
-/**
- * Returns true if the value in `node` should be wrapped in a literal brace.
- * @return {Boolean}
- */
-
-function isLiteralBrace(node, options) {
-  return isEscaped(node.parent) || options.optimize !== false;
-}
-
-/**
- * Returns true if the given `node` does not have an inner value.
- * @return {Boolean}
- */
-
-function noInner(node, type) {
-  if (node.parent.queue.length === 1) {
-    return true;
-  }
-  var nodes = node.parent.nodes;
-  return nodes.length === 3
-    && isType(nodes[0], 'brace.open')
-    && !isType(nodes[1], 'text')
-    && isType(nodes[2], 'brace.close');
-}
-
-/**
- * Returns true if the given `node` is the given `type`
- * @return {Boolean}
- */
-
-function isType(node, type) {
-  return typeof node !== 'undefined' && node.type === type;
-}
-
-/**
- * Returns true if the given `node` has a non-empty queue.
- * @return {Boolean}
- */
-
-function hasQueue(node) {
-  return Array.isArray(node.queue) && node.queue.length;
-}
-
-
-/***/ }),
-
-/***/ 92507:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var Node = __nccwpck_require__(55244);
-var utils = __nccwpck_require__(94733);
-
-/**
- * Braces parsers
- */
-
-module.exports = function(braces, options) {
-  braces.parser
-    .set('bos', function() {
-      if (!this.parsed) {
-        this.ast = this.nodes[0] = new Node(this.ast);
-      }
-    })
-
-    /**
-     * Character parsers
-     */
-
-    .set('escape', function() {
-      var pos = this.position();
-      var m = this.match(/^(?:\\(.)|\$\{)/);
-      if (!m) return;
-
-      var prev = this.prev();
-      var last = utils.last(prev.nodes);
-
-      var node = pos(new Node({
-        type: 'text',
-        multiplier: 1,
-        val: m[0]
-      }));
-
-      if (node.val === '\\\\') {
-        return node;
-      }
-
-      if (node.val === '${') {
-        var str = this.input;
-        var idx = -1;
-        var ch;
-
-        while ((ch = str[++idx])) {
-          this.consume(1);
-          node.val += ch;
-          if (ch === '\\') {
-            node.val += str[++idx];
-            continue;
-          }
-          if (ch === '}') {
-            break;
-          }
-        }
-      }
-
-      if (this.options.unescape !== false) {
-        node.val = node.val.replace(/\\([{}])/g, '$1');
-      }
-
-      if (last.val === '"' && this.input.charAt(0) === '"') {
-        last.val = node.val;
-        this.consume(1);
-        return;
-      }
-
-      return concatNodes.call(this, pos, node, prev, options);
-    })
-
-    /**
-     * Brackets: "[...]" (basic, this is overridden by
-     * other parsers in more advanced implementations)
-     */
-
-    .set('bracket', function() {
-      var isInside = this.isInside('brace');
-      var pos = this.position();
-      var m = this.match(/^(?:\[([!^]?)([^\]]{2,}|\]-)(\]|[^*+?]+)|\[)/);
-      if (!m) return;
-
-      var prev = this.prev();
-      var val = m[0];
-      var negated = m[1] ? '^' : '';
-      var inner = m[2] || '';
-      var close = m[3] || '';
-
-      if (isInside && prev.type === 'brace') {
-        prev.text = prev.text || '';
-        prev.text += val;
-      }
-
-      var esc = this.input.slice(0, 2);
-      if (inner === '' && esc === '\\]') {
-        inner += esc;
-        this.consume(2);
-
-        var str = this.input;
-        var idx = -1;
-        var ch;
-
-        while ((ch = str[++idx])) {
-          this.consume(1);
-          if (ch === ']') {
-            close = ch;
-            break;
-          }
-          inner += ch;
-        }
-      }
-
-      return pos(new Node({
-        type: 'bracket',
-        val: val,
-        escaped: close !== ']',
-        negated: negated,
-        inner: inner,
-        close: close
-      }));
-    })
-
-    /**
-     * Empty braces (we capture these early to
-     * speed up processing in the compiler)
-     */
-
-    .set('multiplier', function() {
-      var isInside = this.isInside('brace');
-      var pos = this.position();
-      var m = this.match(/^\{((?:,|\{,+\})+)\}/);
-      if (!m) return;
-
-      this.multiplier = true;
-      var prev = this.prev();
-      var val = m[0];
-
-      if (isInside && prev.type === 'brace') {
-        prev.text = prev.text || '';
-        prev.text += val;
-      }
-
-      var node = pos(new Node({
-        type: 'text',
-        multiplier: 1,
-        match: m,
-        val: val
-      }));
-
-      return concatNodes.call(this, pos, node, prev, options);
-    })
-
-    /**
-     * Open
-     */
-
-    .set('brace.open', function() {
-      var pos = this.position();
-      var m = this.match(/^\{(?!(?:[^\\}]?|,+)\})/);
-      if (!m) return;
-
-      var prev = this.prev();
-      var last = utils.last(prev.nodes);
-
-      // if the last parsed character was an extglob character
-      // we need to _not optimize_ the brace pattern because
-      // it might be mistaken for an extglob by a downstream parser
-      if (last && last.val && isExtglobChar(last.val.slice(-1))) {
-        last.optimize = false;
-      }
-
-      var open = pos(new Node({
-        type: 'brace.open',
-        val: m[0]
-      }));
-
-      var node = pos(new Node({
-        type: 'brace',
-        nodes: []
-      }));
-
-      node.push(open);
-      prev.push(node);
-      this.push('brace', node);
-    })
-
-    /**
-     * Close
-     */
-
-    .set('brace.close', function() {
-      var pos = this.position();
-      var m = this.match(/^\}/);
-      if (!m || !m[0]) return;
-
-      var brace = this.pop('brace');
-      var node = pos(new Node({
-        type: 'brace.close',
-        val: m[0]
-      }));
-
-      if (!this.isType(brace, 'brace')) {
-        if (this.options.strict) {
-          throw new Error('missing opening "{"');
-        }
-        node.type = 'text';
-        node.multiplier = 0;
-        node.escaped = true;
-        return node;
-      }
-
-      var prev = this.prev();
-      var last = utils.last(prev.nodes);
-      if (last.text) {
-        var lastNode = utils.last(last.nodes);
-        if (lastNode.val === ')' && /[!@*?+]\(/.test(last.text)) {
-          var open = last.nodes[0];
-          var text = last.nodes[1];
-          if (open.type === 'brace.open' && text && text.type === 'text') {
-            text.optimize = false;
-          }
-        }
-      }
-
-      if (brace.nodes.length > 2) {
-        var first = brace.nodes[1];
-        if (first.type === 'text' && first.val === ',') {
-          brace.nodes.splice(1, 1);
-          brace.nodes.push(first);
-        }
-      }
-
-      brace.push(node);
-    })
-
-    /**
-     * Capture boundary characters
-     */
-
-    .set('boundary', function() {
-      var pos = this.position();
-      var m = this.match(/^[$^](?!\{)/);
-      if (!m) return;
-      return pos(new Node({
-        type: 'text',
-        val: m[0]
-      }));
-    })
-
-    /**
-     * One or zero, non-comma characters wrapped in braces
-     */
-
-    .set('nobrace', function() {
-      var isInside = this.isInside('brace');
-      var pos = this.position();
-      var m = this.match(/^\{[^,]?\}/);
-      if (!m) return;
-
-      var prev = this.prev();
-      var val = m[0];
-
-      if (isInside && prev.type === 'brace') {
-        prev.text = prev.text || '';
-        prev.text += val;
-      }
-
-      return pos(new Node({
-        type: 'text',
-        multiplier: 0,
-        val: val
-      }));
-    })
-
-    /**
-     * Text
-     */
-
-    .set('text', function() {
-      var isInside = this.isInside('brace');
-      var pos = this.position();
-      var m = this.match(/^((?!\\)[^${}[\]])+/);
-      if (!m) return;
-
-      var prev = this.prev();
-      var val = m[0];
-
-      if (isInside && prev.type === 'brace') {
-        prev.text = prev.text || '';
-        prev.text += val;
-      }
-
-      var node = pos(new Node({
-        type: 'text',
-        multiplier: 1,
-        val: val
-      }));
-
-      return concatNodes.call(this, pos, node, prev, options);
-    });
-};
-
-/**
- * Returns true if the character is an extglob character.
- */
-
-function isExtglobChar(ch) {
-  return ch === '!' || ch === '@' || ch === '*' || ch === '?' || ch === '+';
-}
-
-/**
- * Combine text nodes, and calculate empty sets (`{,,}`)
- * @param {Function} `pos` Function to calculate node position
- * @param {Object} `node` AST node
- * @return {Object}
- */
-
-function concatNodes(pos, node, parent, options) {
-  node.orig = node.val;
-  var prev = this.prev();
-  var last = utils.last(prev.nodes);
-  var isEscaped = false;
-
-  if (node.val.length > 1) {
-    var a = node.val.charAt(0);
-    var b = node.val.slice(-1);
-
-    isEscaped = (a === '"' && b === '"')
-      || (a === "'" && b === "'")
-      || (a === '`' && b === '`');
-  }
-
-  if (isEscaped && options.unescape !== false) {
-    node.val = node.val.slice(1, node.val.length - 1);
-    node.escaped = true;
-  }
-
-  if (node.match) {
-    var match = node.match[1];
-    if (!match || match.indexOf('}') === -1) {
-      match = node.match[0];
-    }
-
-    // replace each set with a single ","
-    var val = match.replace(/\{/g, ',').replace(/\}/g, '');
-    node.multiplier *= val.length;
-    node.val = '';
-  }
-
-  var simpleText = last.type === 'text'
-    && last.multiplier === 1
-    && node.multiplier === 1
-    && node.val;
-
-  if (simpleText) {
-    last.val += node.val;
-    return;
-  }
-
-  prev.push(node);
-}
-
-
-/***/ }),
-
-/***/ 94733:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var splitString = __nccwpck_require__(84960);
-var utils = module.exports;
-
-/**
- * Module dependencies
- */
-
-utils.extend = __nccwpck_require__(43761);
-utils.flatten = __nccwpck_require__(57493);
-utils.isObject = __nccwpck_require__(5509);
-utils.fillRange = __nccwpck_require__(6330);
-utils.repeat = __nccwpck_require__(73301);
-utils.unique = __nccwpck_require__(40340);
-
-utils.define = function(obj, key, val) {
-  Object.defineProperty(obj, key, {
-    writable: true,
-    configurable: true,
-    enumerable: false,
-    value: val
-  });
-};
-
-/**
- * Returns true if the given string contains only empty brace sets.
- */
-
-utils.isEmptySets = function(str) {
-  return /^(?:\{,\})+$/.test(str);
-};
-
-/**
- * Returns true if the given string contains only empty brace sets.
- */
-
-utils.isQuotedString = function(str) {
-  var open = str.charAt(0);
-  if (open === '\'' || open === '"' || open === '`') {
-    return str.slice(-1) === open;
-  }
-  return false;
-};
-
-/**
- * Create the key to use for memoization. The unique key is generated
- * by iterating over the options and concatenating key-value pairs
- * to the pattern string.
- */
-
-utils.createKey = function(pattern, options) {
-  var id = pattern;
-  if (typeof options === 'undefined') {
-    return id;
-  }
-  var keys = Object.keys(options);
-  for (var i = 0; i < keys.length; i++) {
-    var key = keys[i];
-    id += ';' + key + '=' + String(options[key]);
-  }
-  return id;
-};
-
-/**
- * Normalize options
- */
-
-utils.createOptions = function(options) {
-  var opts = utils.extend.apply(null, arguments);
-  if (typeof opts.expand === 'boolean') {
-    opts.optimize = !opts.expand;
-  }
-  if (typeof opts.optimize === 'boolean') {
-    opts.expand = !opts.optimize;
-  }
-  if (opts.optimize === true) {
-    opts.makeRe = true;
-  }
-  return opts;
-};
-
-/**
- * Join patterns in `a` to patterns in `b`
- */
-
-utils.join = function(a, b, options) {
-  options = options || {};
-  a = utils.arrayify(a);
-  b = utils.arrayify(b);
-
-  if (!a.length) return b;
-  if (!b.length) return a;
-
-  var len = a.length;
-  var idx = -1;
-  var arr = [];
-
-  while (++idx < len) {
-    var val = a[idx];
-    if (Array.isArray(val)) {
-      for (var i = 0; i < val.length; i++) {
-        val[i] = utils.join(val[i], b, options);
-      }
-      arr.push(val);
-      continue;
-    }
-
-    for (var j = 0; j < b.length; j++) {
-      var bval = b[j];
-
-      if (Array.isArray(bval)) {
-        arr.push(utils.join(val, bval, options));
-      } else {
-        arr.push(val + bval);
-      }
-    }
-  }
-  return arr;
-};
-
-/**
- * Split the given string on `,` if not escaped.
- */
-
-utils.split = function(str, options) {
-  var opts = utils.extend({sep: ','}, options);
-  if (typeof opts.keepQuotes !== 'boolean') {
-    opts.keepQuotes = true;
-  }
-  if (opts.unescape === false) {
-    opts.keepEscaping = true;
-  }
-  return splitString(str, opts, utils.escapeBrackets(opts));
-};
-
-/**
- * Expand ranges or sets in the given `pattern`.
- *
- * @param {String} `str`
- * @param {Object} `options`
- * @return {Object}
- */
-
-utils.expand = function(str, options) {
-  var opts = utils.extend({rangeLimit: 10000}, options);
-  var segs = utils.split(str, opts);
-  var tok = { segs: segs };
-
-  if (utils.isQuotedString(str)) {
-    return tok;
-  }
-
-  if (opts.rangeLimit === true) {
-    opts.rangeLimit = 10000;
-  }
-
-  if (segs.length > 1) {
-    if (opts.optimize === false) {
-      tok.val = segs[0];
-      return tok;
-    }
-
-    tok.segs = utils.stringifyArray(tok.segs);
-  } else if (segs.length === 1) {
-    var arr = str.split('..');
-
-    if (arr.length === 1) {
-      tok.val = tok.segs[tok.segs.length - 1] || tok.val || str;
-      tok.segs = [];
-      return tok;
-    }
-
-    if (arr.length === 2 && arr[0] === arr[1]) {
-      tok.escaped = true;
-      tok.val = arr[0];
-      tok.segs = [];
-      return tok;
-    }
-
-    if (arr.length > 1) {
-      if (opts.optimize !== false) {
-        opts.optimize = true;
-        delete opts.expand;
-      }
-
-      if (opts.optimize !== true) {
-        var min = Math.min(arr[0], arr[1]);
-        var max = Math.max(arr[0], arr[1]);
-        var step = arr[2] || 1;
-
-        if (opts.rangeLimit !== false && ((max - min) / step >= opts.rangeLimit)) {
-          throw new RangeError('expanded array length exceeds range limit. Use options.rangeLimit to increase or disable the limit.');
-        }
-      }
-
-      arr.push(opts);
-      tok.segs = utils.fillRange.apply(null, arr);
-
-      if (!tok.segs.length) {
-        tok.escaped = true;
-        tok.val = str;
-        return tok;
-      }
-
-      if (opts.optimize === true) {
-        tok.segs = utils.stringifyArray(tok.segs);
-      }
-
-      if (tok.segs === '') {
-        tok.val = str;
-      } else {
-        tok.val = tok.segs[0];
-      }
-      return tok;
-    }
-  } else {
-    tok.val = str;
-  }
-  return tok;
-};
-
-/**
- * Ensure commas inside brackets and parens are not split.
- * @param {Object} `tok` Token from the `split-string` module
- * @return {undefined}
- */
-
-utils.escapeBrackets = function(options) {
-  return function(tok) {
-    if (tok.escaped && tok.val === 'b') {
-      tok.val = '\\b';
-      return;
-    }
-
-    if (tok.val !== '(' && tok.val !== '[') return;
-    var opts = utils.extend({}, options);
-    var brackets = [];
-    var parens = [];
-    var stack = [];
-    var val = tok.val;
-    var str = tok.str;
-    var i = tok.idx - 1;
-
-    while (++i < str.length) {
-      var ch = str[i];
-
-      if (ch === '\\') {
-        val += (opts.keepEscaping === false ? '' : ch) + str[++i];
-        continue;
-      }
-
-      if (ch === '(') {
-        parens.push(ch);
-        stack.push(ch);
-      }
-
-      if (ch === '[') {
-        brackets.push(ch);
-        stack.push(ch);
-      }
-
-      if (ch === ')') {
-        parens.pop();
-        stack.pop();
-        if (!stack.length) {
-          val += ch;
-          break;
-        }
-      }
-
-      if (ch === ']') {
-        brackets.pop();
-        stack.pop();
-        if (!stack.length) {
-          val += ch;
-          break;
-        }
-      }
-      val += ch;
-    }
-
-    tok.split = false;
-    tok.val = val.slice(1);
-    tok.idx = i;
-  };
-};
-
-/**
- * Returns true if the given string looks like a regex quantifier
- * @return {Boolean}
- */
-
-utils.isQuantifier = function(str) {
-  return /^(?:[0-9]?,[0-9]|[0-9],)$/.test(str);
-};
-
-/**
- * Cast `val` to an array.
- * @param {*} `val`
- */
-
-utils.stringifyArray = function(arr) {
-  return [utils.arrayify(arr).join('|')];
-};
-
-/**
- * Cast `val` to an array.
- * @param {*} `val`
- */
-
-utils.arrayify = function(arr) {
-  if (typeof arr === 'undefined') {
-    return [];
-  }
-  if (typeof arr === 'string') {
-    return [arr];
-  }
-  return arr;
-};
-
-/**
- * Returns true if the given `str` is a non-empty string
- * @return {Boolean}
- */
-
-utils.isString = function(str) {
-  return str != null && typeof str === 'string';
-};
-
-/**
- * Get the last element from `array`
- * @param {Array} `array`
- * @return {*}
- */
-
-utils.last = function(arr, n) {
-  return arr[arr.length - (n || 1)];
-};
-
-utils.escapeRegex = function(str) {
-  return str.replace(/\\?([!^*?()[\]{}+?/])/g, '\\$1');
-};
-
-
-/***/ }),
-
-/***/ 43761:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var isObject = __nccwpck_require__(54145);
-
-module.exports = function extend(o/*, objects*/) {
-  if (!isObject(o)) { o = {}; }
-
-  var len = arguments.length;
-  for (var i = 1; i < len; i++) {
-    var obj = arguments[i];
-
-    if (isObject(obj)) {
-      assign(o, obj);
-    }
-  }
-  return o;
-};
-
-function assign(a, b) {
-  for (var key in b) {
-    if (hasOwn(b, key)) {
-      a[key] = b[key];
-    }
-  }
-}
-
-/**
- * Returns true if the given `key` is an own property of `obj`.
- */
-
-function hasOwn(obj, key) {
-  return Object.prototype.hasOwnProperty.call(obj, key);
-}
-
-
-/***/ }),
-
-/***/ 54145:
-/***/ ((module) => {
-
-"use strict";
-/*!
- * is-extendable <https://github.com/jonschlinkert/is-extendable>
- *
- * Copyright (c) 2015, Jon Schlinkert.
- * Licensed under the MIT License.
- */
-
-
-
-module.exports = function isExtendable(val) {
-  return typeof val !== 'undefined' && val !== null
-    && (typeof val === 'object' || typeof val === 'function');
-};
-
-
-/***/ }),
-
 /***/ 2644:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -74836,7 +72129,7 @@ module.exports = function isExtendable(val) {
  */
 
 var util = __nccwpck_require__(73837);
-var braces = __nccwpck_require__(70192);
+var braces = __nccwpck_require__(50610);
 var toRegex = __nccwpck_require__(16855);
 var extend = __nccwpck_require__(49059);
 
