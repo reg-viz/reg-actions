@@ -6,7 +6,7 @@
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
-    "package": "ncc build node_modules/reg-cli/dist/diff.js -o dist && mv dist/index.js dist/diff.js && ncc build --source-map --license licenses.txt"
+    "package": "npm run build && ncc build node_modules/reg-cli/dist/diff.js -o dist && mv dist/index.js dist/diff.js && ncc build --source-map --license licenses.txt"
   },
   "repository": {
     "type": "git",
