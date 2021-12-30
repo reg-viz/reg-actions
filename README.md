@@ -23,7 +23,7 @@
 ### Minimal setup
 
 Let's start with a minimal workflow setup.    
-Please add `on: [push, pull_request]`.Please add to make it work correctly.   
+Please add `on: [push, pull_request]` to make it work correctly.   
 The `github-token` is required to download and upload artifacts.
 
 ``` yaml
