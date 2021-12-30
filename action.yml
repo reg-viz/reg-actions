@@ -1,0 +1,28 @@
+name: "reg-actions"
+author: "bokuweb"
+description: 'A visual regression test tool for github actions.'
+branding:
+  icon: 'aperture'
+  color: 'red'
+inputs:
+  github-token:
+    description: 'GitHub API access token.It is used to upload test report and add comment to pull request.'
+    required: true
+  image-directory-path:
+    description: "Path to images directory.The images stored in this directory will be compared with the expected images from the last upload."
+    required: true
+  enable-antialias:
+    description: "Enable antialias.If omitted false."
+    required: false
+  matching-threshold:
+    description: "Matching threshold, ranges from 0 to 1. Smaller values make the comparison more sensitive. 0 by default."
+    required: false
+  threshold-rate:
+    description: "The rate threshold at which the image is considered changed. When the difference ratio of the image is larger than the set rate detects the change. Applied after `matchingThreshold`. 0 by default."
+    required: false
+  threshold-pixel:
+    description: "The pixel threshold at which the image is considered changed. When the difference pixel of the image is larger than the set pixel detects the change. This value takes precedence over `thresholdRate`. Applied after `matchingThreshold`. 0 by default."
+    required: false
+runs:
+  using: "node16"
+  main: "index.js"
