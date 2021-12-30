@@ -64,6 +64,7 @@ const findCurrentAndTargetRuns = async (): Promise<{ current: Run; target: Run }
     log.info(`targetHash = ${targetHash}`);
 
     const targetRun = runs.data.workflow_runs.find(run => run.head_sha.startsWith(targetHashShort));
+    console.log('=======', runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort)));
 
     log.debug('runs = ', runs.data.workflow_runs.length);
     log.info(`targetRun = `, targetRun);
