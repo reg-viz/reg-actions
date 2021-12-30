@@ -8,6 +8,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - run: yarn install && yarn package
       - uses: ./
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
