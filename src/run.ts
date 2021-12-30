@@ -3,6 +3,7 @@ import { components } from '@octokit/openapi-types';
 import { log } from './logger';
 import { findTargetHash } from './git';
 import { Event } from './event';
+import { ARTIFACT_NAME } from './constants';
 
 export type Run = components['schemas']['workflow-run'];
 
@@ -29,9 +30,9 @@ export const findRunAndArtifact = async ({
 
   const currentHash = (event.after ?? event?.pull_request?.head?.sha)?.slice(0, 7);
 
-  log.info(`event.after = ${event.after}, head sha = ${event.pull_request?.head?.sha}`);
-
   if (!currentHash) return null;
+
+  log.info(`current hash is ${currentHash}.`);
 
   let page = 0;
   while (true) {
@@ -40,7 +41,7 @@ export const findRunAndArtifact = async ({
       const run = runs.data.workflow_runs.find(run => run.head_sha.startsWith(currentHash));
       if (run) {
         currentRun = run;
-        log.info(`currentRun = `, currentRun);
+        log.debug(`currentRun = `, currentRun);
       }
     }
     if (!event.pull_request) return null;
@@ -53,7 +54,7 @@ export const findRunAndArtifact = async ({
     for (const run of runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort))) {
       const res = await client.fetchArtifacts(run.id);
       const { artifacts } = res.data;
-      const found = artifacts.find(a => a.name === 'reg');
+      const found = artifacts.find(a => a.name === ARTIFACT_NAME);
       if (currentRun && found) {
         return { currentRun, targetRun: run, targetArtifact: found };
       }

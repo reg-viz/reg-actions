@@ -11,6 +11,20 @@ export type CreateCommentWithTargetInput = {
   result: CompareOutput;
 };
 
+const isSuccess = (result: CompareOutput) => {
+  return result.failedItems.length === 0 && result.newItems.length === 0 && result.deletedItems.length === 0;
+};
+
+const badge = (result: CompareOutput) => {
+  if (result.failedItems.length) {
+    return '![change detected](https://img.shields.io/badge/%E2%9C%94%20reg-change%20detected-orange)';
+  }
+  if (result.newItems.length) {
+    return '![new items](https://img.shields.io/badge/%E2%9C%94%20reg-new%20items-green)';
+  }
+  return '![success](https://img.shields.io/badge/%E2%9C%94%20reg-passed-green)';
+};
+
 export const createCommentWithTarget = ({
   event,
   currentRun,
@@ -26,14 +40,13 @@ export const createCommentWithTarget = ({
   const currentHashShort = currentHash.slice(0, 7);
   const targetHashShort = targetHash.slice(0, 7);
 
-  const successOrFailMessage =
-    result.failedItems.length === 0 && result.newItems.length === 0 && result.deletedItems.length === 0
-      ? `![success](https://img.shields.io/badge/%E2%9C%94reg-passed-green)
+  const successOrFailMessage = isSuccess(result)
+    ? `${badge(result)}
   
   ✨✨ That's perfect, there is no visual difference! ✨✨
   Check out the report [here](${url}).
     `
-      : `![change detected](https://img.shields.io/badge/%E2%9C%94reg-change%20detected-orange)
+    : `${badge(result)}
   
   Check out the report [here](${url}).
     `;
@@ -43,12 +56,12 @@ export const createCommentWithTarget = ({
   
   ${successOrFailMessage}
   
-  | item | number |  |
-  |:-----------|:------------:|:------------:|
-  | pass       | ${result.passedItems.length}        |   |
-  | change       | ${result.failedItems.length}        |   |
-  | new   | ${result.newItems.length}     |     |
-  | delete  | ${result.deletedItems.length}     |     |
+  | item    | count                         |
+  |:--------|:-----------------------------:|
+  | pass    | ${result.passedItems.length}  |
+  | change  | ${result.failedItems.length}  |
+  | new     | ${result.newItems.length}     |
+  | delete  | ${result.deletedItems.length} |
   `;
 
   return body;
