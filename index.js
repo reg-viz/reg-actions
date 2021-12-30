@@ -362,12 +362,16 @@ const findCurrentAndTargetRuns = () => __awaiter(void 0, void 0, void 0, functio
         const targetHash = yield (0, git_1.findTargetHash)(event.pull_request.base.sha, event.pull_request.head.sha);
         const targetHashShort = targetHash.slice(0, 7);
         logger_1.log.info(`targetHash = ${targetHash}`);
-        const targetRun = runs.data.workflow_runs.find(run => run.head_sha.startsWith(targetHashShort));
-        console.log('=======', runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort)));
-        logger_1.log.debug('runs = ', runs.data.workflow_runs.length);
-        logger_1.log.info(`targetRun = `, targetRun);
-        if (targetRun && currentRun) {
-            return { current: currentRun, target: targetRun };
+        for (const run of runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort))) {
+            const input = Object.assign(Object.assign({}, repo), { run_id: run.id, per_page: 100 });
+            const res = yield octokit.rest.actions.listWorkflowRunArtifacts(input);
+            logger_1.log.debug('res = ', res);
+            const { artifacts } = res.data;
+            const found = artifacts.find(a => a.name === 'reg');
+            console.log(':smile:==============', found, run);
+            if (currentRun && found) {
+                return { current: currentRun, target: run };
+            }
         }
         if (runs.data.workflow_runs.length < 100) {
             logger_1.log.info('Failed to find target run');
@@ -377,19 +381,16 @@ const findCurrentAndTargetRuns = () => __awaiter(void 0, void 0, void 0, functio
 });
 const downloadExpectedImages = (octokit, repo, latestArtifactId) => __awaiter(void 0, void 0, void 0, function* () {
     const zip = yield octokit.rest.actions.downloadArtifact(Object.assign(Object.assign({}, repo), { artifact_id: latestArtifactId, archive_format: 'zip' }));
-    if (!Buffer.isBuffer(zip.data))
-        return;
-    new adm_zip_1.default(zip.data)
+    yield Promise.all(new adm_zip_1.default(Buffer.from(zip.data))
         .getEntries()
         .filter(f => {
-        console.log(f.name);
-        return !f.isDirectory && f.name.startsWith(constants.ACTUAL_DIR_NAME);
+        return !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME);
     })
         .map((file) => __awaiter(void 0, void 0, void 0, function* () {
-        const f = path.join('__reg__', file.name.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
+        const f = path.join('__reg__', file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
         yield (0, make_dir_1.default)(path.dirname(f));
         yield fs.promises.writeFile(f, file.getData());
-    }));
+    })));
 });
 const copyImages = () => {
     cpx_1.default.copySync(path.join(actual, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), `./__reg__/${constants.ACTUAL_DIR_NAME}`);
@@ -440,7 +441,7 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
         yield compareAndUpload();
         return;
     }
-    logger_1.log.info(`currentRun = `, runs.current);
+    logger_1.log.debug(`currentRun = `, runs.current);
     const res = yield octokit.rest.actions.listWorkflowRunArtifacts(Object.assign(Object.assign({}, repo), { run_id: runs.target.id, per_page: 100 }));
     logger_1.log.debug('res = ', res);
     const { artifacts } = res.data;
