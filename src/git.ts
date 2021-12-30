@@ -1,5 +1,5 @@
-import * as core from '@actions/core';
 import { exec } from '@actions/exec';
+import { log } from './logger';
 
 interface ExecResult {
   stdout: string;
@@ -29,13 +29,14 @@ const capture = async (cmd: string, args: string[]): Promise<ExecResult> => {
     return res;
   } catch (err) {
     const msg = `Command '${cmd}' failed with args '${args.join(' ')}': ${res.stderr}: ${err}`;
-    core.debug(`@actions/exec.exec() threw an error: ${msg}`);
+    log.debug(`@actions/exec.exec() threw an error: ${msg}`);
     throw new Error(msg);
   }
 };
 
 export const findTargetHash = async (baseSha: string, headSha: string): Promise<string> => {
-  core.info(`base sha is ${baseSha}, head sha is ${headSha}`);
+  log.debug(`base sha is ${baseSha}, head sha is ${headSha}`);
+
   await capture('git', ['fetch', '--all']);
 
   const args = ['merge-base', '-a', `${baseSha}`, `${headSha}`];
@@ -45,7 +46,6 @@ export const findTargetHash = async (baseSha: string, headSha: string): Promise<
   if (res.code !== 0) {
     throw new Error(`Command 'git ${args.join(' ')}' failed: ${JSON.stringify(res)}`);
   }
-
   const targetHash = res.stdout;
   return targetHash;
 };

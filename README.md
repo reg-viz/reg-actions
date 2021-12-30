@@ -14,6 +14,7 @@
 * [How to use](#how-to-use)
   * [Minimal setup](#minimal-setup)
   * [Action inputs](#action-inputs)
+* [Limitation](#limitation)
 * [Contribute](#contribute)
 * [License](#license)
 
@@ -88,9 +89,13 @@ The rate threshold at which the image is considered changed. When the difference
 
 The pixel threshold at which the image is considered changed. When the difference pixel of the image is larger than the set pixel detects the change. This value takes precedence over `thresholdRate`. Applied after `matchingThreshold`. 0 by default.
 
+## Limitation
+
+- If the `artifact` is deleted, the report will also be deleted, see [`Artifact and log retention policy`](https://docs.github.com/ja/actions/learn-github-actions/usage-limits-billing-and-administration#artifact-and-log-retention-policy) for the retention period of the `artifact`.
+
 ## Contribute
 
-PRs welcome.
+Thanks for your help improving the project! We are so happy to have you!
 
 ## License
 

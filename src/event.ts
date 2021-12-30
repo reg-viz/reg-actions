@@ -2,7 +2,7 @@ import { components } from '@octokit/openapi-types';
 import * as fs from 'fs';
 import { log } from './logger';
 
-type Event = {
+export type Event = {
   before: string | null;
   after: string | null;
   pull_request: components['schemas']['pull-request'] | null;
