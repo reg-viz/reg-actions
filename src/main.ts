@@ -63,16 +63,17 @@ const findCurrentAndTargetRuns = async (): Promise<{ current: Run; target: Run }
 
     log.info(`targetHash = ${targetHash}`);
 
-    const targetRun = runs.data.workflow_runs.find(run => run.head_sha.startsWith(targetHashShort));
-    console.log('=======', runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort)));
-
-    log.debug('runs = ', runs.data.workflow_runs.length);
-    log.info(`targetRun = `, targetRun);
-
-    if (targetRun && currentRun) {
-      return { current: currentRun, target: targetRun };
+    for (const run of runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort))) {
+      const input = { ...repo, run_id: run.id, per_page: 100 };
+      const res = await octokit.rest.actions.listWorkflowRunArtifacts(input);
+      log.debug('res = ', res);
+      const { artifacts } = res.data;
+      const found = artifacts.find(a => a.name === 'reg');
+      console.log(':smile:==============', found, run);
+      if (currentRun && found) {
+        return { current: currentRun, target: run };
+      }
     }
-
     if (runs.data.workflow_runs.length < 100) {
       log.info('Failed to find target run');
       return null;
@@ -91,19 +92,18 @@ const downloadExpectedImages = async (
     archive_format: 'zip',
   });
 
-  if (!Buffer.isBuffer(zip.data)) return;
-
-  new Zip(zip.data)
-    .getEntries()
-    .filter(f => {
-      console.log(f.name);
-      return !f.isDirectory && f.name.startsWith(constants.ACTUAL_DIR_NAME);
-    })
-    .map(async file => {
-      const f = path.join('__reg__', file.name.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
-      await makeDir(path.dirname(f));
-      await fs.promises.writeFile(f, file.getData());
-    });
+  await Promise.all(
+    new Zip(Buffer.from(zip.data as any))
+      .getEntries()
+      .filter(f => {
+        return !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME);
+      })
+      .map(async file => {
+        const f = path.join('__reg__', file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
+        await makeDir(path.dirname(f));
+        await fs.promises.writeFile(f, file.getData());
+      }),
+  );
 };
 
 const copyImages = () => {
@@ -164,7 +164,7 @@ const run = async () => {
     return;
   }
 
-  log.info(`currentRun = `, runs.current);
+  log.debug(`currentRun = `, runs.current);
 
   const res = await octokit.rest.actions.listWorkflowRunArtifacts({
     ...repo,
@@ -182,6 +182,7 @@ const run = async () => {
   if (latest) {
     await downloadExpectedImages(octokit, repo, latest.id);
   }
+
   const result: any = await compareAndUpload();
 
   if (event.number == null) return;
