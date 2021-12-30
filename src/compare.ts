@@ -3,6 +3,8 @@ import chalk from 'chalk';
 import { log } from './logger';
 import { Config } from './config';
 import * as constants from './constants';
+import { workspace } from './path';
+import path from 'path/posix';
 
 const _compare = require('reg-cli');
 
@@ -16,10 +18,10 @@ export type CompareOutput = {
 export const compare = async (config: Config): Promise<CompareOutput> =>
   new Promise<CompareOutput>(resolve => {
     const emitter = _compare({
-      actualDir: `./__reg__/${constants.ACTUAL_DIR_NAME}`,
-      expectedDir: `./__reg__/${constants.EXPECTED_DIR_NAME}`,
-      diffDir: `./__reg__/${constants.DIFF_DIR_NAME}`,
-      json: './__reg__/0',
+      actualDir: path.join(workspace(), constants.ACTUAL_DIR_NAME),
+      expectedDir: path.join(workspace(), constants.EXPECTED_DIR_NAME),
+      diffDir: path.join(workspace(), constants.DIFF_DIR_NAME),
+      json: path.join(workspace(), constants.JSON_NAME),
       update: false,
       ignoreChange: true,
       urlPrefix: '',

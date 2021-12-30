@@ -15,7 +15,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
     },
     fetchArtifacts: async (runId: number) => {
       const input = { ...repository, run_id: runId, per_page: 100 };
-      return await octokit.rest.actions.listWorkflowRunArtifacts(input);
+      return octokit.rest.actions.listWorkflowRunArtifacts(input);
     },
   };
 };

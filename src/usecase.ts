@@ -16,6 +16,7 @@ import { compare } from './compare';
 import { createCommentWithTarget } from './comment';
 import * as constants from './constants';
 import { Repository } from './repository';
+import { workspace } from './path';
 
 type Octokit = ReturnType<typeof github.getOctokit>;
 
@@ -29,11 +30,12 @@ const downloadExpectedImages = async (octokit: Octokit, repo: Repository, latest
   await Promise.all(
     new Zip(Buffer.from(zip.data as any))
       .getEntries()
-      .filter(f => {
-        return !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME);
-      })
+      .filter(f => !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME))
       .map(async file => {
-        const f = path.join('__reg__', file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
+        const f = path.join(
+          workspace(),
+          file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME),
+        );
         await makeDir(path.dirname(f));
         await fs.promises.writeFile(f, file.getData());
       }),
@@ -41,20 +43,23 @@ const downloadExpectedImages = async (octokit: Octokit, repo: Repository, latest
 };
 
 const copyImages = (imagePath: string) => {
-  cpx.copySync(path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), `./__reg__/${constants.ACTUAL_DIR_NAME}`);
+  cpx.copySync(
+    path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`),
+    path.join(workspace(), constants.ACTUAL_DIR_NAME),
+  );
 };
 
 const compareAndUpload = async (config: Config) => {
   const result = await compare(config);
   log.debug('compare result', result);
 
-  const files = globSync('./__reg__/**/*');
+  const files = globSync(path.join(workspace(), '**/*'));
 
   log.info('Start upload artifact');
 
   try {
     const artifactClient = artifact.create();
-    await artifactClient.uploadArtifact('reg', files, './__reg__');
+    await artifactClient.uploadArtifact('reg', files, workspace());
   } catch (e) {
     log.error(e);
     throw new Error('Failed to upload artifact');
@@ -66,7 +71,7 @@ const compareAndUpload = async (config: Config) => {
 
 const init = async (config: Config) => {
   // Create workspace
-  await makeDir('./__reg__');
+  await makeDir(workspace());
 
   // Copy actual images
   copyImages(config.imageDirectoryPath);
