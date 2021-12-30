@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: yarn install && yarn package
-      - uses: ./
+      - uses: ./dist
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           image-directory-path: "./images"
