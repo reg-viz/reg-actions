@@ -21,7 +21,7 @@
 
 ### Minimal setup
 
-Let's start with a minimal workflow setup.
+Let's start with a minimal workflow setup. Please add `on: [push, pull_request]`.Please add to make it work correctly.
 
 ``` yaml
 name: CI
