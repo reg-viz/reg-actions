@@ -6,6 +6,7 @@ import * as path from 'path';
 import cpx from 'cpx';
 import { sync as globSync } from 'glob';
 import makeDir from 'make-dir';
+import Zip from 'adm-zip';
 
 import { log } from './logger';
 import { findTargetHash } from './git';
@@ -13,8 +14,8 @@ import { createReportURL } from './report';
 import { getConfig } from './config';
 import { getEvent } from './event';
 import * as constants from './constants';
+
 const compare = require('reg-cli');
-const NodeZip = require('node-zip');
 
 const config = getConfig();
 
@@ -63,6 +64,7 @@ const findCurrentAndTargetRuns = async (): Promise<{ current: Run; target: Run }
     log.info(`targetHash = ${targetHash}`);
 
     const targetRun = runs.data.workflow_runs.find(run => run.head_sha.startsWith(targetHashShort));
+    console.log('=======', runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort)));
 
     log.debug('runs = ', runs.data.workflow_runs.length);
     log.info(`targetRun = `, targetRun);
@@ -89,18 +91,19 @@ const downloadExpectedImages = async (
     archive_format: 'zip',
   });
 
-  const files = new NodeZip(zip.data, { base64: false, checkCRC32: true });
+  if (!Buffer.isBuffer(zip.data)) return;
 
-  await Promise.all(
-    Object.keys(files.files)
-      .map(key => files.files[key])
-      .filter(file => !file.dir && file.name.startsWith(constants.ACTUAL_DIR_NAME))
-      .map(async file => {
-        const f = path.join('__reg__', file.name.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
-        await makeDir(path.dirname(f));
-        await fs.promises.writeFile(f, str2ab(file._data));
-      }),
-  );
+  new Zip(zip.data)
+    .getEntries()
+    .filter(f => {
+      console.log(f.name);
+      return !f.isDirectory && f.name.startsWith(constants.ACTUAL_DIR_NAME);
+    })
+    .map(async file => {
+      const f = path.join('__reg__', file.name.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
+      await makeDir(path.dirname(f));
+      await fs.promises.writeFile(f, file.getData());
+    });
 };
 
 const copyImages = () => {
@@ -220,11 +223,3 @@ ${successOrFailMessage}
 };
 
 run();
-
-function str2ab(str: string) {
-  const array = new Uint8Array(str.length);
-  for (var i = 0; i < str.length; i++) {
-    array[i] = str.charCodeAt(i);
-  }
-  return array;
-}
