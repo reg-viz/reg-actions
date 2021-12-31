@@ -8,6 +8,7 @@ export interface Config {
   matchingThreshold: number;
   thresholdRate: number;
   thresholdPixel: number;
+  targetHash: string | null;
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -59,6 +60,13 @@ const validateThresholdRate = (n: number) => {
   }
 };
 
+const validateTargetHash = (h: string | null) => {
+  if (!h) return;
+  if (!/[0-9a-f]{5,40}/.test(h)) {
+    throw new Error(`'target-hash' input must be commit hash but got '${h}'`);
+  }
+};
+
 export const getConfig = (): Config => {
   const githubToken = core.getInput('github-token');
   const imageDirectoryPath = core.getInput('image-directory-path');
@@ -69,6 +77,9 @@ export const getConfig = (): Config => {
   const thresholdPixel = getNumberInput('threshold-pixel') ?? 0;
   validateMatchingThreshold(matchingThreshold);
   validateThresholdRate(thresholdRate);
+  const targetHash = core.getInput('target-hash') || null;
+  validateTargetHash(targetHash);
+
   return {
     githubToken,
     imageDirectoryPath,
@@ -76,5 +87,6 @@ export const getConfig = (): Config => {
     matchingThreshold,
     thresholdRate,
     thresholdPixel,
+    targetHash,
   };
 };

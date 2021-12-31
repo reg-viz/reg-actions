@@ -94,7 +94,7 @@ export const run = async (event: Event, client: Client, config: Config) => {
   }
 
   // Find current run and target run and artifact.
-  const runAndArtifact = await findRunAndArtifact({ event, client });
+  const runAndArtifact = await findRunAndArtifact({ event, client, targetHash: config.targetHash });
 
   // If target artifact is not found, upload images.
   if (!runAndArtifact || !runAndArtifact.targetRun || !runAndArtifact.targetArtifact) {
