@@ -1,4 +1,3 @@
-import * as github from '@actions/github';
 import * as artifact from '@actions/artifact';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -10,23 +9,21 @@ import Zip from 'adm-zip';
 import { log } from './logger';
 import { Config } from './config';
 import { Event } from './event';
-import { findRunAndArtifact } from './run';
-import { createClient, Octokit } from './client';
+import { findRunAndArtifact, RunClient } from './run';
 import { compare, CompareOutput } from './compare';
 import { createCommentWithTarget, createCommentWithoutTarget } from './comment';
 import * as constants from './constants';
-import { Repository } from './repository';
 import { workspace } from './path';
 
-type Client = {
-  downloadArtifact: (id: number) => Promise<{ data: any }>;
-};
+interface DownloadClient {
+  downloadArtifact: (id: number) => Promise<{ data: unknown }>;
+}
 
 // Download expected images from target artifact.
-const downloadExpectedImages = async (client: Client, latestArtifactId: number) => {
+const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: number) => {
   const zip = await client.downloadArtifact(latestArtifactId);
   await Promise.all(
-    new Zip(Buffer.from(zip.data))
+    new Zip(Buffer.from(zip.data as any))
       .getEntries()
       .filter(f => !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME))
       .map(async file => {
@@ -76,10 +73,13 @@ const init = async (config: Config) => {
   copyImages(config.imageDirectoryPath);
 };
 
-export const run = async (event: Event, repo: Repository, config: Config) => {
-  const octokit = github.getOctokit(config.githubToken);
-  const client = createClient(repo, octokit);
+interface CommentClient {
+  postComment: (issueNumber: number, comment: string) => Promise<unknown>;
+}
 
+type Client = CommentClient & DownloadClient & RunClient;
+
+export const run = async (event: Event, client: Client, config: Config) => {
   // Setup directory for artifact and copy images.
   await init(config);
 
@@ -102,7 +102,7 @@ export const run = async (event: Event, repo: Repository, config: Config) => {
     // If we have current run, add comment to PR.
     if (runAndArtifact?.currentRun) {
       const comment = createCommentWithoutTarget({ event, currentRun: runAndArtifact?.currentRun, result });
-      await octokit.rest.issues.createComment({ ...repo, issue_number: event.number, body: comment });
+      await client.postComment(event.number, comment);
     }
     return;
   }

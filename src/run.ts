@@ -9,7 +9,7 @@ export type Run = components['schemas']['workflow-run'];
 
 export type FindRunAndArtifactInput = {
   event: Event;
-  client: Client;
+  client: RunClient;
 };
 
 export type Artifact = {
@@ -17,7 +17,7 @@ export type Artifact = {
   name: string;
 };
 
-export interface Client {
+export interface RunClient {
   fetchRuns: (page: number) => Promise<{ data: { workflow_runs: Run[] } }>;
   fetchArtifacts: (runId: number) => Promise<{ data: { artifacts: Artifact[] } }>;
 }
