@@ -9,10 +9,12 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: production
     name: Deploy
     steps:
       - uses: actions/checkout@v2
-      - run: yarn install && ENV=production yarn package
+      - run: yarn install && yarn package
       - name: deploy
         uses: s0/git-publish-subdir-action@develop
         env:
