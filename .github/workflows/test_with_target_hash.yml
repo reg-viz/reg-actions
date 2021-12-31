@@ -14,7 +14,6 @@ jobs:
         with:
           result-encoding: string
           script: |
-            console.log(Math.random())
             return (Math.random() > 0.5) ? "59b7802" : "34f93ed"
       - uses: ./dist
         with:

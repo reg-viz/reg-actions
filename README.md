@@ -108,6 +108,15 @@ The rate threshold at which the image is considered changed. When the difference
 
 The pixel threshold at which the image is considered changed. When the difference pixel of the image is larger than the set pixel detects the change. This value takes precedence over `thresholdRate`. Applied after `matchingThreshold`. 0 by default.
 
+#### `target-hash` (Optional)
+
+- Type: String
+- Default: N/A
+
+The commit hash to be compared.   
+You can determine the target hash dynamically using a [github script](https://github.com/actions/github-script).   
+Please see [test_with_target_hash.yml](./github/workflow/test_with_target_hash.yml).
+
 ## Authorization
 
 The reg-actions report is created as a `Github Oauth App` that requires the `repo` scope.    

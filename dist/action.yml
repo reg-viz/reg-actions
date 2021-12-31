@@ -24,7 +24,7 @@ inputs:
     description: "The pixel threshold at which the image is considered changed. When the difference pixel of the image is larger than the set pixel detects the change. This value takes precedence over `thresholdRate`. Applied after `matchingThreshold`. 0 by default."
     required: false
   target-hash:
-    description: "The pixel threshold at which the image is considered changed. When the difference pixel of the image is larger than the set pixel detects the change. This value takes precedence over `thresholdRate`. Applied after `matchingThreshold`. 0 by default."
+    description: "The commit hash to be compared."
     required: false
 runs:
   using: "node16"
