@@ -90,6 +90,8 @@ Enable antialias. If omitted false.
 - Default: N/A
 
 Matching threshold, ranges from 0 to 1. Smaller values make the comparison more sensitive. 0 by default.
+Specifically, you can set how much of a difference in the YIQ difference metric should be considered a different pixel.
+If there is a difference between pixels, it will be treated as "same pixel" if it is within this threshold.
 
 #### `threshold-rate` (Optional)
 
