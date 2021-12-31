@@ -372,7 +372,7 @@ const readEvent = () => {
 };
 const getEvent = () => {
     const event = readEvent();
-    logger_1.log.info(`event = `, event);
+    logger_1.log.debug(`event = `, event);
     if (!event) {
         throw new Error('Failed to get github event.json.');
     }
@@ -470,7 +470,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.log = void 0;
 const l = __importStar(__nccwpck_require__(78063));
-if (process.env.ENV !== 'production') {
+if (process.env.NODE_ENV === 'debug') {
     l.setLevel('debug');
 }
 else {
