@@ -15,6 +15,7 @@
 * [How to use](#how-to-use)
   * [Minimal setup](#minimal-setup)
   * [Action inputs](#action-inputs)
+* [Authorization](#authorization)
 * [Limitation](#limitation)
 * [Contribute](#contribute)
 * [License](#license)
@@ -106,6 +107,11 @@ The rate threshold at which the image is considered changed. When the difference
 - Default: N/A
 
 The pixel threshold at which the image is considered changed. When the difference pixel of the image is larger than the set pixel detects the change. This value takes precedence over `thresholdRate`. Applied after `matchingThreshold`. 0 by default.
+
+## Authorization
+
+The reg-actions report is created as a `Github Oauth App` that requires the `repo` scope.    
+This is because, the report download artifact directly and it needs the `repo` scope to download the `artifact`.   
 
 ## Limitation
 
