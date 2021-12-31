@@ -21,7 +21,7 @@
 
 ## What is `reg-actions`.
 
-This repository provides a GitHub Action for visual regression testing.   
+This repository provides a `GitHub Action` for visual regression testing.   
 (See also related projects [reg-suit](https://github.com/reg-viz/reg-suit) and [reg-cli](https://github.com/reg-viz/reg-cli)).   
 
 This action uploads images and report as workflow artifact.   
