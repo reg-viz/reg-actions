@@ -17,10 +17,10 @@ export type Artifact = {
   name: string;
 };
 
-export interface RunClient {
+export type RunClient = {
   fetchRuns: (page: number) => Promise<{ data: { workflow_runs: Run[] } }>;
   fetchArtifacts: (runId: number) => Promise<{ data: { artifacts: Artifact[] } }>;
-}
+};
 
 export const findRunAndArtifact = async ({
   event,
