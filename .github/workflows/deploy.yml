@@ -12,7 +12,7 @@ jobs:
     name: Deploy
     steps:
       - uses: actions/checkout@v2
-      - run: yarn install && yarn package
+      - run: yarn install && ENV=production yarn package
       - name: deploy
         uses: s0/git-publish-subdir-action@develop
         env:
