@@ -10,6 +10,7 @@ export type Run = components['schemas']['workflow-run'];
 export type FindRunAndArtifactInput = {
   event: Event;
   client: RunClient;
+  targetHash?: string | null;
 };
 
 export type Artifact = {
@@ -25,6 +26,7 @@ export type RunClient = {
 export const findRunAndArtifact = async ({
   event,
   client,
+  targetHash: inputTargetHash,
 }: FindRunAndArtifactInput): Promise<{
   currentRun: Run;
   targetRun: Run | null;
@@ -55,7 +57,9 @@ export const findRunAndArtifact = async ({
       return null;
     }
 
-    const targetHash = await findTargetHash(event.pull_request.base.sha, event.pull_request.head.sha);
+    // If target is passed to this function, use it.
+    const targetHash =
+      inputTargetHash ?? (await findTargetHash(event.pull_request.base.sha, event.pull_request.head.sha));
     const targetHashShort = targetHash.slice(0, 7);
 
     log.info(`targetHash = ${targetHash}`);
