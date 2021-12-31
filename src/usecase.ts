@@ -11,26 +11,22 @@ import { log } from './logger';
 import { Config } from './config';
 import { Event } from './event';
 import { findRunAndArtifact } from './run';
-import { createClient } from './client';
+import { createClient, Octokit } from './client';
 import { compare, CompareOutput } from './compare';
 import { createCommentWithTarget, createCommentWithoutTarget } from './comment';
 import * as constants from './constants';
 import { Repository } from './repository';
 import { workspace } from './path';
 
-type Octokit = ReturnType<typeof github.getOctokit>;
-
+type Client = {
+  downloadArtifact: (id: number) => Promise<{ data: any }>;
+};
 
 // Download expected images from target artifact.
-const downloadExpectedImages = async (octokit: Octokit, repo: Repository, latestArtifactId: number) => {
-  const zip = await octokit.rest.actions.downloadArtifact({
-    ...repo,
-    artifact_id: latestArtifactId,
-    archive_format: 'zip',
-  });
-
+const downloadExpectedImages = async (client: Client, latestArtifactId: number) => {
+  const zip = await client.downloadArtifact(latestArtifactId);
   await Promise.all(
-    new Zip(Buffer.from(zip.data as any))
+    new Zip(Buffer.from(zip.data))
       .getEntries()
       .filter(f => !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME))
       .map(async file => {
@@ -82,6 +78,7 @@ const init = async (config: Config) => {
 
 export const run = async (event: Event, repo: Repository, config: Config) => {
   const octokit = github.getOctokit(config.githubToken);
+  const client = createClient(repo, octokit);
 
   // Setup directory for artifact and copy images.
   await init(config);
@@ -93,8 +90,6 @@ export const run = async (event: Event, repo: Repository, config: Config) => {
     await compareAndUpload(config);
     return;
   }
-
-  const client = createClient(repo, octokit);
 
   // Find current run and target run and artifact.
   const runAndArtifact = await findRunAndArtifact({ event, client });
@@ -115,11 +110,11 @@ export const run = async (event: Event, repo: Repository, config: Config) => {
   const { currentRun, targetRun, targetArtifact } = runAndArtifact;
 
   // Download and copy expected images to workspace.
-  await downloadExpectedImages(octokit, repo, targetArtifact.id);
+  await downloadExpectedImages(client, targetArtifact.id);
 
   const result = await compareAndUpload(config);
 
   const comment = createCommentWithTarget({ event, currentRun, targetRun, result });
 
-  await octokit.rest.issues.createComment({ ...repo, issue_number: event.number, body: comment });
+  await client.postComment(event.number, comment);
 };
