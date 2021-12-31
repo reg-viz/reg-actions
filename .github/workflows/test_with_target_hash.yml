@@ -9,8 +9,18 @@ jobs:
       - uses: actions/checkout@v2
       - run: yarn install
       - run: yarn package
+      - uses: actions/github-script@v5
+        id: target
+        with:
+          result-encoding: string
+          script: |
+            if (Math.random() > 0.5) {
+              return "59b7802"
+            } else {
+              return "34f93ed"
+            }
       - uses: ./dist
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           image-directory-path: "./images"
-          target-hash: 59b7802
+          target-hash: "${{ steps.target.outputs.result }}"
