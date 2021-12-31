@@ -5,10 +5,12 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
-      - run: yarn install && yarn package
+      - run: yarn install
+      - run: yarn package
+        env:
+          NODE_ENV: production
       - uses: ./dist
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"

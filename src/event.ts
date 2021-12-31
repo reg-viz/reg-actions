@@ -22,7 +22,7 @@ const readEvent = (): Event | undefined => {
 export const getEvent = (): Event => {
   const event = readEvent();
 
-  log.info(`event = `, event);
+  log.debug(`event = `, event);
 
   if (!event) {
     throw new Error('Failed to get github event.json.');

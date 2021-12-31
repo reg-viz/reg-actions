@@ -1,6 +1,6 @@
 import * as l from 'loglevel';
 
-if (process.env.ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production') {
   l.setLevel('debug');
 } else {
   l.setLevel('info');
