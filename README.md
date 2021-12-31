@@ -113,6 +113,8 @@ The pixel threshold at which the image is considered changed. When the differenc
 The reg-actions report is created as a `Github Oauth App` that requires the `repo` scope.    
 This is because, the report download artifact directly and it needs the `repo` scope to download the `artifact`.   
 
+So if you use this action in private repository, please check [Restricting access to your organization's data](https://docs.github.com/ja/organizations/restricting-access-to-your-organizations-data).
+
 ## Limitation
 
 - If the `artifact` is deleted, the report will also be deleted, see [`Artifact and log retention policy`](https://docs.github.com/ja/actions/learn-github-actions/usage-limits-billing-and-administration#artifact-and-log-retention-policy) for the retention period of the `artifact`.
