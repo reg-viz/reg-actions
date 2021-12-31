@@ -9,7 +9,7 @@ export type Run = components['schemas']['workflow-run'];
 
 export type FindRunAndArtifactInput = {
   event: Event;
-  client: Client;
+  client: RunClient;
 };
 
 export type Artifact = {
@@ -17,15 +17,19 @@ export type Artifact = {
   name: string;
 };
 
-export interface Client {
+export type RunClient = {
   fetchRuns: (page: number) => Promise<{ data: { workflow_runs: Run[] } }>;
   fetchArtifacts: (runId: number) => Promise<{ data: { artifacts: Artifact[] } }>;
-}
+};
 
 export const findRunAndArtifact = async ({
   event,
   client,
-}: FindRunAndArtifactInput): Promise<{ currentRun: Run; targetRun: Run; targetArtifact: Artifact } | null> => {
+}: FindRunAndArtifactInput): Promise<{
+  currentRun: Run;
+  targetRun: Run | null;
+  targetArtifact: Artifact | null;
+} | null> => {
   let currentRun: Run | null = null;
 
   const currentHash = (event.after ?? event?.pull_request?.head?.sha)?.slice(0, 7);
@@ -44,7 +48,12 @@ export const findRunAndArtifact = async ({
         log.debug(`currentRun = `, currentRun);
       }
     }
-    if (!event.pull_request) return null;
+    if (!event.pull_request) {
+      if (currentRun) {
+        return { currentRun, targetRun: null, targetArtifact: null };
+      }
+      return null;
+    }
 
     const targetHash = await findTargetHash(event.pull_request.base.sha, event.pull_request.head.sha);
     const targetHashShort = targetHash.slice(0, 7);
@@ -61,6 +70,9 @@ export const findRunAndArtifact = async ({
     }
     if (runs.data.workflow_runs.length < 100) {
       log.info('Failed to find target run');
+      if (currentRun) {
+        return { currentRun, targetRun: null, targetArtifact: null };
+      }
       return null;
     }
   }

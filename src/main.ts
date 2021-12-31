@@ -4,6 +4,7 @@ import * as github from '@actions/github';
 import { getConfig } from './config';
 import { getEvent } from './event';
 import { run } from './usecase';
+import { createClient } from './client';
 
 const main = async () => {
   const config = getConfig();
@@ -12,7 +13,11 @@ const main = async () => {
 
   const event = getEvent();
 
-  await run(event, repo, config);
+ const octokit = github.getOctokit(config.githubToken);
+
+  const client = createClient(repo, octokit);
+
+  await run(event, client, config);
 };
 
 main().catch(e => core.setFailed(e.message));
