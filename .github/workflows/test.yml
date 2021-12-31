@@ -9,8 +9,6 @@ jobs:
       - uses: actions/checkout@v2
       - run: yarn install
       - run: yarn package
-        env:
-          NODE_ENV: production
       - uses: ./dist
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
