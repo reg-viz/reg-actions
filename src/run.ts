@@ -28,32 +28,13 @@ export const findRunAndArtifact = async ({
   client,
   targetHash: inputTargetHash,
 }: FindRunAndArtifactInput): Promise<{
-  currentRun: Run;
-  targetRun: Run | null;
-  targetArtifact: Artifact | null;
+  run: Run | null;
+  artifact: Artifact | null;
 } | null> => {
-  let currentRun: Run | null = null;
-
-  const currentHash = (event.after ?? event?.pull_request?.head?.sha)?.slice(0, 7);
-
-  if (!currentHash) return null;
-
-  log.info(`current hash is ${currentHash}.`);
-
   let page = 0;
   while (true) {
     const runs = await client.fetchRuns(page++);
-    if (!currentRun) {
-      const run = runs.data.workflow_runs.find(run => run.head_sha.startsWith(currentHash));
-      if (run) {
-        currentRun = run;
-        log.debug(`currentRun = `, currentRun);
-      }
-    }
     if (!event.pull_request) {
-      if (currentRun) {
-        return { currentRun, targetRun: null, targetArtifact: null };
-      }
       return null;
     }
 
@@ -68,15 +49,12 @@ export const findRunAndArtifact = async ({
       const res = await client.fetchArtifacts(run.id);
       const { artifacts } = res.data;
       const found = artifacts.find(a => a.name === ARTIFACT_NAME);
-      if (currentRun && found) {
-        return { currentRun, targetRun: run, targetArtifact: found };
+      if (found) {
+        return { run, artifact: found };
       }
     }
     if (runs.data.workflow_runs.length < 100) {
       log.info('Failed to find target run');
-      if (currentRun) {
-        return { currentRun, targetRun: null, targetArtifact: null };
-      }
       return null;
     }
   }
