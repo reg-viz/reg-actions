@@ -97,7 +97,7 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
   const runAndArtifact = await findRunAndArtifact({ event, client, targetHash: config.targetHash });
 
   // If target artifact is not found, upload images.
-  if (!runAndArtifact || !runAndArtifact.targetRun || !runAndArtifact.targetArtifact) {
+  if (!runAndArtifact || !runAndArtifact.run || !runAndArtifact.artifact) {
     log.warn('Failed to find current or target runs');
     const result = await compareAndUpload(client, config);
 
@@ -109,10 +109,10 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
     return;
   }
 
-  const { targetRun, targetArtifact } = runAndArtifact;
+  const { run: targetRun, artifact } = runAndArtifact;
 
   // Download and copy expected images to workspace.
-  await downloadExpectedImages(client, targetArtifact.id);
+  await downloadExpectedImages(client, artifact.id);
 
   const result = await compareAndUpload(client, config);
 

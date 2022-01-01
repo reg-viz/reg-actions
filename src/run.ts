@@ -28,8 +28,8 @@ export const findRunAndArtifact = async ({
   client,
   targetHash: inputTargetHash,
 }: FindRunAndArtifactInput): Promise<{
-  targetRun: Run | null;
-  targetArtifact: Artifact | null;
+  run: Run | null;
+  artifact: Artifact | null;
 } | null> => {
   let page = 0;
   while (true) {
@@ -50,7 +50,7 @@ export const findRunAndArtifact = async ({
       const { artifacts } = res.data;
       const found = artifacts.find(a => a.name === ARTIFACT_NAME);
       if (found) {
-        return { targetRun: run, targetArtifact: found };
+        return { run, artifact: found };
       }
     }
     if (runs.data.workflow_runs.length < 100) {
