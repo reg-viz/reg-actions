@@ -114,7 +114,7 @@ The pixel threshold at which the image is considered changed. When the differenc
 - Default: N/A
 
 The commit hash to be compared.   
-You can determine the target hash dynamically using a [github script](https://github.com/actions/github-script).   
+For example you can determine the target hash dynamically using a [github script](https://github.com/actions/github-script).   
 Please see [test_with_target_hash.yml](./.github/workflows/test_with_target_hash.yml).
 
 ## Authorization
