@@ -119,8 +119,8 @@ Please see [test_with_target_hash.yml](./.github/workflows/test_with_target_hash
 
 ## Authorization
 
-The reg-actions report is created as a `Github Oauth App` that requires the `repo` scope.    
-This is because, the report download artifact directly and it needs the `repo` scope to download the `artifact`.   
+The `reg-actions` report is created as a `Github Oauth App` that requires the `repo` scope.    
+This is because, the report app downloads artifact directly and it needs the `repo` scope to download the `artifact`.   
 
 So if you use this action in private repository, please check [Restricting access to your organization's data](https://docs.github.com/ja/organizations/restricting-access-to-your-organizations-data).
 
