@@ -438,6 +438,7 @@ const capture = (cmd, args) => __awaiter(void 0, void 0, void 0, function* () {
 });
 const findTargetHash = (baseSha, headSha) => __awaiter(void 0, void 0, void 0, function* () {
     logger_1.log.debug(`base sha is ${baseSha}, head sha is ${headSha}`);
+    yield capture('git', ['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*']);
     yield capture('git', ['fetch', '--all']);
     const args = ['merge-base', '-a', `${baseSha}`, `${headSha}`];
     const res = yield capture('git', args);
