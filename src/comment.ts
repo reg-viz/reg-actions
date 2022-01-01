@@ -6,14 +6,15 @@ import { CompareOutput } from './compare';
 
 export type CreateCommentWithTargetInput = {
   event: Event;
-  currentRun: Run;
+  runId: number;
+  sha: string
   targetRun: Run;
   result: CompareOutput;
 };
 
 export type CreateCommentWithoutTargetInput = {
   event: Event;
-  currentRun: Run;
+  runId: number;
   result: CompareOutput;
 };
 
@@ -33,15 +34,15 @@ const badge = (result: CompareOutput) => {
 
 export const createCommentWithTarget = ({
   event,
-  currentRun,
+  runId,
+  sha: currentHash,
   targetRun,
   result,
 }: CreateCommentWithTargetInput): string => {
   const [owner, reponame] = event.repository.full_name.split('/');
-  const url = createReportURL(owner, reponame, currentRun.id);
+  const url = createReportURL(owner, reponame, runId);
   log.info(`This report URL is ${url}`);
 
-  const currentHash = currentRun.head_sha;
   const targetHash = targetRun.head_sha;
   const currentHashShort = currentHash.slice(0, 7);
   const targetHashShort = targetHash.slice(0, 7);
@@ -72,9 +73,9 @@ ${successOrFailMessage}
   return body;
 };
 
-export const createCommentWithoutTarget = ({ event, currentRun, result }: CreateCommentWithoutTargetInput): string => {
+export const createCommentWithoutTarget = ({ event, runId, result }: CreateCommentWithoutTargetInput): string => {
   const [owner, reponame] = event.repository.full_name.split('/');
-  const url = createReportURL(owner, reponame, currentRun.id);
+  const url = createReportURL(owner, reponame, runId);
   log.info(`This report URL is ${url}`);
 
   const body = `Failed to find a target artifact.

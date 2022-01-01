@@ -81,7 +81,7 @@ type CommentClient = {
 
 type Client = CommentClient & DownloadClient & UploadClient & RunClient;
 
-export const run = async (event: Event, client: Client, config: Config) => {
+export const run = async (event: Event, runId: number, sha: string, client: Client, config: Config) => {
   // Setup directory for artifact and copy images.
   await init(config);
 
@@ -102,21 +102,21 @@ export const run = async (event: Event, client: Client, config: Config) => {
     const result = await compareAndUpload(client, config);
 
     // If we have current run, add comment to PR.
-    if (runAndArtifact?.currentRun) {
-      const comment = createCommentWithoutTarget({ event, currentRun: runAndArtifact?.currentRun, result });
+    if (runId) {
+      const comment = createCommentWithoutTarget({ event, runId, result });
       await client.postComment(event.number, comment);
     }
     return;
   }
 
-  const { currentRun, targetRun, targetArtifact } = runAndArtifact;
+  const { targetRun, targetArtifact } = runAndArtifact;
 
   // Download and copy expected images to workspace.
   await downloadExpectedImages(client, targetArtifact.id);
 
   const result = await compareAndUpload(client, config);
 
-  const comment = createCommentWithTarget({ event, currentRun, targetRun, result });
+  const comment = createCommentWithTarget({ event, runId, sha, targetRun, result });
 
   await client.postComment(event.number, comment);
 };
