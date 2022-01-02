@@ -7,7 +7,7 @@ import { CompareOutput } from './compare';
 export type CreateCommentWithTargetInput = {
   event: Event;
   runId: number;
-  sha: string
+  sha: string;
   targetRun: Run;
   result: CompareOutput;
 };
@@ -30,6 +30,21 @@ const badge = (result: CompareOutput) => {
     return '![new items](https://img.shields.io/badge/%E2%9C%94%20reg-new%20items-green)';
   }
   return '![success](https://img.shields.io/badge/%E2%9C%94%20reg-passed-green)';
+};
+
+const createSummary = (result: CompareOutput, url: string) => {
+  let summary = '';
+  if (result.passedItems.length) {
+    summary += `<details>
+  <summary>pass</summary>
+${result.passedItems.map(item => {
+  return `[${item}](${url}&id=${encodeURIComponent(item)})`;
+})}
+</details>
+`;
+
+    return summary;
+  }
 };
 
 export const createCommentWithTarget = ({
@@ -68,7 +83,10 @@ ${successOrFailMessage}
 | pass    | ${result.passedItems.length}  |
 | change  | ${result.failedItems.length}  |
 | new     | ${result.newItems.length}     |
-| delete  | ${result.deletedItems.length} |`;
+| delete  | ${result.deletedItems.length} |
+
+${createSummary(result, url)}
+`;
 
   return body;
 };
