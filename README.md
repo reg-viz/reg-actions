@@ -127,6 +127,8 @@ So if you use this action in private repository, please check [Restricting acces
 ## Limitation
 
 - If the `artifact` is deleted, the report will also be deleted, see [`Artifact and log retention policy`](https://docs.github.com/ja/actions/learn-github-actions/usage-limits-billing-and-administration#artifact-and-log-retention-policy) for the retention period of the `artifact`.
+- The report may be slow to display. This is due to the fact that the report is built while retrieving the artifacts via `ReadableStream`. If this is a problem, please use [reg-suit](https://github.com/reg-viz/reg-suit).
+
 
 ## Contribute
 
