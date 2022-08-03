@@ -1,5 +1,5 @@
 import { Event } from './event';
-import { createReportURL, createCustomReportURL } from './report';
+import { createReportURL } from './report';
 import { log } from './logger';
 import { Run } from './run';
 import { CompareOutput } from './compare';
@@ -45,8 +45,7 @@ export const createCommentWithTarget = ({
   const [owner, reponame] = event.repository.full_name.split('/');
   let url: string
   if (customReportPage) {
-    const branchName = event.repository.branches_url.split('/').pop() || 'branchName';
-    url = createCustomReportURL(customReportPage, branchName);
+    url = customReportPage;
   } else {
     url = createReportURL(owner, reponame, runId);
   }
@@ -86,8 +85,7 @@ export const createCommentWithoutTarget = ({ event, runId, result, customReportP
   const [owner, reponame] = event.repository.full_name.split('/');
   let url: string
   if (customReportPage) {
-    const branchName = event.repository.branches_url.split('/').pop() || 'branchName';
-    url = createCustomReportURL(customReportPage, branchName);
+    url = customReportPage
   } else {
     url = createReportURL(owner, reponame, runId);
   }

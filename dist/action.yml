@@ -27,7 +27,7 @@ inputs:
     description: "The commit hash to be compared."
     required: false
   custom-report-page:
-    description: "the custom report page link."
+    description: "The custom report page link."
     required: false
 runs:
   using: "node16"
