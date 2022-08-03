@@ -103,7 +103,7 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
 
     // If we have current run, add comment to PR.
     if (runId) {
-      const comment = createCommentWithoutTarget({ event, runId, result });
+      const comment = createCommentWithoutTarget({ event, runId, result, customReportPage: config.customReportPage });
       await client.postComment(event.number, comment);
     }
     return;
@@ -116,7 +116,7 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
 
   const result = await compareAndUpload(client, config);
 
-  const comment = createCommentWithTarget({ event, runId, sha, targetRun, result });
+  const comment = createCommentWithTarget({ event, runId, sha, targetRun, result, customReportPage: config.customReportPage });
 
   await client.postComment(event.number, comment);
 };

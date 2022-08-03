@@ -9,6 +9,7 @@ export interface Config {
   thresholdRate: number;
   thresholdPixel: number;
   targetHash: string | null;
+  customReportPage: string | null;
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -79,6 +80,7 @@ export const getConfig = (): Config => {
   validateThresholdRate(thresholdRate);
   const targetHash = core.getInput('target-hash') || null;
   validateTargetHash(targetHash);
+  const customReportPage = core.getInput('customReportPage') || null;
 
   return {
     githubToken,
@@ -88,5 +90,6 @@ export const getConfig = (): Config => {
     thresholdRate,
     thresholdPixel,
     targetHash,
+    customReportPage,
   };
 };
