@@ -9,6 +9,7 @@ export interface Config {
   thresholdRate: number;
   thresholdPixel: number;
   targetHash: string | null;
+  customReportPage: string | null;
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -66,6 +67,12 @@ const validateTargetHash = (h: string | null) => {
     throw new Error(`'target-hash' input must be commit hash but got '${h}'`);
   }
 };
+const validateCustomReportPage = (link: string | null) => {
+  if (!link) return;
+  if (!/^(?:http(s)?:\/\/)[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$/.test(link)) {
+    throw new Error(`'custom-report-page' input must be a valid url '${link}'`);
+  }
+};
 
 export const getConfig = (): Config => {
   const githubToken = core.getInput('github-token');
@@ -79,6 +86,8 @@ export const getConfig = (): Config => {
   validateThresholdRate(thresholdRate);
   const targetHash = core.getInput('target-hash') || null;
   validateTargetHash(targetHash);
+  const customReportPage = core.getInput('custom-report-page') || null;
+  validateCustomReportPage(customReportPage)
 
   return {
     githubToken,
@@ -88,5 +97,6 @@ export const getConfig = (): Config => {
     thresholdRate,
     thresholdPixel,
     targetHash,
+    customReportPage,
   };
 };
