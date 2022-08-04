@@ -5,6 +5,7 @@ import { Config } from './config';
 import * as constants from './constants';
 import { workspace } from './path';
 import path from 'path/posix';
+import _compare from 'reg-cli';
 
 const _compare = require('reg-cli');
 
@@ -22,6 +23,7 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       expectedDir: path.join(workspace(), constants.EXPECTED_DIR_NAME),
       diffDir: path.join(workspace(), constants.DIFF_DIR_NAME),
       json: path.join(workspace(), constants.JSON_NAME),
+      report: config.reportFilePath,
       update: false,
       ignoreChange: true,
       urlPrefix: '',
