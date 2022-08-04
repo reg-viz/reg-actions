@@ -104,7 +104,7 @@ export const getConfig = (): Config => {
   validateTargetHash(targetHash);
   const customReportPage = core.getInput('custom-report-page') || null;
   validateCustomReportPage(customReportPage)
-  const reportFilePath = core.getInput('custom-report-page');
+  const reportFilePath = core.getInput('report-file-path');
   validateReportFilePath(reportFilePath);
 
   return {
