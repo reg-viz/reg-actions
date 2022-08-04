@@ -34,4 +34,4 @@ inputs:
     required: false
 runs:
   using: "node16"
-  main: "index.js"
+  main: "lib/index.js"
