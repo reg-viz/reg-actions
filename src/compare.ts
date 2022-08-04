@@ -5,7 +5,6 @@ import { Config } from './config';
 import * as constants from './constants';
 import { workspace } from './path';
 import path from 'path/posix';
-import _compare from 'reg-cli';
 
 const _compare = require('reg-cli');
 
