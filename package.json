@@ -36,6 +36,7 @@
     "@actions/github": "^5.0.0",
     "@actions/io": "^1.1.1",
     "@actions/tool-cache": "^1.7.1",
+    "@superactions/comment": "^0.1.1",
     "@types/cpx": "^1.5.2",
     "@types/glob": "^7.2.0",
     "adm-zip": "^0.5.9",

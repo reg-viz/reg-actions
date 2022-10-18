@@ -20,7 +20,7 @@ const main = async () => {
 
   const octokit = github.getOctokit(config.githubToken);
 
-  const client = createClient(repo, octokit);
+  const client = createClient(repo, octokit, config.githubToken);
 
   await run(event, runId, sha, client, config);
 };
