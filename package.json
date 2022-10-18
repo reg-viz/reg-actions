@@ -6,7 +6,7 @@
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
-    "copy-static": "cp -R ./node_modules/reg-cli/report report && cp node_modules/reg-cli/template template",
+    "copy-static": "cp -R ./node_modules/reg-cli/report report && cp -R node_modules/reg-cli/template template",
     "package": "npm run build && ncc build node_modules/reg-cli/dist/diff.js -o dist && mv dist/index.js dist/diff.js && ncc build --source-map --license licenses.txt && yarn copy-static"
   },
   "repository": {
