@@ -22,6 +22,7 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       expectedDir: path.join(workspace(), constants.EXPECTED_DIR_NAME),
       diffDir: path.join(workspace(), constants.DIFF_DIR_NAME),
       json: path.join(workspace(), constants.JSON_NAME),
+      report: path.join(workspace(), constants.REPORT_NAME),
       update: false,
       ignoreChange: true,
       urlPrefix: '',
