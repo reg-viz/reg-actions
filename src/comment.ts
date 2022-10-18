@@ -75,7 +75,7 @@ export const createCommentWithoutTarget = ({ event, runId, result }: CreateComme
   const body = `Failed to find a target artifact.
 All items will be treated as new items and will be used as expected data for the next time.
 
-[FULL REPORT](${url}).
+[FULL REPORT](${url})
 
 | item    | count                         |
 |:--------|:-----------------------------:|

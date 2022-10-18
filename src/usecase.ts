@@ -14,7 +14,7 @@ import { createCommentWithTarget, createCommentWithoutTarget } from './comment';
 import * as constants from './constants';
 import { workspace } from './path';
 import { REPORT_NAME } from './constants';
-import { join } from 'path';
+import { dirname, join } from 'path';
 
 type DownloadClient = {
   downloadArtifact: (id: number) => Promise<{ data: unknown }>;
@@ -65,7 +65,7 @@ const compareAndUpload = async (
   let reportUrl: string = '';
   try {
     await client.uploadArtifact(files);
-    reportUrl = await client.uploadWebsite(join(workspace(), REPORT_NAME));
+    reportUrl = await client.uploadWebsite(dirname(join(workspace(), REPORT_NAME)));
   } catch (e) {
     log.error(e);
     throw new Error('Failed to upload artifact');
