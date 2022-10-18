@@ -30,9 +30,9 @@ export const createClient = (repository: Repository, octokit: Octokit, ghToken: 
       return;
     },
     uploadWebsite: async (dir: string) => {
-      await superArtifactClient.uploadDirectory('d1', dir);
+      await superArtifactClient.uploadDirectory('reg', dir);
 
-      return await superArtifactClient.getPageUrl('d1', 'index.html');
+      return await superArtifactClient.getPageUrl('reg/report/index.html');
     },
     downloadArtifact: async (artifactId: number) => {
       return octokit.rest.actions.downloadArtifact({

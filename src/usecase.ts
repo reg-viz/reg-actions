@@ -65,7 +65,7 @@ const compareAndUpload = async (
   let reportUrl: string = '';
   try {
     await client.uploadArtifact(files);
-    reportUrl = await client.uploadWebsite(dirname(join(workspace(), REPORT_NAME)));
+    reportUrl = await client.uploadWebsite(workspace());
   } catch (e) {
     log.error(e);
     throw new Error('Failed to upload artifact');
