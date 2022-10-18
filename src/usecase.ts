@@ -100,7 +100,7 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
   if (!runAndArtifact || !runAndArtifact.run || !runAndArtifact.artifact) {
     log.warn('Failed to find current or target runs');
     log.warn(`cwd: ${process.cwd()}`);
-    log.warn(`cwd: ${__dirname}`);
+    log.warn(`dirname: ${__dirname}`);
     const result = await compareAndUpload(client, config);
 
     // If we have current run, add comment to PR.
