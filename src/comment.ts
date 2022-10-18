@@ -9,13 +9,13 @@ export type CreateCommentWithTargetInput = {
   runId: number;
   sha: string;
   targetRun: Run;
-  result: CompareOutput;
+  result: CompareOutput & { reportUrl: string };
 };
 
 export type CreateCommentWithoutTargetInput = {
   event: Event;
   runId: number;
-  result: CompareOutput;
+  result: CompareOutput & { reportUrl: string };
 };
 
 const isSuccess = (result: CompareOutput) => {
@@ -69,13 +69,13 @@ ${successOrFailMessage}
 
 export const createCommentWithoutTarget = ({ event, runId, result }: CreateCommentWithoutTargetInput): string => {
   const [owner, reponame] = event.repository.full_name.split('/');
-  const url = createReportURL(owner, reponame, runId);
+  const url = result.reportUrl;
   log.info(`This report URL is ${url}`);
 
   const body = `Failed to find a target artifact.
 All items will be treated as new items and will be used as expected data for the next time.
 
-Check out the report [here](${url}).
+[FULL REPORT](${url}).
 
 | item    | count                         |
 |:--------|:-----------------------------:|

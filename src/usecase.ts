@@ -13,6 +13,8 @@ import { compare, CompareOutput } from './compare';
 import { createCommentWithTarget, createCommentWithoutTarget } from './comment';
 import * as constants from './constants';
 import { workspace } from './path';
+import { REPORT_NAME } from './constants';
+import { join } from 'path';
 
 type DownloadClient = {
   downloadArtifact: (id: number) => Promise<{ data: unknown }>;
@@ -45,10 +47,14 @@ const copyImages = (imagePath: string) => {
 
 type UploadClient = {
   uploadArtifact: (files: string[]) => Promise<void>;
+  uploadWebsite: (dir: string) => Promise<string>;
 };
 
 // Compare images and upload result.
-const compareAndUpload = async (client: UploadClient, config: Config): Promise<CompareOutput> => {
+const compareAndUpload = async (
+  client: UploadClient,
+  config: Config,
+): Promise<CompareOutput & { reportUrl: string }> => {
   const result = await compare(config);
   log.debug('compare result', result);
 
@@ -56,15 +62,17 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
 
   log.info('Start upload artifact');
 
+  let reportUrl: string = '';
   try {
     await client.uploadArtifact(files);
+    reportUrl = await client.uploadWebsite(join(workspace(), REPORT_NAME));
   } catch (e) {
     log.error(e);
     throw new Error('Failed to upload artifact');
   }
   log.info('Succeeded to upload artifact');
 
-  return result;
+  return { ...result, reportUrl };
 };
 
 const init = async (config: Config) => {
