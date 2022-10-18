@@ -45,7 +45,7 @@
     "hard-rejection": "^2.1.0",
     "loglevel": "^1.8.0",
     "make-dir": "^3.1.0",
-    "reg-cli": "^0.17.4"
+    "reg-cli": "^0.17.7"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.4.34",
