@@ -65,7 +65,6 @@ const compareAndUpload = async (
   let reportUrl: string = '';
   try {
     await client.uploadArtifact(files);
-    reportUrl = await client.uploadWebsite(workspace());
   } catch (e) {
     log.error(e);
     throw new Error('Failed to upload artifact');
@@ -113,7 +112,8 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
 
     // If we have current run, add comment to PR.
     if (runId) {
-      const comment = createCommentWithoutTarget({ event, runId, result });
+      const reportUrl = await client.uploadWebsite(workspace());
+      const comment = createCommentWithoutTarget({ event, runId, result, reportUrl });
       await client.postComment(event.number, comment);
     }
     return;
@@ -126,7 +126,8 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
 
   const result = await compareAndUpload(client, config);
 
-  const comment = createCommentWithTarget({ event, runId, sha, targetRun, result });
+  const reportUrl = await client.uploadWebsite(workspace());
+  const comment = createCommentWithTarget({ event, runId, sha, targetRun, result, reportUrl });
 
   await client.postComment(event.number, comment);
 };
