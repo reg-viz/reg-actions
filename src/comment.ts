@@ -7,15 +7,15 @@ import { CompareOutput } from './compare';
 export type CreateCommentWithTargetInput = {
   event: Event;
   runId: number;
-  sha: string
+  sha: string;
   targetRun: Run;
-  result: CompareOutput;
+  result: CompareOutput & { reportUrl: string };
 };
 
 export type CreateCommentWithoutTargetInput = {
   event: Event;
   runId: number;
-  result: CompareOutput;
+  result: CompareOutput & { reportUrl: string };
 };
 
 const isSuccess = (result: CompareOutput) => {
@@ -23,13 +23,7 @@ const isSuccess = (result: CompareOutput) => {
 };
 
 const badge = (result: CompareOutput) => {
-  if (result.failedItems.length) {
-    return '![change detected](https://img.shields.io/badge/%E2%9C%94%20reg-change%20detected-orange)';
-  }
-  if (result.newItems.length) {
-    return '![new items](https://img.shields.io/badge/%E2%9C%94%20reg-new%20items-green)';
-  }
-  return '![success](https://img.shields.io/badge/%E2%9C%94%20reg-passed-green)';
+  return '';
 };
 
 export const createCommentWithTarget = ({
@@ -75,15 +69,13 @@ ${successOrFailMessage}
 
 export const createCommentWithoutTarget = ({ event, runId, result }: CreateCommentWithoutTargetInput): string => {
   const [owner, reponame] = event.repository.full_name.split('/');
-  const url = createReportURL(owner, reponame, runId);
+  const url = result.reportUrl;
   log.info(`This report URL is ${url}`);
 
   const body = `Failed to find a target artifact.
 All items will be treated as new items and will be used as expected data for the next time.
 
-![target not found](https://img.shields.io/badge/%E2%9C%94%20reg-new%20items-blue)
-
-Check out the report [here](${url}).
+[FULL REPORT](${url})
 
 | item    | count                         |
 |:--------|:-----------------------------:|

@@ -1,5 +1,7 @@
 import * as github from '@actions/github';
 import * as artifact from '@actions/artifact';
+import { createCommentOrUpdate } from '@superactions/comment';
+import * as superArtifact from '@superactions/artifact';
 
 import { Repository } from './repository';
 import * as constants from './constants';
@@ -7,8 +9,9 @@ import { workspace } from './path';
 
 export type Octokit = ReturnType<typeof github.getOctokit>;
 
-export const createClient = (repository: Repository, octokit: Octokit) => {
+export const createClient = (repository: Repository, octokit: Octokit, ghToken: string) => {
   const artifactClient = artifact.create();
+  const superArtifactClient = superArtifact.create({ ghToken: ghToken });
 
   return {
     fetchRuns: async (page: number) => {
@@ -26,6 +29,11 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       const _ = await artifactClient.uploadArtifact(constants.ARTIFACT_NAME, files, workspace());
       return;
     },
+    uploadWebsite: async (dir: string) => {
+      await superArtifactClient.uploadDirectory('reg', dir);
+
+      return await superArtifactClient.getPageUrl('reg', 'report/index.html');
+    },
     downloadArtifact: async (artifactId: number) => {
       return octokit.rest.actions.downloadArtifact({
         ...repository,
@@ -33,8 +41,8 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
         archive_format: 'zip',
       });
     },
-    postComment: async (issueNumber: number, comment: string) => {
-      const _ = await octokit.rest.issues.createComment({ ...repository, issue_number: issueNumber, body: comment });
+    postComment: async (_issueNumber: number, comment: string) => {
+      await createCommentOrUpdate({ message: comment, githubToken: ghToken, uniqueAppId: 'vis-reg-storybook' });
       return;
     },
   };
