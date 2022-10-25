@@ -437,7 +437,7 @@ const capture = (cmd, args) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 const findTargetHash = (baseSha, headSha) => __awaiter(void 0, void 0, void 0, function* () {
-    logger_1.log.debug(`base sha is ${baseSha}, head sha is ${headSha}`);
+    logger_1.log.info(`base sha is ${baseSha}, head sha is ${headSha}`);
     yield capture('git', ['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*']);
     yield capture('git', ['fetch', '--all']);
     const args = ['merge-base', '-a', `${baseSha}`, `${headSha}`];
@@ -622,24 +622,32 @@ const constants_1 = __nccwpck_require__(55105);
 const findRunAndArtifact = ({ event, client, targetHash: inputTargetHash, }) => __awaiter(void 0, void 0, void 0, function* () {
     let page = 0;
     while (true) {
-        const runs = yield client.fetchRuns(page++);
         if (!event.pull_request) {
             return null;
         }
-        // If target is passed to this function, use it.
-        const targetHash = inputTargetHash !== null && inputTargetHash !== void 0 ? inputTargetHash : (yield (0, git_1.findTargetHash)(event.pull_request.base.sha, event.pull_request.head.sha));
-        const targetHashShort = targetHash.slice(0, 7);
-        logger_1.log.info(`targetHash = ${targetHash}`);
-        for (const run of runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort))) {
-            const res = yield client.fetchArtifacts(run.id);
-            const { artifacts } = res.data;
-            const found = artifacts.find(a => a.name === constants_1.ARTIFACT_NAME);
-            if (found) {
-                return { run, artifact: found };
+        try {
+            logger_1.log.info(`start to fetch runs page = ${page}`);
+            const runs = yield client.fetchRuns(page++);
+            logger_1.log.info(`Succeeded to find ${runs.data.workflow_runs.length} runs`);
+            // If target is passed to this function, use it.
+            const targetHash = inputTargetHash !== null && inputTargetHash !== void 0 ? inputTargetHash : (yield (0, git_1.findTargetHash)(event.pull_request.base.sha, event.pull_request.head.sha));
+            const targetHashShort = targetHash.slice(0, 7);
+            logger_1.log.info(`targetHash = ${targetHash}`);
+            for (const run of runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort))) {
+                const res = yield client.fetchArtifacts(run.id);
+                const { artifacts } = res.data;
+                const found = artifacts.find(a => a.name === constants_1.ARTIFACT_NAME);
+                if (found) {
+                    return { run, artifact: found };
+                }
+            }
+            if (runs.data.workflow_runs.length < 100) {
+                logger_1.log.info('Failed to find target run');
+                return null;
             }
         }
-        if (runs.data.workflow_runs.length < 100) {
-            logger_1.log.info('Failed to find target run');
+        catch (e) {
+            logger_1.log.error('Failed to find run', e);
             return null;
         }
     }
