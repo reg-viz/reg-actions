@@ -20,27 +20,45 @@ type DownloadClient = {
 
 // Download expected images from target artifact.
 const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: number) => {
-  const zip = await client.downloadArtifact(latestArtifactId);
-  await Promise.all(
-    new Zip(Buffer.from(zip.data as any))
-      .getEntries()
-      .filter(f => !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME))
-      .map(async file => {
-        const f = path.join(
-          workspace(),
-          file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME),
-        );
-        await makeDir(path.dirname(f));
-        await fs.promises.writeFile(f, file.getData());
-      }),
-  );
+  log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
+  try {
+    const zip = await client.downloadArtifact(latestArtifactId);
+    await Promise.all(
+      new Zip(Buffer.from(zip.data as any))
+        .getEntries()
+        .filter(f => !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME))
+        .map(async file => {
+          const f = path.join(
+            workspace(),
+            file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME),
+          );
+          await makeDir(path.dirname(f));
+          await fs.promises.writeFile(f, file.getData());
+        }),
+    ).catch(e => {
+      log.error('Failed to extract images.', e);
+      throw e;
+    });
+  } catch (e: any) {
+    if (e.message === 'Artifact has expired') {
+      log.error('Failed to download expected images. Because expected artifact has already expired.');
+      return;
+    }
+    log.error(`Failed to download artifact ${e}`);
+  }
 };
 
 const copyImages = (imagePath: string) => {
-  cpx.copySync(
-    path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`),
-    path.join(workspace(), constants.ACTUAL_DIR_NAME),
-  );
+  log.info(`Start copyImage from ${imagePath}`);
+
+  try {
+    cpx.copySync(
+      path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`),
+      path.join(workspace(), constants.ACTUAL_DIR_NAME),
+    );
+  } catch (e) {
+    log.error(`Failed to copy images ${e}`);
+  }
 };
 
 type UploadClient = {
@@ -68,11 +86,16 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
 };
 
 const init = async (config: Config) => {
+  log.info(`start initialization.`);
   // Create workspace
   await makeDir(workspace());
 
+  log.info(`Succeeded to cerate directory.`);
+
   // Copy actual images
   copyImages(config.imageDirectoryPath);
+
+  log.info(`Succeeded to initialization.`);
 };
 
 type CommentClient = {
@@ -93,6 +116,7 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
     return;
   }
 
+  log.info(`start to find run and artifact.`);
   // Find current run and target run and artifact.
   const runAndArtifact = await findRunAndArtifact({ event, client, targetHash: config.targetHash });
 

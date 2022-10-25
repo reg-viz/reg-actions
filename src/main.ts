@@ -16,9 +16,13 @@ const main = async () => {
 
   const event = getEvent();
 
+  log.info(`succeeded to get event, number = ${event.number}`);
+
   const octokit = github.getOctokit(config.githubToken);
 
   const client = createClient(repo, octokit);
+
+  log.info(`start`);
 
   await run(event, runId, sha, client, config);
 };
