@@ -33,28 +33,36 @@ export const findRunAndArtifact = async ({
 } | null> => {
   let page = 0;
   while (true) {
-    const runs = await client.fetchRuns(page++);
     if (!event.pull_request) {
       return null;
     }
+    try {
+      log.info(`start to fetch runs page = ${page}`);
+      const runs = await client.fetchRuns(page++);
 
-    // If target is passed to this function, use it.
-    const targetHash =
-      inputTargetHash ?? (await findTargetHash(event.pull_request.base.sha, event.pull_request.head.sha));
-    const targetHashShort = targetHash.slice(0, 7);
+      log.info(`Succeeded to find ${runs.data.workflow_runs.length} runs`);
 
-    log.info(`targetHash = ${targetHash}`);
+      // If target is passed to this function, use it.
+      const targetHash =
+        inputTargetHash ?? (await findTargetHash(event.pull_request.base.sha, event.pull_request.head.sha));
+      const targetHashShort = targetHash.slice(0, 7);
 
-    for (const run of runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort))) {
-      const res = await client.fetchArtifacts(run.id);
-      const { artifacts } = res.data;
-      const found = artifacts.find(a => a.name === ARTIFACT_NAME);
-      if (found) {
-        return { run, artifact: found };
+      log.info(`targetHash = ${targetHash}`);
+
+      for (const run of runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort))) {
+        const res = await client.fetchArtifacts(run.id);
+        const { artifacts } = res.data;
+        const found = artifacts.find(a => a.name === ARTIFACT_NAME);
+        if (found) {
+          return { run, artifact: found };
+        }
       }
-    }
-    if (runs.data.workflow_runs.length < 100) {
-      log.info('Failed to find target run');
+      if (runs.data.workflow_runs.length < 100) {
+        log.info('Failed to find target run');
+        return null;
+      }
+    } catch (e) {
+      log.error('Failed to find run', e);
       return null;
     }
   }
