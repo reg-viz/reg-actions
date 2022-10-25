@@ -537,8 +537,10 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
     const { repo, runId, sha } = github.context;
     logger_1.log.info(`runid = ${runId}, sha = ${sha}`);
     const event = (0, event_1.getEvent)();
+    logger_1.log.info(`succeeded to get event, number = ${event.number}`);
     const octokit = github.getOctokit(config.githubToken);
     const client = (0, client_1.createClient)(repo, octokit);
+    logger_1.log.info(`start`);
     yield (0, usecase_1.run)(event, runId, sha, client, config);
 });
 main().catch(e => core.setFailed(e.message));
@@ -699,18 +701,37 @@ const constants = __importStar(__nccwpck_require__(55105));
 const path_1 = __nccwpck_require__(30013);
 // Download expected images from target artifact.
 const downloadExpectedImages = (client, latestArtifactId) => __awaiter(void 0, void 0, void 0, function* () {
-    const zip = yield client.downloadArtifact(latestArtifactId);
-    yield Promise.all(new adm_zip_1.default(Buffer.from(zip.data))
-        .getEntries()
-        .filter(f => !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME))
-        .map((file) => __awaiter(void 0, void 0, void 0, function* () {
-        const f = path.join((0, path_1.workspace)(), file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
-        yield (0, make_dir_1.default)(path.dirname(f));
-        yield fs.promises.writeFile(f, file.getData());
-    })));
+    logger_1.log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
+    try {
+        const zip = yield client.downloadArtifact(latestArtifactId);
+        yield Promise.all(new adm_zip_1.default(Buffer.from(zip.data))
+            .getEntries()
+            .filter(f => !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME))
+            .map((file) => __awaiter(void 0, void 0, void 0, function* () {
+            const f = path.join((0, path_1.workspace)(), file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
+            yield (0, make_dir_1.default)(path.dirname(f));
+            yield fs.promises.writeFile(f, file.getData());
+        }))).catch(e => {
+            logger_1.log.error('Failed to extract images.', e);
+            throw e;
+        });
+    }
+    catch (e) {
+        if (e.message === 'Artifact has expired') {
+            logger_1.log.error('Failed to download expected images. Because expected artifact has already expired.');
+            return;
+        }
+        logger_1.log.error(`Failed to download artifact ${e}`);
+    }
 });
 const copyImages = (imagePath) => {
-    cpx_1.default.copySync(path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), path.join((0, path_1.workspace)(), constants.ACTUAL_DIR_NAME));
+    logger_1.log.info(`Start copyImage from ${imagePath}`);
+    try {
+        cpx_1.default.copySync(path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), path.join((0, path_1.workspace)(), constants.ACTUAL_DIR_NAME));
+    }
+    catch (e) {
+        logger_1.log.error(`Failed to copy images ${e}`);
+    }
 };
 // Compare images and upload result.
 const compareAndUpload = (client, config) => __awaiter(void 0, void 0, void 0, function* () {
@@ -729,10 +750,13 @@ const compareAndUpload = (client, config) => __awaiter(void 0, void 0, void 0, f
     return result;
 });
 const init = (config) => __awaiter(void 0, void 0, void 0, function* () {
+    logger_1.log.info(`start initialization.`);
     // Create workspace
     yield (0, make_dir_1.default)((0, path_1.workspace)());
+    logger_1.log.info(`Succeeded to cerate directory.`);
     // Copy actual images
     copyImages(config.imageDirectoryPath);
+    logger_1.log.info(`Succeeded to initialization.`);
 });
 const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, void 0, function* () {
     // Setup directory for artifact and copy images.
@@ -744,6 +768,7 @@ const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, voi
         yield compareAndUpload(client, config);
         return;
     }
+    logger_1.log.info(`start to find run and artifact.`);
     // Find current run and target run and artifact.
     const runAndArtifact = yield (0, run_1.findRunAndArtifact)({ event, client, targetHash: config.targetHash });
     // If target artifact is not found, upload images.
