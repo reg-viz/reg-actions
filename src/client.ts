@@ -13,7 +13,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
 
   return {
     fetchRuns: async (page: number) => {
-      return await backOff(
+      return backOff(
         () =>
           octokit.rest.actions.listWorkflowRunsForRepo({
             ...repository,
