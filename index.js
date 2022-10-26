@@ -48,7 +48,7 @@ const createClient = (repository, octokit) => {
     const artifactClient = artifact.create();
     return {
         fetchRuns: (page) => __awaiter(void 0, void 0, void 0, function* () {
-            return yield (0, exponential_backoff_1.backOff)(() => octokit.rest.actions.listWorkflowRunsForRepo(Object.assign(Object.assign({}, repository), { per_page: 50, page })), { numOfAttempts: 5 });
+            return (0, exponential_backoff_1.backOff)(() => octokit.rest.actions.listWorkflowRunsForRepo(Object.assign(Object.assign({}, repository), { per_page: 50, page })), { numOfAttempts: 5 });
         }),
         fetchArtifacts: (runId) => __awaiter(void 0, void 0, void 0, function* () {
             const input = Object.assign(Object.assign({}, repository), { run_id: runId, per_page: 50 });
