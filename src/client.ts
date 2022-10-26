@@ -14,12 +14,12 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
     fetchRuns: async (page: number) => {
       return await octokit.rest.actions.listWorkflowRunsForRepo({
         ...repository,
-        per_page: 100,
+        per_page: 50,
         page,
       });
     },
     fetchArtifacts: async (runId: number) => {
-      const input = { ...repository, run_id: runId, per_page: 100 };
+      const input = { ...repository, run_id: runId, per_page: 50 };
       return octokit.rest.actions.listWorkflowRunArtifacts(input);
     },
     uploadArtifact: async (files: string[]) => {
