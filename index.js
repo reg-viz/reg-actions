@@ -672,7 +672,7 @@ const findRunAndArtifact = ({ event, client, targetHash: inputTargetHash, }) => 
                     return { run, artifact: found };
                 }
             }
-            if (runs.data.workflow_runs.length < 100) {
+            if (runs.data.workflow_runs.length < 50) {
                 logger_1.log.info('Failed to find target run');
                 return null;
             }
