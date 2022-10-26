@@ -57,7 +57,7 @@ export const findRunAndArtifact = async ({
           return { run, artifact: found };
         }
       }
-      if (runs.data.workflow_runs.length < 100) {
+      if (runs.data.workflow_runs.length < 50) {
         log.info('Failed to find target run');
         return null;
       }
