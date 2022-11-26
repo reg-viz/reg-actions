@@ -48,7 +48,7 @@ const createClient = (repository, octokit) => {
     const artifactClient = artifact.create();
     return {
         fetchRuns: (page) => __awaiter(void 0, void 0, void 0, function* () {
-            return (0, exponential_backoff_1.backOff)(() => octokit.rest.actions.listWorkflowRunsForRepo(Object.assign(Object.assign({}, repository), { per_page: 50, page })), { numOfAttempts: 5 });
+            return (0, exponential_backoff_1.backOff)(() => octokit.rest.actions.listWorkflowRunsForRepo(Object.assign(Object.assign({}, repository), { per_page: 100, page })), { numOfAttempts: 5 });
         }),
         fetchArtifacts: (runId) => __awaiter(void 0, void 0, void 0, function* () {
             const input = Object.assign(Object.assign({}, repository), { run_id: runId, per_page: 50 });
@@ -650,6 +650,7 @@ exports.findRunAndArtifact = void 0;
 const logger_1 = __nccwpck_require__(65228);
 const git_1 = __nccwpck_require__(53374);
 const constants_1 = __nccwpck_require__(55105);
+const limitation = 100;
 const findRunAndArtifact = ({ event, client, targetHash: inputTargetHash, }) => __awaiter(void 0, void 0, void 0, function* () {
     let page = 0;
     while (true) {
@@ -672,7 +673,11 @@ const findRunAndArtifact = ({ event, client, targetHash: inputTargetHash, }) => 
                     return { run, artifact: found };
                 }
             }
-            if (runs.data.workflow_runs.length < 50) {
+            if (runs.data.workflow_runs.length < 100) {
+                logger_1.log.info('Failed to find target run');
+                return null;
+            }
+            if (limitation >= page) {
                 logger_1.log.info('Failed to find target run');
                 return null;
             }
