@@ -17,7 +17,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
         () =>
           octokit.rest.actions.listWorkflowRunsForRepo({
             ...repository,
-            per_page: 100,
+            per_page: 50,
             page,
           }),
         { numOfAttempts: 5 },
