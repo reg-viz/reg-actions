@@ -23,7 +23,7 @@ export type RunClient = {
   fetchArtifacts: (runId: number) => Promise<{ data: { artifacts: Artifact[] } }>;
 };
 
-const limitation = 100;
+const limitation = 200;
 
 export const findRunAndArtifact = async ({
   event,
@@ -60,13 +60,13 @@ export const findRunAndArtifact = async ({
         }
       }
 
-      if (runs.data.workflow_runs.length < 100) {
-        log.info('Failed to find target run');
+      if (runs.data.workflow_runs.length < 50) {
+        log.info('Failed to find target run', runs.data.workflow_runs.length);
         return null;
       }
 
-      if (limitation >= page) {
-        log.info('Failed to find target run');
+      if (limitation <= page) {
+        log.info(`Failed to find target run, this is because page reached limitation`, limitation, page);
         return null;
       }
     } catch (e) {
