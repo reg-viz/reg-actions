@@ -650,6 +650,7 @@ exports.findRunAndArtifact = void 0;
 const logger_1 = __nccwpck_require__(65228);
 const git_1 = __nccwpck_require__(53374);
 const constants_1 = __nccwpck_require__(55105);
+const limitation = 200;
 const findRunAndArtifact = ({ event, client, targetHash: inputTargetHash, }) => __awaiter(void 0, void 0, void 0, function* () {
     let page = 0;
     while (true) {
@@ -673,7 +674,11 @@ const findRunAndArtifact = ({ event, client, targetHash: inputTargetHash, }) => 
                 }
             }
             if (runs.data.workflow_runs.length < 50) {
-                logger_1.log.info('Failed to find target run');
+                logger_1.log.info('Failed to find target run', runs.data.workflow_runs.length);
+                return null;
+            }
+            if (limitation <= page) {
+                logger_1.log.info(`Failed to find target run, this is because page reached limitation`, limitation, page);
                 return null;
             }
         }
