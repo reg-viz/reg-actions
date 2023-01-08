@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import { statSync } from 'fs';
+import { dirname } from 'path';
 
 export interface Config {
   imageDirectoryPath: string;
@@ -9,6 +10,8 @@ export interface Config {
   thresholdRate: number;
   thresholdPixel: number;
   targetHash: string | null;
+  customReportPage: string | null;
+  reportFilePath: string | null;
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -67,6 +70,26 @@ const validateTargetHash = (h: string | null) => {
   }
 };
 
+const validateCustomReportPage = (link: string | null) => {
+  if (!link) return;
+  if (!/^(?:http(s)?:\/\/)[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$/.test(link)) {
+    throw new Error(`'custom-report-page' input must be a valid url '${link}'`);
+  }
+};
+
+const validateReportFilePath = (path: string | undefined) => {
+  if(path === undefined || path === '') {
+    return;
+  }
+  try {
+    const s = statSync(dirname(path));
+    if (s.isDirectory()) return;
+      else throw null;
+  } catch (_) {
+    throw new Error(`'report-file-path' is not in a valid directory. Please specify path to report file.`);
+  }
+};
+
 export const getConfig = (): Config => {
   const githubToken = core.getInput('github-token');
   const imageDirectoryPath = core.getInput('image-directory-path');
@@ -79,6 +102,10 @@ export const getConfig = (): Config => {
   validateThresholdRate(thresholdRate);
   const targetHash = core.getInput('target-hash') || null;
   validateTargetHash(targetHash);
+  const customReportPage = core.getInput('custom-report-page') || null;
+  validateCustomReportPage(customReportPage)
+  const reportFilePath = core.getInput('report-file-path');
+  validateReportFilePath(reportFilePath);
 
   return {
     githubToken,
@@ -88,5 +115,7 @@ export const getConfig = (): Config => {
     thresholdRate,
     thresholdPixel,
     targetHash,
+    customReportPage,
+    reportFilePath
   };
 };

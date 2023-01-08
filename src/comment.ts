@@ -10,12 +10,14 @@ export type CreateCommentWithTargetInput = {
   sha: string
   targetRun: Run;
   result: CompareOutput;
+  customReportPage: string | null;
 };
 
 export type CreateCommentWithoutTargetInput = {
   event: Event;
   runId: number;
   result: CompareOutput;
+  customReportPage: string | null;
 };
 
 const isSuccess = (result: CompareOutput) => {
@@ -38,9 +40,15 @@ export const createCommentWithTarget = ({
   sha: currentHash,
   targetRun,
   result,
+  customReportPage,
 }: CreateCommentWithTargetInput): string => {
   const [owner, reponame] = event.repository.full_name.split('/');
-  const url = createReportURL(owner, reponame, runId);
+  let url: string
+  if (customReportPage) {
+    url = customReportPage;
+  } else {
+    url = createReportURL(owner, reponame, runId);
+  }
   log.info(`This report URL is ${url}`);
 
   const targetHash = targetRun.head_sha;
@@ -73,9 +81,14 @@ ${successOrFailMessage}
   return body;
 };
 
-export const createCommentWithoutTarget = ({ event, runId, result }: CreateCommentWithoutTargetInput): string => {
+export const createCommentWithoutTarget = ({ event, runId, result, customReportPage }: CreateCommentWithoutTargetInput): string => {
   const [owner, reponame] = event.repository.full_name.split('/');
-  const url = createReportURL(owner, reponame, runId);
+  let url: string
+  if (customReportPage) {
+    url = customReportPage
+  } else {
+    url = createReportURL(owner, reponame, runId);
+  }
   log.info(`This report URL is ${url}`);
 
   const body = `Failed to find a target artifact.
