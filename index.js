@@ -41,30 +41,27 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createClient = void 0;
 const artifact = __importStar(__nccwpck_require__(52605));
-const exponential_backoff_1 = __nccwpck_require__(63183);
 const constants = __importStar(__nccwpck_require__(55105));
 const path_1 = __nccwpck_require__(30013);
 const createClient = (repository, octokit) => {
     const artifactClient = artifact.create();
     return {
         fetchRuns: (page) => __awaiter(void 0, void 0, void 0, function* () {
-            return (0, exponential_backoff_1.backOff)(() => octokit.rest.actions.listWorkflowRunsForRepo(Object.assign(Object.assign({}, repository), { per_page: 50, page })), { numOfAttempts: 5 });
+            return yield octokit.rest.actions.listWorkflowRunsForRepo(Object.assign(Object.assign({}, repository), { per_page: 50, page }));
         }),
         fetchArtifacts: (runId) => __awaiter(void 0, void 0, void 0, function* () {
             const input = Object.assign(Object.assign({}, repository), { run_id: runId, per_page: 50 });
-            return (0, exponential_backoff_1.backOff)(() => octokit.rest.actions.listWorkflowRunArtifacts(input), { numOfAttempts: 5 });
+            return octokit.rest.actions.listWorkflowRunArtifacts(input);
         }),
         uploadArtifact: (files) => __awaiter(void 0, void 0, void 0, function* () {
-            const _ = yield (0, exponential_backoff_1.backOff)(() => artifactClient.uploadArtifact(constants.ARTIFACT_NAME, files, (0, path_1.workspace)()), {
-                numOfAttempts: 5,
-            });
+            const _ = yield artifactClient.uploadArtifact(constants.ARTIFACT_NAME, files, (0, path_1.workspace)());
             return;
         }),
         downloadArtifact: (artifactId) => __awaiter(void 0, void 0, void 0, function* () {
-            return (0, exponential_backoff_1.backOff)(() => octokit.rest.actions.downloadArtifact(Object.assign(Object.assign({}, repository), { artifact_id: artifactId, archive_format: 'zip' })), { numOfAttempts: 5 });
+            return octokit.rest.actions.downloadArtifact(Object.assign(Object.assign({}, repository), { artifact_id: artifactId, archive_format: 'zip' }));
         }),
         postComment: (issueNumber, comment) => __awaiter(void 0, void 0, void 0, function* () {
-            const _ = yield (0, exponential_backoff_1.backOff)(() => octokit.rest.issues.createComment(Object.assign(Object.assign({}, repository), { issue_number: issueNumber, body: comment })), { numOfAttempts: 5 });
+            const _ = yield octokit.rest.issues.createComment(Object.assign(Object.assign({}, repository), { issue_number: issueNumber, body: comment }));
             return;
         }),
     };
@@ -95,15 +92,9 @@ const badge = (result) => {
     }
     return '![success](https://img.shields.io/badge/%E2%9C%94%20reg-passed-green)';
 };
-const createCommentWithTarget = ({ event, runId, sha: currentHash, targetRun, result, customReportPage, }) => {
+const createCommentWithTarget = ({ event, runId, sha: currentHash, targetRun, result, }) => {
     const [owner, reponame] = event.repository.full_name.split('/');
-    let url;
-    if (customReportPage) {
-        url = customReportPage;
-    }
-    else {
-        url = (0, report_1.createReportURL)(owner, reponame, runId);
-    }
+    const url = (0, report_1.createReportURL)(owner, reponame, runId);
     logger_1.log.info(`This report URL is ${url}`);
     const targetHash = targetRun.head_sha;
     const currentHashShort = currentHash.slice(0, 7);
@@ -132,15 +123,9 @@ ${successOrFailMessage}
     return body;
 };
 exports.createCommentWithTarget = createCommentWithTarget;
-const createCommentWithoutTarget = ({ event, runId, result, customReportPage }) => {
+const createCommentWithoutTarget = ({ event, runId, result }) => {
     const [owner, reponame] = event.repository.full_name.split('/');
-    let url;
-    if (customReportPage) {
-        url = customReportPage;
-    }
-    else {
-        url = (0, report_1.createReportURL)(owner, reponame, runId);
-    }
+    const url = (0, report_1.createReportURL)(owner, reponame, runId);
     logger_1.log.info(`This report URL is ${url}`);
     const body = `Failed to find a target artifact.
 All items will be treated as new items and will be used as expected data for the next time.
@@ -215,7 +200,6 @@ const compare = (config) => __awaiter(void 0, void 0, void 0, function* () {
             expectedDir: posix_1.default.join((0, path_1.workspace)(), constants.EXPECTED_DIR_NAME),
             diffDir: posix_1.default.join((0, path_1.workspace)(), constants.DIFF_DIR_NAME),
             json: posix_1.default.join((0, path_1.workspace)(), constants.JSON_NAME),
-            report: config.reportFilePath,
             update: false,
             ignoreChange: true,
             urlPrefix: '',
@@ -272,7 +256,6 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getConfig = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const fs_1 = __nccwpck_require__(57147);
-const path_1 = __nccwpck_require__(71017);
 const validateGitHubToken = (githubToken) => {
     if (!githubToken) {
         throw new Error(`'github-token' is not set. Please give API token.`);
@@ -327,28 +310,6 @@ const validateTargetHash = (h) => {
         throw new Error(`'target-hash' input must be commit hash but got '${h}'`);
     }
 };
-const validateCustomReportPage = (link) => {
-    if (!link)
-        return;
-    if (!/^(?:http(s)?:\/\/)[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$/.test(link)) {
-        throw new Error(`'custom-report-page' input must be a valid url '${link}'`);
-    }
-};
-const validateReportFilePath = (path) => {
-    if (path === undefined || path === '') {
-        return;
-    }
-    try {
-        const s = (0, fs_1.statSync)((0, path_1.dirname)(path));
-        if (s.isDirectory())
-            return;
-        else
-            throw null;
-    }
-    catch (_) {
-        throw new Error(`'report-file-path' is not in a valid directory. Please specify path to report file.`);
-    }
-};
 const getConfig = () => {
     var _a, _b, _c;
     const githubToken = core.getInput('github-token');
@@ -362,10 +323,6 @@ const getConfig = () => {
     validateThresholdRate(thresholdRate);
     const targetHash = core.getInput('target-hash') || null;
     validateTargetHash(targetHash);
-    const customReportPage = core.getInput('custom-report-page') || null;
-    validateCustomReportPage(customReportPage);
-    const reportFilePath = core.getInput('report-file-path');
-    validateReportFilePath(reportFilePath);
     return {
         githubToken,
         imageDirectoryPath,
@@ -374,8 +331,6 @@ const getConfig = () => {
         thresholdRate,
         thresholdPixel,
         targetHash,
-        customReportPage,
-        reportFilePath
     };
 };
 exports.getConfig = getConfig;
@@ -692,7 +647,6 @@ exports.findRunAndArtifact = void 0;
 const logger_1 = __nccwpck_require__(65228);
 const git_1 = __nccwpck_require__(53374);
 const constants_1 = __nccwpck_require__(55105);
-const limitation = 200;
 const findRunAndArtifact = ({ event, client, targetHash: inputTargetHash, }) => __awaiter(void 0, void 0, void 0, function* () {
     let page = 0;
     while (true) {
@@ -715,12 +669,8 @@ const findRunAndArtifact = ({ event, client, targetHash: inputTargetHash, }) => 
                     return { run, artifact: found };
                 }
             }
-            if (runs.data.workflow_runs.length < 50) {
-                logger_1.log.info('Failed to find target run', runs.data.workflow_runs.length);
-                return null;
-            }
-            if (limitation <= page) {
-                logger_1.log.info(`Failed to find target run, this is because page reached limitation`, limitation, page);
+            if (runs.data.workflow_runs.length < 100) {
+                logger_1.log.info('Failed to find target run');
                 return null;
             }
         }
@@ -867,7 +817,7 @@ const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, voi
         const result = yield compareAndUpload(client, config);
         // If we have current run, add comment to PR.
         if (runId) {
-            const comment = (0, comment_1.createCommentWithoutTarget)({ event, runId, result, customReportPage: config.customReportPage });
+            const comment = (0, comment_1.createCommentWithoutTarget)({ event, runId, result });
             yield client.postComment(event.number, comment);
         }
         return;
@@ -876,7 +826,7 @@ const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, voi
     // Download and copy expected images to workspace.
     yield downloadExpectedImages(client, artifact.id);
     const result = yield compareAndUpload(client, config);
-    const comment = (0, comment_1.createCommentWithTarget)({ event, runId, sha, targetRun, result, customReportPage: config.customReportPage });
+    const comment = (0, comment_1.createCommentWithTarget)({ event, runId, sha, targetRun, result });
     yield client.postComment(event.number, comment);
 });
 exports.run = run;
@@ -23043,18 +22993,35 @@ function expand(str, isTop) {
 "use strict";
 
 
-const stringify = __nccwpck_require__(38750);
-const compile = __nccwpck_require__(79434);
-const expand = __nccwpck_require__(35873);
-const parse = __nccwpck_require__(96477);
+/**
+ * Module dependencies
+ */
+
+var toRegex = __nccwpck_require__(16855);
+var unique = __nccwpck_require__(40340);
+var extend = __nccwpck_require__(67512);
 
 /**
- * Expand the given pattern or create a regex-compatible string.
+ * Local dependencies
+ */
+
+var compilers = __nccwpck_require__(17076);
+var parsers = __nccwpck_require__(32829);
+var Braces = __nccwpck_require__(47075);
+var utils = __nccwpck_require__(45207);
+var MAX_LENGTH = 1024 * 64;
+var cache = {};
+
+/**
+ * Convert the given `braces` pattern into a regex-compatible string. By default, only one string is generated for every input string. Set `options.expand` to true to return an array of patterns (similar to Bash or minimatch. Before using `options.expand`, it's recommended that you read the [performance notes](#performance)).
  *
  * ```js
- * const braces = require('braces');
- * console.log(braces('{a,b,c}', { compile: true })); //=> ['(a|b|c)']
- * console.log(braces('{a,b,c}')); //=> ['a', 'b', 'c']
+ * var braces = require('braces');
+ * console.log(braces('{a,b,c}'));
+ * //=> ['(a|b|c)']
+ *
+ * console.log(braces('{a,b,c}', {expand: true}));
+ * //=> ['a', 'b', 'c']
  * ```
  * @param {String} `str`
  * @param {Object} `options`
@@ -23062,95 +23029,38 @@ const parse = __nccwpck_require__(96477);
  * @api public
  */
 
-const braces = (input, options = {}) => {
-  let output = [];
+function braces(pattern, options) {
+  var key = utils.createKey(String(pattern), options);
+  var arr = [];
 
-  if (Array.isArray(input)) {
-    for (let pattern of input) {
-      let result = braces.create(pattern, options);
-      if (Array.isArray(result)) {
-        output.push(...result);
-      } else {
-        output.push(result);
-      }
+  var disabled = options && options.cache === false;
+  if (!disabled && cache.hasOwnProperty(key)) {
+    return cache[key];
+  }
+
+  if (Array.isArray(pattern)) {
+    for (var i = 0; i < pattern.length; i++) {
+      arr.push.apply(arr, braces.create(pattern[i], options));
     }
   } else {
-    output = [].concat(braces.create(input, options));
+    arr = braces.create(pattern, options);
   }
 
-  if (options && options.expand === true && options.nodupes === true) {
-    output = [...new Set(output)];
+  if (options && options.nodupes === true) {
+    arr = unique(arr);
   }
-  return output;
-};
 
-/**
- * Parse the given `str` with the given `options`.
- *
- * ```js
- * // braces.parse(pattern, [, options]);
- * const ast = braces.parse('a/{b,c}/d');
- * console.log(ast);
- * ```
- * @param {String} pattern Brace pattern to parse
- * @param {Object} options
- * @return {Object} Returns an AST
- * @api public
- */
-
-braces.parse = (input, options = {}) => parse(input, options);
-
-/**
- * Creates a braces string from an AST, or an AST node.
- *
- * ```js
- * const braces = require('braces');
- * let ast = braces.parse('foo/{a,b}/bar');
- * console.log(stringify(ast.nodes[2])); //=> '{a,b}'
- * ```
- * @param {String} `input` Brace pattern or AST.
- * @param {Object} `options`
- * @return {Array} Returns an array of expanded values.
- * @api public
- */
-
-braces.stringify = (input, options = {}) => {
-  if (typeof input === 'string') {
-    return stringify(braces.parse(input, options), options);
+  if (!disabled) {
+    cache[key] = arr;
   }
-  return stringify(input, options);
-};
+  return arr;
+}
 
 /**
- * Compiles a brace pattern into a regex-compatible, optimized string.
- * This method is called by the main [braces](#braces) function by default.
+ * Expands a brace pattern into an array. This method is called by the main [braces](#braces) function when `options.expand` is true. Before using this method it's recommended that you read the [performance notes](#performance)) and advantages of using [.optimize](#optimize) instead.
  *
  * ```js
- * const braces = require('braces');
- * console.log(braces.compile('a/{b,c}/d'));
- * //=> ['a/(b|c)/d']
- * ```
- * @param {String} `input` Brace pattern or AST.
- * @param {Object} `options`
- * @return {Array} Returns an array of expanded values.
- * @api public
- */
-
-braces.compile = (input, options = {}) => {
-  if (typeof input === 'string') {
-    input = braces.parse(input, options);
-  }
-  return compile(input, options);
-};
-
-/**
- * Expands a brace pattern into an array. This method is called by the
- * main [braces](#braces) function when `options.expand` is true. Before
- * using this method it's recommended that you read the [performance notes](#performance))
- * and advantages of using [.compile](#compile) instead.
- *
- * ```js
- * const braces = require('braces');
+ * var braces = require('braces');
  * console.log(braces.expand('a/{b,c}/d'));
  * //=> ['a/b/d', 'a/c/d'];
  * ```
@@ -23160,33 +23070,33 @@ braces.compile = (input, options = {}) => {
  * @api public
  */
 
-braces.expand = (input, options = {}) => {
-  if (typeof input === 'string') {
-    input = braces.parse(input, options);
-  }
-
-  let result = expand(input, options);
-
-  // filter out empty strings if specified
-  if (options.noempty === true) {
-    result = result.filter(Boolean);
-  }
-
-  // filter out duplicates if specified
-  if (options.nodupes === true) {
-    result = [...new Set(result)];
-  }
-
-  return result;
+braces.expand = function(pattern, options) {
+  return braces.create(pattern, extend({}, options, {expand: true}));
 };
 
 /**
- * Processes a brace pattern and returns either an expanded array
- * (if `options.expand` is true), a highly optimized regex-compatible string.
- * This method is called by the main [braces](#braces) function.
+ * Expands a brace pattern into a regex-compatible, optimized string. This method is called by the main [braces](#braces) function by default.
  *
  * ```js
- * const braces = require('braces');
+ * var braces = require('braces');
+ * console.log(braces.expand('a/{b,c}/d'));
+ * //=> ['a/(b|c)/d']
+ * ```
+ * @param {String} `pattern` Brace pattern
+ * @param {Object} `options`
+ * @return {Array} Returns an array of expanded values.
+ * @api public
+ */
+
+braces.optimize = function(pattern, options) {
+  return braces.create(pattern, options);
+};
+
+/**
+ * Processes a brace pattern and returns either an expanded array (if `options.expand` is true), a highly optimized regex-compatible string. This method is called by the main [braces](#braces) function.
+ *
+ * ```js
+ * var braces = require('braces');
  * console.log(braces.create('user-{200..300}/project-{a,b,c}-{1..10}'))
  * //=> 'user-(20[0-9]|2[1-9][0-9]|300)/project-(a|b|c)-([1-9]|10)'
  * ```
@@ -23196,18 +23106,206 @@ braces.expand = (input, options = {}) => {
  * @api public
  */
 
-braces.create = (input, options = {}) => {
-  if (input === '' || input.length < 3) {
-    return [input];
+braces.create = function(pattern, options) {
+  if (typeof pattern !== 'string') {
+    throw new TypeError('expected a string');
   }
 
- return options.expand !== true
-    ? braces.compile(input, options)
-    : braces.expand(input, options);
+  var maxLength = (options && options.maxLength) || MAX_LENGTH;
+  if (pattern.length >= maxLength) {
+    throw new Error('expected pattern to be less than ' + maxLength + ' characters');
+  }
+
+  function create() {
+    if (pattern === '' || pattern.length < 3) {
+      return [pattern];
+    }
+
+    if (utils.isEmptySets(pattern)) {
+      return [];
+    }
+
+    if (utils.isQuotedString(pattern)) {
+      return [pattern.slice(1, -1)];
+    }
+
+    var proto = new Braces(options);
+    var result = !options || options.expand !== true
+      ? proto.optimize(pattern, options)
+      : proto.expand(pattern, options);
+
+    // get the generated pattern(s)
+    var arr = result.output;
+
+    // filter out empty strings if specified
+    if (options && options.noempty === true) {
+      arr = arr.filter(Boolean);
+    }
+
+    // filter out duplicates if specified
+    if (options && options.nodupes === true) {
+      arr = unique(arr);
+    }
+
+    Object.defineProperty(arr, 'result', {
+      enumerable: false,
+      value: result
+    });
+
+    return arr;
+  }
+
+  return memoize('create', pattern, options, create);
 };
 
 /**
- * Expose "braces"
+ * Create a regular expression from the given string `pattern`.
+ *
+ * ```js
+ * var braces = require('braces');
+ *
+ * console.log(braces.makeRe('id-{200..300}'));
+ * //=> /^(?:id-(20[0-9]|2[1-9][0-9]|300))$/
+ * ```
+ * @param {String} `pattern` The pattern to convert to regex.
+ * @param {Object} `options`
+ * @return {RegExp}
+ * @api public
+ */
+
+braces.makeRe = function(pattern, options) {
+  if (typeof pattern !== 'string') {
+    throw new TypeError('expected a string');
+  }
+
+  var maxLength = (options && options.maxLength) || MAX_LENGTH;
+  if (pattern.length >= maxLength) {
+    throw new Error('expected pattern to be less than ' + maxLength + ' characters');
+  }
+
+  function makeRe() {
+    var arr = braces(pattern, options);
+    var opts = extend({strictErrors: false}, options);
+    return toRegex(arr, opts);
+  }
+
+  return memoize('makeRe', pattern, options, makeRe);
+};
+
+/**
+ * Parse the given `str` with the given `options`.
+ *
+ * ```js
+ * var braces = require('braces');
+ * var ast = braces.parse('a/{b,c}/d');
+ * console.log(ast);
+ * // { type: 'root',
+ * //   errors: [],
+ * //   input: 'a/{b,c}/d',
+ * //   nodes:
+ * //    [ { type: 'bos', val: '' },
+ * //      { type: 'text', val: 'a/' },
+ * //      { type: 'brace',
+ * //        nodes:
+ * //         [ { type: 'brace.open', val: '{' },
+ * //           { type: 'text', val: 'b,c' },
+ * //           { type: 'brace.close', val: '}' } ] },
+ * //      { type: 'text', val: '/d' },
+ * //      { type: 'eos', val: '' } ] }
+ * ```
+ * @param {String} `pattern` Brace pattern to parse
+ * @param {Object} `options`
+ * @return {Object} Returns an AST
+ * @api public
+ */
+
+braces.parse = function(pattern, options) {
+  var proto = new Braces(options);
+  return proto.parse(pattern, options);
+};
+
+/**
+ * Compile the given `ast` or string with the given `options`.
+ *
+ * ```js
+ * var braces = require('braces');
+ * var ast = braces.parse('a/{b,c}/d');
+ * console.log(braces.compile(ast));
+ * // { options: { source: 'string' },
+ * //   state: {},
+ * //   compilers:
+ * //    { eos: [Function],
+ * //      noop: [Function],
+ * //      bos: [Function],
+ * //      brace: [Function],
+ * //      'brace.open': [Function],
+ * //      text: [Function],
+ * //      'brace.close': [Function] },
+ * //   output: [ 'a/(b|c)/d' ],
+ * //   ast:
+ * //    { ... },
+ * //   parsingErrors: [] }
+ * ```
+ * @param {Object|String} `ast` AST from [.parse](#parse). If a string is passed it will be parsed first.
+ * @param {Object} `options`
+ * @return {Object} Returns an object that has an `output` property with the compiled string.
+ * @api public
+ */
+
+braces.compile = function(ast, options) {
+  var proto = new Braces(options);
+  return proto.compile(ast, options);
+};
+
+/**
+ * Clear the regex cache.
+ *
+ * ```js
+ * braces.clearCache();
+ * ```
+ * @api public
+ */
+
+braces.clearCache = function() {
+  cache = braces.cache = {};
+};
+
+/**
+ * Memoize a generated regex or function. A unique key is generated
+ * from the method name, pattern, and user-defined options. Set
+ * options.memoize to false to disable.
+ */
+
+function memoize(type, pattern, options, fn) {
+  var key = utils.createKey(type + ':' + pattern, options);
+  var disabled = options && options.cache === false;
+  if (disabled) {
+    braces.clearCache();
+    return fn(pattern, options);
+  }
+
+  if (cache.hasOwnProperty(key)) {
+    return cache[key];
+  }
+
+  var res = fn(pattern, options);
+  cache[key] = res;
+  return res;
+}
+
+/**
+ * Expose `Braces` constructor and methods
+ * @type {Function}
+ */
+
+braces.Braces = Braces;
+braces.compilers = compilers;
+braces.parsers = parsers;
+braces.cache = cache;
+
+/**
+ * Expose `braces`
+ * @type {Function}
  */
 
 module.exports = braces;
@@ -23215,753 +23313,1122 @@ module.exports = braces;
 
 /***/ }),
 
-/***/ 79434:
+/***/ 47075:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-const fill = __nccwpck_require__(6330);
-const utils = __nccwpck_require__(45207);
-
-const compile = (ast, options = {}) => {
-  let walk = (node, parent = {}) => {
-    let invalidBlock = utils.isInvalidBrace(parent);
-    let invalidNode = node.invalid === true && options.escapeInvalid === true;
-    let invalid = invalidBlock === true || invalidNode === true;
-    let prefix = options.escapeInvalid === true ? '\\' : '';
-    let output = '';
-
-    if (node.isOpen === true) {
-      return prefix + node.value;
-    }
-    if (node.isClose === true) {
-      return prefix + node.value;
-    }
-
-    if (node.type === 'open') {
-      return invalid ? (prefix + node.value) : '(';
-    }
-
-    if (node.type === 'close') {
-      return invalid ? (prefix + node.value) : ')';
-    }
-
-    if (node.type === 'comma') {
-      return node.prev.type === 'comma' ? '' : (invalid ? node.value : '|');
-    }
-
-    if (node.value) {
-      return node.value;
-    }
-
-    if (node.nodes && node.ranges > 0) {
-      let args = utils.reduce(node.nodes);
-      let range = fill(...args, { ...options, wrap: false, toRegex: true });
-
-      if (range.length !== 0) {
-        return args.length > 1 && range.length > 1 ? `(${range})` : range;
-      }
-    }
-
-    if (node.nodes) {
-      for (let child of node.nodes) {
-        output += walk(child, node);
-      }
-    }
-    return output;
-  };
-
-  return walk(ast);
-};
-
-module.exports = compile;
-
-
-/***/ }),
-
-/***/ 18774:
-/***/ ((module) => {
-
-"use strict";
-
-
-module.exports = {
-  MAX_LENGTH: 1024 * 64,
-
-  // Digits
-  CHAR_0: '0', /* 0 */
-  CHAR_9: '9', /* 9 */
-
-  // Alphabet chars.
-  CHAR_UPPERCASE_A: 'A', /* A */
-  CHAR_LOWERCASE_A: 'a', /* a */
-  CHAR_UPPERCASE_Z: 'Z', /* Z */
-  CHAR_LOWERCASE_Z: 'z', /* z */
-
-  CHAR_LEFT_PARENTHESES: '(', /* ( */
-  CHAR_RIGHT_PARENTHESES: ')', /* ) */
-
-  CHAR_ASTERISK: '*', /* * */
-
-  // Non-alphabetic chars.
-  CHAR_AMPERSAND: '&', /* & */
-  CHAR_AT: '@', /* @ */
-  CHAR_BACKSLASH: '\\', /* \ */
-  CHAR_BACKTICK: '`', /* ` */
-  CHAR_CARRIAGE_RETURN: '\r', /* \r */
-  CHAR_CIRCUMFLEX_ACCENT: '^', /* ^ */
-  CHAR_COLON: ':', /* : */
-  CHAR_COMMA: ',', /* , */
-  CHAR_DOLLAR: '$', /* . */
-  CHAR_DOT: '.', /* . */
-  CHAR_DOUBLE_QUOTE: '"', /* " */
-  CHAR_EQUAL: '=', /* = */
-  CHAR_EXCLAMATION_MARK: '!', /* ! */
-  CHAR_FORM_FEED: '\f', /* \f */
-  CHAR_FORWARD_SLASH: '/', /* / */
-  CHAR_HASH: '#', /* # */
-  CHAR_HYPHEN_MINUS: '-', /* - */
-  CHAR_LEFT_ANGLE_BRACKET: '<', /* < */
-  CHAR_LEFT_CURLY_BRACE: '{', /* { */
-  CHAR_LEFT_SQUARE_BRACKET: '[', /* [ */
-  CHAR_LINE_FEED: '\n', /* \n */
-  CHAR_NO_BREAK_SPACE: '\u00A0', /* \u00A0 */
-  CHAR_PERCENT: '%', /* % */
-  CHAR_PLUS: '+', /* + */
-  CHAR_QUESTION_MARK: '?', /* ? */
-  CHAR_RIGHT_ANGLE_BRACKET: '>', /* > */
-  CHAR_RIGHT_CURLY_BRACE: '}', /* } */
-  CHAR_RIGHT_SQUARE_BRACKET: ']', /* ] */
-  CHAR_SEMICOLON: ';', /* ; */
-  CHAR_SINGLE_QUOTE: '\'', /* ' */
-  CHAR_SPACE: ' ', /*   */
-  CHAR_TAB: '\t', /* \t */
-  CHAR_UNDERSCORE: '_', /* _ */
-  CHAR_VERTICAL_LINE: '|', /* | */
-  CHAR_ZERO_WIDTH_NOBREAK_SPACE: '\uFEFF' /* \uFEFF */
-};
-
-
-/***/ }),
-
-/***/ 35873:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-const fill = __nccwpck_require__(6330);
-const stringify = __nccwpck_require__(38750);
-const utils = __nccwpck_require__(45207);
-
-const append = (queue = '', stash = '', enclose = false) => {
-  let result = [];
-
-  queue = [].concat(queue);
-  stash = [].concat(stash);
-
-  if (!stash.length) return queue;
-  if (!queue.length) {
-    return enclose ? utils.flatten(stash).map(ele => `{${ele}}`) : stash;
-  }
-
-  for (let item of queue) {
-    if (Array.isArray(item)) {
-      for (let value of item) {
-        result.push(append(value, stash, enclose));
-      }
-    } else {
-      for (let ele of stash) {
-        if (enclose === true && typeof ele === 'string') ele = `{${ele}}`;
-        result.push(Array.isArray(ele) ? append(item, ele, enclose) : (item + ele));
-      }
-    }
-  }
-  return utils.flatten(result);
-};
-
-const expand = (ast, options = {}) => {
-  let rangeLimit = options.rangeLimit === void 0 ? 1000 : options.rangeLimit;
-
-  let walk = (node, parent = {}) => {
-    node.queue = [];
-
-    let p = parent;
-    let q = parent.queue;
-
-    while (p.type !== 'brace' && p.type !== 'root' && p.parent) {
-      p = p.parent;
-      q = p.queue;
-    }
-
-    if (node.invalid || node.dollar) {
-      q.push(append(q.pop(), stringify(node, options)));
-      return;
-    }
-
-    if (node.type === 'brace' && node.invalid !== true && node.nodes.length === 2) {
-      q.push(append(q.pop(), ['{}']));
-      return;
-    }
-
-    if (node.nodes && node.ranges > 0) {
-      let args = utils.reduce(node.nodes);
-
-      if (utils.exceedsLimit(...args, options.step, rangeLimit)) {
-        throw new RangeError('expanded array length exceeds range limit. Use options.rangeLimit to increase or disable the limit.');
-      }
-
-      let range = fill(...args, options);
-      if (range.length === 0) {
-        range = stringify(node, options);
-      }
-
-      q.push(append(q.pop(), range));
-      node.nodes = [];
-      return;
-    }
-
-    let enclose = utils.encloseBrace(node);
-    let queue = node.queue;
-    let block = node;
-
-    while (block.type !== 'brace' && block.type !== 'root' && block.parent) {
-      block = block.parent;
-      queue = block.queue;
-    }
-
-    for (let i = 0; i < node.nodes.length; i++) {
-      let child = node.nodes[i];
-
-      if (child.type === 'comma' && node.type === 'brace') {
-        if (i === 1) queue.push('');
-        queue.push('');
-        continue;
-      }
-
-      if (child.type === 'close') {
-        q.push(append(q.pop(), queue, enclose));
-        continue;
-      }
-
-      if (child.value && child.type !== 'open') {
-        queue.push(append(queue.pop(), child.value));
-        continue;
-      }
-
-      if (child.nodes) {
-        walk(child, node);
-      }
-    }
-
-    return queue;
-  };
-
-  return utils.flatten(walk(ast));
-};
-
-module.exports = expand;
-
-
-/***/ }),
-
-/***/ 96477:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-const stringify = __nccwpck_require__(38750);
+var extend = __nccwpck_require__(67512);
+var Snapdragon = __nccwpck_require__(52403);
+var compilers = __nccwpck_require__(17076);
+var parsers = __nccwpck_require__(32829);
+var utils = __nccwpck_require__(45207);
 
 /**
- * Constants
+ * Customize Snapdragon parser and renderer
  */
 
-const {
-  MAX_LENGTH,
-  CHAR_BACKSLASH, /* \ */
-  CHAR_BACKTICK, /* ` */
-  CHAR_COMMA, /* , */
-  CHAR_DOT, /* . */
-  CHAR_LEFT_PARENTHESES, /* ( */
-  CHAR_RIGHT_PARENTHESES, /* ) */
-  CHAR_LEFT_CURLY_BRACE, /* { */
-  CHAR_RIGHT_CURLY_BRACE, /* } */
-  CHAR_LEFT_SQUARE_BRACKET, /* [ */
-  CHAR_RIGHT_SQUARE_BRACKET, /* ] */
-  CHAR_DOUBLE_QUOTE, /* " */
-  CHAR_SINGLE_QUOTE, /* ' */
-  CHAR_NO_BREAK_SPACE,
-  CHAR_ZERO_WIDTH_NOBREAK_SPACE
-} = __nccwpck_require__(18774);
+function Braces(options) {
+  this.options = extend({}, options);
+}
 
 /**
- * parse
+ * Initialize braces
  */
 
-const parse = (input, options = {}) => {
-  if (typeof input !== 'string') {
-    throw new TypeError('Expected a string');
-  }
+Braces.prototype.init = function(options) {
+  if (this.isInitialized) return;
+  this.isInitialized = true;
+  var opts = utils.createOptions({}, this.options, options);
+  this.snapdragon = this.options.snapdragon || new Snapdragon(opts);
+  this.compiler = this.snapdragon.compiler;
+  this.parser = this.snapdragon.parser;
 
-  let opts = options || {};
-  let max = typeof opts.maxLength === 'number' ? Math.min(MAX_LENGTH, opts.maxLength) : MAX_LENGTH;
-  if (input.length > max) {
-    throw new SyntaxError(`Input length (${input.length}), exceeds max characters (${max})`);
-  }
-
-  let ast = { type: 'root', input, nodes: [] };
-  let stack = [ast];
-  let block = ast;
-  let prev = ast;
-  let brackets = 0;
-  let length = input.length;
-  let index = 0;
-  let depth = 0;
-  let value;
-  let memo = {};
+  compilers(this.snapdragon, opts);
+  parsers(this.snapdragon, opts);
 
   /**
-   * Helpers
+   * Call Snapdragon `.parse` method. When AST is returned, we check to
+   * see if any unclosed braces are left on the stack and, if so, we iterate
+   * over the stack and correct the AST so that compilers are called in the correct
+   * order and unbalance braces are properly escaped.
    */
 
-  const advance = () => input[index++];
-  const push = node => {
-    if (node.type === 'text' && prev.type === 'dot') {
-      prev.type = 'text';
+  utils.define(this.snapdragon, 'parse', function(pattern, options) {
+    var parsed = Snapdragon.prototype.parse.apply(this, arguments);
+    this.parser.ast.input = pattern;
+
+    var stack = this.parser.stack;
+    while (stack.length) {
+      addParent({type: 'brace.close', val: ''}, stack.pop());
     }
 
-    if (prev && prev.type === 'text' && node.type === 'text') {
-      prev.value += node.value;
-      return;
+    function addParent(node, parent) {
+      utils.define(node, 'parent', parent);
+      parent.nodes.push(node);
     }
 
-    block.nodes.push(node);
-    node.parent = block;
-    node.prev = prev;
-    prev = node;
-    return node;
-  };
+    // add non-enumerable parser reference
+    utils.define(parsed, 'parser', this.parser);
+    return parsed;
+  });
+};
 
-  push({ type: 'bos' });
+/**
+ * Decorate `.parse` method
+ */
 
-  while (index < length) {
-    block = stack[stack.length - 1];
-    value = advance();
+Braces.prototype.parse = function(ast, options) {
+  if (ast && typeof ast === 'object' && ast.nodes) return ast;
+  this.init(options);
+  return this.snapdragon.parse(ast, options);
+};
+
+/**
+ * Decorate `.compile` method
+ */
+
+Braces.prototype.compile = function(ast, options) {
+  if (typeof ast === 'string') {
+    ast = this.parse(ast, options);
+  } else {
+    this.init(options);
+  }
+  return this.snapdragon.compile(ast, options);
+};
+
+/**
+ * Expand
+ */
+
+Braces.prototype.expand = function(pattern) {
+  var ast = this.parse(pattern, {expand: true});
+  return this.compile(ast, {expand: true});
+};
+
+/**
+ * Optimize
+ */
+
+Braces.prototype.optimize = function(pattern) {
+  var ast = this.parse(pattern, {optimize: true});
+  return this.compile(ast, {optimize: true});
+};
+
+/**
+ * Expose `Braces`
+ */
+
+module.exports = Braces;
+
+
+/***/ }),
+
+/***/ 17076:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var utils = __nccwpck_require__(45207);
+
+module.exports = function(braces, options) {
+  braces.compiler
 
     /**
-     * Invalid chars
+     * bos
      */
 
-    if (value === CHAR_ZERO_WIDTH_NOBREAK_SPACE || value === CHAR_NO_BREAK_SPACE) {
-      continue;
-    }
+    .set('bos', function() {
+      if (this.output) return;
+      this.ast.queue = isEscaped(this.ast) ? [this.ast.val] : [];
+      this.ast.count = 1;
+    })
 
     /**
-     * Escaped chars
+     * Square brackets
      */
 
-    if (value === CHAR_BACKSLASH) {
-      push({ type: 'text', value: (options.keepEscaping ? value : '') + advance() });
-      continue;
-    }
+    .set('bracket', function(node) {
+      var close = node.close;
+      var open = !node.escaped ? '[' : '\\[';
+      var negated = node.negated;
+      var inner = node.inner;
+
+      inner = inner.replace(/\\(?=[\\\w]|$)/g, '\\\\');
+      if (inner === ']-') {
+        inner = '\\]\\-';
+      }
+
+      if (negated && inner.indexOf('.') === -1) {
+        inner += '.';
+      }
+      if (negated && inner.indexOf('/') === -1) {
+        inner += '/';
+      }
+
+      var val = open + negated + inner + close;
+      var queue = node.parent.queue;
+      var last = utils.arrayify(queue.pop());
+
+      queue.push(utils.join(last, val));
+      queue.push.apply(queue, []);
+    })
 
     /**
-     * Right square bracket (literal): ']'
+     * Brace
      */
 
-    if (value === CHAR_RIGHT_SQUARE_BRACKET) {
-      push({ type: 'text', value: '\\' + value });
-      continue;
-    }
+    .set('brace', function(node) {
+      node.queue = isEscaped(node) ? [node.val] : [];
+      node.count = 1;
+      return this.mapVisit(node.nodes);
+    })
 
     /**
-     * Left square bracket: '['
+     * Open
      */
 
-    if (value === CHAR_LEFT_SQUARE_BRACKET) {
-      brackets++;
+    .set('brace.open', function(node) {
+      node.parent.open = node.val;
+    })
 
-      let closed = true;
-      let next;
+    /**
+     * Inner
+     */
 
-      while (index < length && (next = advance())) {
-        value += next;
+    .set('text', function(node) {
+      var queue = node.parent.queue;
+      var escaped = node.escaped;
+      var segs = [node.val];
 
-        if (next === CHAR_LEFT_SQUARE_BRACKET) {
-          brackets++;
-          continue;
+      if (node.optimize === false) {
+        options = utils.extend({}, options, {optimize: false});
+      }
+
+      if (node.multiplier > 1) {
+        node.parent.count *= node.multiplier;
+      }
+
+      if (options.quantifiers === true && utils.isQuantifier(node.val)) {
+        escaped = true;
+
+      } else if (node.val.length > 1) {
+        if (isType(node.parent, 'brace') && !isEscaped(node)) {
+          var expanded = utils.expand(node.val, options);
+          segs = expanded.segs;
+
+          if (expanded.isOptimized) {
+            node.parent.isOptimized = true;
+          }
+
+          // if nothing was expanded, we probably have a literal brace
+          if (!segs.length) {
+            var val = (expanded.val || node.val);
+            if (options.unescape !== false) {
+              // unescape unexpanded brace sequence/set separators
+              val = val.replace(/\\([,.])/g, '$1');
+              // strip quotes
+              val = val.replace(/["'`]/g, '');
+            }
+
+            segs = [val];
+            escaped = true;
+          }
         }
 
-        if (next === CHAR_BACKSLASH) {
-          value += advance();
-          continue;
+      } else if (node.val === ',') {
+        if (options.expand) {
+          node.parent.queue.push(['']);
+          segs = [''];
+        } else {
+          segs = ['|'];
         }
+      } else {
+        escaped = true;
+      }
 
-        if (next === CHAR_RIGHT_SQUARE_BRACKET) {
-          brackets--;
+      if (escaped && isType(node.parent, 'brace')) {
+        if (node.parent.nodes.length <= 4 && node.parent.count === 1) {
+          node.parent.escaped = true;
+        } else if (node.parent.length <= 3) {
+          node.parent.escaped = true;
+        }
+      }
 
-          if (brackets === 0) {
+      if (!hasQueue(node.parent)) {
+        node.parent.queue = segs;
+        return;
+      }
+
+      var last = utils.arrayify(queue.pop());
+      if (node.parent.count > 1 && options.expand) {
+        last = multiply(last, node.parent.count);
+        node.parent.count = 1;
+      }
+
+      queue.push(utils.join(utils.flatten(last), segs.shift()));
+      queue.push.apply(queue, segs);
+    })
+
+    /**
+     * Close
+     */
+
+    .set('brace.close', function(node) {
+      var queue = node.parent.queue;
+      var prev = node.parent.parent;
+      var last = prev.queue.pop();
+      var open = node.parent.open;
+      var close = node.val;
+
+      if (open && close && isOptimized(node, options)) {
+        open = '(';
+        close = ')';
+      }
+
+      // if a close brace exists, and the previous segment is one character
+      // don't wrap the result in braces or parens
+      var ele = utils.last(queue);
+      if (node.parent.count > 1 && options.expand) {
+        ele = multiply(queue.pop(), node.parent.count);
+        node.parent.count = 1;
+        queue.push(ele);
+      }
+
+      if (close && typeof ele === 'string' && ele.length === 1) {
+        open = '';
+        close = '';
+      }
+
+      if ((isLiteralBrace(node, options) || noInner(node)) && !node.parent.hasEmpty) {
+        queue.push(utils.join(open, queue.pop() || ''));
+        queue = utils.flatten(utils.join(queue, close));
+      }
+
+      if (typeof last === 'undefined') {
+        prev.queue = [queue];
+      } else {
+        prev.queue.push(utils.flatten(utils.join(last, queue)));
+      }
+    })
+
+    /**
+     * eos
+     */
+
+    .set('eos', function(node) {
+      if (this.input) return;
+
+      if (options.optimize !== false) {
+        this.output = utils.last(utils.flatten(this.ast.queue));
+      } else if (Array.isArray(utils.last(this.ast.queue))) {
+        this.output = utils.flatten(this.ast.queue.pop());
+      } else {
+        this.output = utils.flatten(this.ast.queue);
+      }
+
+      if (node.parent.count > 1 && options.expand) {
+        this.output = multiply(this.output, node.parent.count);
+      }
+
+      this.output = utils.arrayify(this.output);
+      this.ast.queue = [];
+    });
+
+};
+
+/**
+ * Multiply the segments in the current brace level
+ */
+
+function multiply(queue, n, options) {
+  return utils.flatten(utils.repeat(utils.arrayify(queue), n));
+}
+
+/**
+ * Return true if `node` is escaped
+ */
+
+function isEscaped(node) {
+  return node.escaped === true;
+}
+
+/**
+ * Returns true if regex parens should be used for sets. If the parent `type`
+ * is not `brace`, then we're on a root node, which means we should never
+ * expand segments and open/close braces should be `{}` (since this indicates
+ * a brace is missing from the set)
+ */
+
+function isOptimized(node, options) {
+  if (node.parent.isOptimized) return true;
+  return isType(node.parent, 'brace')
+    && !isEscaped(node.parent)
+    && options.expand !== true;
+}
+
+/**
+ * Returns true if the value in `node` should be wrapped in a literal brace.
+ * @return {Boolean}
+ */
+
+function isLiteralBrace(node, options) {
+  return isEscaped(node.parent) || options.optimize !== false;
+}
+
+/**
+ * Returns true if the given `node` does not have an inner value.
+ * @return {Boolean}
+ */
+
+function noInner(node, type) {
+  if (node.parent.queue.length === 1) {
+    return true;
+  }
+  var nodes = node.parent.nodes;
+  return nodes.length === 3
+    && isType(nodes[0], 'brace.open')
+    && !isType(nodes[1], 'text')
+    && isType(nodes[2], 'brace.close');
+}
+
+/**
+ * Returns true if the given `node` is the given `type`
+ * @return {Boolean}
+ */
+
+function isType(node, type) {
+  return typeof node !== 'undefined' && node.type === type;
+}
+
+/**
+ * Returns true if the given `node` has a non-empty queue.
+ * @return {Boolean}
+ */
+
+function hasQueue(node) {
+  return Array.isArray(node.queue) && node.queue.length;
+}
+
+
+/***/ }),
+
+/***/ 32829:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var Node = __nccwpck_require__(55244);
+var utils = __nccwpck_require__(45207);
+
+/**
+ * Braces parsers
+ */
+
+module.exports = function(braces, options) {
+  braces.parser
+    .set('bos', function() {
+      if (!this.parsed) {
+        this.ast = this.nodes[0] = new Node(this.ast);
+      }
+    })
+
+    /**
+     * Character parsers
+     */
+
+    .set('escape', function() {
+      var pos = this.position();
+      var m = this.match(/^(?:\\(.)|\$\{)/);
+      if (!m) return;
+
+      var prev = this.prev();
+      var last = utils.last(prev.nodes);
+
+      var node = pos(new Node({
+        type: 'text',
+        multiplier: 1,
+        val: m[0]
+      }));
+
+      if (node.val === '\\\\') {
+        return node;
+      }
+
+      if (node.val === '${') {
+        var str = this.input;
+        var idx = -1;
+        var ch;
+
+        while ((ch = str[++idx])) {
+          this.consume(1);
+          node.val += ch;
+          if (ch === '\\') {
+            node.val += str[++idx];
+            continue;
+          }
+          if (ch === '}') {
             break;
           }
         }
       }
 
-      push({ type: 'text', value });
-      continue;
-    }
-
-    /**
-     * Parentheses
-     */
-
-    if (value === CHAR_LEFT_PARENTHESES) {
-      block = push({ type: 'paren', nodes: [] });
-      stack.push(block);
-      push({ type: 'text', value });
-      continue;
-    }
-
-    if (value === CHAR_RIGHT_PARENTHESES) {
-      if (block.type !== 'paren') {
-        push({ type: 'text', value });
-        continue;
-      }
-      block = stack.pop();
-      push({ type: 'text', value });
-      block = stack[stack.length - 1];
-      continue;
-    }
-
-    /**
-     * Quotes: '|"|`
-     */
-
-    if (value === CHAR_DOUBLE_QUOTE || value === CHAR_SINGLE_QUOTE || value === CHAR_BACKTICK) {
-      let open = value;
-      let next;
-
-      if (options.keepQuotes !== true) {
-        value = '';
+      if (this.options.unescape !== false) {
+        node.val = node.val.replace(/\\([{}])/g, '$1');
       }
 
-      while (index < length && (next = advance())) {
-        if (next === CHAR_BACKSLASH) {
-          value += next + advance();
-          continue;
+      if (last.val === '"' && this.input.charAt(0) === '"') {
+        last.val = node.val;
+        this.consume(1);
+        return;
+      }
+
+      return concatNodes.call(this, pos, node, prev, options);
+    })
+
+    /**
+     * Brackets: "[...]" (basic, this is overridden by
+     * other parsers in more advanced implementations)
+     */
+
+    .set('bracket', function() {
+      var isInside = this.isInside('brace');
+      var pos = this.position();
+      var m = this.match(/^(?:\[([!^]?)([^\]]{2,}|\]-)(\]|[^*+?]+)|\[)/);
+      if (!m) return;
+
+      var prev = this.prev();
+      var val = m[0];
+      var negated = m[1] ? '^' : '';
+      var inner = m[2] || '';
+      var close = m[3] || '';
+
+      if (isInside && prev.type === 'brace') {
+        prev.text = prev.text || '';
+        prev.text += val;
+      }
+
+      var esc = this.input.slice(0, 2);
+      if (inner === '' && esc === '\\]') {
+        inner += esc;
+        this.consume(2);
+
+        var str = this.input;
+        var idx = -1;
+        var ch;
+
+        while ((ch = str[++idx])) {
+          this.consume(1);
+          if (ch === ']') {
+            close = ch;
+            break;
+          }
+          inner += ch;
         }
-
-        if (next === open) {
-          if (options.keepQuotes === true) value += next;
-          break;
-        }
-
-        value += next;
       }
 
-      push({ type: 'text', value });
-      continue;
-    }
+      return pos(new Node({
+        type: 'bracket',
+        val: val,
+        escaped: close !== ']',
+        negated: negated,
+        inner: inner,
+        close: close
+      }));
+    })
 
     /**
-     * Left curly brace: '{'
+     * Empty braces (we capture these early to
+     * speed up processing in the compiler)
      */
 
-    if (value === CHAR_LEFT_CURLY_BRACE) {
-      depth++;
+    .set('multiplier', function() {
+      var isInside = this.isInside('brace');
+      var pos = this.position();
+      var m = this.match(/^\{((?:,|\{,+\})+)\}/);
+      if (!m) return;
 
-      let dollar = prev.value && prev.value.slice(-1) === '$' || block.dollar === true;
-      let brace = {
+      this.multiplier = true;
+      var prev = this.prev();
+      var val = m[0];
+
+      if (isInside && prev.type === 'brace') {
+        prev.text = prev.text || '';
+        prev.text += val;
+      }
+
+      var node = pos(new Node({
+        type: 'text',
+        multiplier: 1,
+        match: m,
+        val: val
+      }));
+
+      return concatNodes.call(this, pos, node, prev, options);
+    })
+
+    /**
+     * Open
+     */
+
+    .set('brace.open', function() {
+      var pos = this.position();
+      var m = this.match(/^\{(?!(?:[^\\}]?|,+)\})/);
+      if (!m) return;
+
+      var prev = this.prev();
+      var last = utils.last(prev.nodes);
+
+      // if the last parsed character was an extglob character
+      // we need to _not optimize_ the brace pattern because
+      // it might be mistaken for an extglob by a downstream parser
+      if (last && last.val && isExtglobChar(last.val.slice(-1))) {
+        last.optimize = false;
+      }
+
+      var open = pos(new Node({
+        type: 'brace.open',
+        val: m[0]
+      }));
+
+      var node = pos(new Node({
         type: 'brace',
-        open: true,
-        close: false,
-        dollar,
-        depth,
-        commas: 0,
-        ranges: 0,
         nodes: []
-      };
+      }));
 
-      block = push(brace);
-      stack.push(block);
-      push({ type: 'open', value });
-      continue;
-    }
-
-    /**
-     * Right curly brace: '}'
-     */
-
-    if (value === CHAR_RIGHT_CURLY_BRACE) {
-      if (block.type !== 'brace') {
-        push({ type: 'text', value });
-        continue;
-      }
-
-      let type = 'close';
-      block = stack.pop();
-      block.close = true;
-
-      push({ type, value });
-      depth--;
-
-      block = stack[stack.length - 1];
-      continue;
-    }
+      node.push(open);
+      prev.push(node);
+      this.push('brace', node);
+    })
 
     /**
-     * Comma: ','
+     * Close
      */
 
-    if (value === CHAR_COMMA && depth > 0) {
-      if (block.ranges > 0) {
-        block.ranges = 0;
-        let open = block.nodes.shift();
-        block.nodes = [open, { type: 'text', value: stringify(block) }];
-      }
+    .set('brace.close', function() {
+      var pos = this.position();
+      var m = this.match(/^\}/);
+      if (!m || !m[0]) return;
 
-      push({ type: 'comma', value });
-      block.commas++;
-      continue;
-    }
+      var brace = this.pop('brace');
+      var node = pos(new Node({
+        type: 'brace.close',
+        val: m[0]
+      }));
 
-    /**
-     * Dot: '.'
-     */
-
-    if (value === CHAR_DOT && depth > 0 && block.commas === 0) {
-      let siblings = block.nodes;
-
-      if (depth === 0 || siblings.length === 0) {
-        push({ type: 'text', value });
-        continue;
-      }
-
-      if (prev.type === 'dot') {
-        block.range = [];
-        prev.value += value;
-        prev.type = 'range';
-
-        if (block.nodes.length !== 3 && block.nodes.length !== 5) {
-          block.invalid = true;
-          block.ranges = 0;
-          prev.type = 'text';
-          continue;
+      if (!this.isType(brace, 'brace')) {
+        if (this.options.strict) {
+          throw new Error('missing opening "{"');
         }
-
-        block.ranges++;
-        block.args = [];
-        continue;
+        node.type = 'text';
+        node.multiplier = 0;
+        node.escaped = true;
+        return node;
       }
 
-      if (prev.type === 'range') {
-        siblings.pop();
-
-        let before = siblings[siblings.length - 1];
-        before.value += prev.value + value;
-        prev = before;
-        block.ranges--;
-        continue;
+      var prev = this.prev();
+      var last = utils.last(prev.nodes);
+      if (last.text) {
+        var lastNode = utils.last(last.nodes);
+        if (lastNode.val === ')' && /[!@*?+]\(/.test(last.text)) {
+          var open = last.nodes[0];
+          var text = last.nodes[1];
+          if (open.type === 'brace.open' && text && text.type === 'text') {
+            text.optimize = false;
+          }
+        }
       }
 
-      push({ type: 'dot', value });
-      continue;
-    }
+      if (brace.nodes.length > 2) {
+        var first = brace.nodes[1];
+        if (first.type === 'text' && first.val === ',') {
+          brace.nodes.splice(1, 1);
+          brace.nodes.push(first);
+        }
+      }
+
+      brace.push(node);
+    })
+
+    /**
+     * Capture boundary characters
+     */
+
+    .set('boundary', function() {
+      var pos = this.position();
+      var m = this.match(/^[$^](?!\{)/);
+      if (!m) return;
+      return pos(new Node({
+        type: 'text',
+        val: m[0]
+      }));
+    })
+
+    /**
+     * One or zero, non-comma characters wrapped in braces
+     */
+
+    .set('nobrace', function() {
+      var isInside = this.isInside('brace');
+      var pos = this.position();
+      var m = this.match(/^\{[^,]?\}/);
+      if (!m) return;
+
+      var prev = this.prev();
+      var val = m[0];
+
+      if (isInside && prev.type === 'brace') {
+        prev.text = prev.text || '';
+        prev.text += val;
+      }
+
+      return pos(new Node({
+        type: 'text',
+        multiplier: 0,
+        val: val
+      }));
+    })
 
     /**
      * Text
      */
 
-    push({ type: 'text', value });
+    .set('text', function() {
+      var isInside = this.isInside('brace');
+      var pos = this.position();
+      var m = this.match(/^((?!\\)[^${}[\]])+/);
+      if (!m) return;
+
+      var prev = this.prev();
+      var val = m[0];
+
+      if (isInside && prev.type === 'brace') {
+        prev.text = prev.text || '';
+        prev.text += val;
+      }
+
+      var node = pos(new Node({
+        type: 'text',
+        multiplier: 1,
+        val: val
+      }));
+
+      return concatNodes.call(this, pos, node, prev, options);
+    });
+};
+
+/**
+ * Returns true if the character is an extglob character.
+ */
+
+function isExtglobChar(ch) {
+  return ch === '!' || ch === '@' || ch === '*' || ch === '?' || ch === '+';
+}
+
+/**
+ * Combine text nodes, and calculate empty sets (`{,,}`)
+ * @param {Function} `pos` Function to calculate node position
+ * @param {Object} `node` AST node
+ * @return {Object}
+ */
+
+function concatNodes(pos, node, parent, options) {
+  node.orig = node.val;
+  var prev = this.prev();
+  var last = utils.last(prev.nodes);
+  var isEscaped = false;
+
+  if (node.val.length > 1) {
+    var a = node.val.charAt(0);
+    var b = node.val.slice(-1);
+
+    isEscaped = (a === '"' && b === '"')
+      || (a === "'" && b === "'")
+      || (a === '`' && b === '`');
   }
 
-  // Mark imbalanced braces and brackets as invalid
-  do {
-    block = stack.pop();
+  if (isEscaped && options.unescape !== false) {
+    node.val = node.val.slice(1, node.val.length - 1);
+    node.escaped = true;
+  }
 
-    if (block.type !== 'root') {
-      block.nodes.forEach(node => {
-        if (!node.nodes) {
-          if (node.type === 'open') node.isOpen = true;
-          if (node.type === 'close') node.isClose = true;
-          if (!node.nodes) node.type = 'text';
-          node.invalid = true;
-        }
-      });
-
-      // get the location of the block on parent.nodes (block's siblings)
-      let parent = stack[stack.length - 1];
-      let index = parent.nodes.indexOf(block);
-      // replace the (invalid) block with it's nodes
-      parent.nodes.splice(index, 1, ...block.nodes);
-    }
-  } while (stack.length > 0);
-
-  push({ type: 'eos' });
-  return ast;
-};
-
-module.exports = parse;
-
-
-/***/ }),
-
-/***/ 38750:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-const utils = __nccwpck_require__(45207);
-
-module.exports = (ast, options = {}) => {
-  let stringify = (node, parent = {}) => {
-    let invalidBlock = options.escapeInvalid && utils.isInvalidBrace(parent);
-    let invalidNode = node.invalid === true && options.escapeInvalid === true;
-    let output = '';
-
-    if (node.value) {
-      if ((invalidBlock || invalidNode) && utils.isOpenOrClose(node)) {
-        return '\\' + node.value;
-      }
-      return node.value;
+  if (node.match) {
+    var match = node.match[1];
+    if (!match || match.indexOf('}') === -1) {
+      match = node.match[0];
     }
 
-    if (node.value) {
-      return node.value;
-    }
+    // replace each set with a single ","
+    var val = match.replace(/\{/g, ',').replace(/\}/g, '');
+    node.multiplier *= val.length;
+    node.val = '';
+  }
 
-    if (node.nodes) {
-      for (let child of node.nodes) {
-        output += stringify(child);
-      }
-    }
-    return output;
-  };
+  var simpleText = last.type === 'text'
+    && last.multiplier === 1
+    && node.multiplier === 1
+    && node.val;
 
-  return stringify(ast);
-};
+  if (simpleText) {
+    last.val += node.val;
+    return;
+  }
 
+  prev.push(node);
+}
 
 
 /***/ }),
 
 /***/ 45207:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-exports.isInteger = num => {
-  if (typeof num === 'number') {
-    return Number.isInteger(num);
-  }
-  if (typeof num === 'string' && num.trim() !== '') {
-    return Number.isInteger(Number(num));
+var splitString = __nccwpck_require__(84960);
+var utils = module.exports;
+
+/**
+ * Module dependencies
+ */
+
+utils.extend = __nccwpck_require__(67512);
+utils.flatten = __nccwpck_require__(57493);
+utils.isObject = __nccwpck_require__(5509);
+utils.fillRange = __nccwpck_require__(6330);
+utils.repeat = __nccwpck_require__(73301);
+utils.unique = __nccwpck_require__(40340);
+
+utils.define = function(obj, key, val) {
+  Object.defineProperty(obj, key, {
+    writable: true,
+    configurable: true,
+    enumerable: false,
+    value: val
+  });
+};
+
+/**
+ * Returns true if the given string contains only empty brace sets.
+ */
+
+utils.isEmptySets = function(str) {
+  return /^(?:\{,\})+$/.test(str);
+};
+
+/**
+ * Returns true if the given string contains only empty brace sets.
+ */
+
+utils.isQuotedString = function(str) {
+  var open = str.charAt(0);
+  if (open === '\'' || open === '"' || open === '`') {
+    return str.slice(-1) === open;
   }
   return false;
 };
 
 /**
- * Find a node of the given type
+ * Create the key to use for memoization. The unique key is generated
+ * by iterating over the options and concatenating key-value pairs
+ * to the pattern string.
  */
 
-exports.find = (node, type) => node.nodes.find(node => node.type === type);
-
-/**
- * Find a node of the given type
- */
-
-exports.exceedsLimit = (min, max, step = 1, limit) => {
-  if (limit === false) return false;
-  if (!exports.isInteger(min) || !exports.isInteger(max)) return false;
-  return ((Number(max) - Number(min)) / Number(step)) >= limit;
+utils.createKey = function(pattern, options) {
+  var id = pattern;
+  if (typeof options === 'undefined') {
+    return id;
+  }
+  var keys = Object.keys(options);
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    id += ';' + key + '=' + String(options[key]);
+  }
+  return id;
 };
 
 /**
- * Escape the given node with '\\' before node.value
+ * Normalize options
  */
 
-exports.escapeNode = (block, n = 0, type) => {
-  let node = block.nodes[n];
-  if (!node) return;
+utils.createOptions = function(options) {
+  var opts = utils.extend.apply(null, arguments);
+  if (typeof opts.expand === 'boolean') {
+    opts.optimize = !opts.expand;
+  }
+  if (typeof opts.optimize === 'boolean') {
+    opts.expand = !opts.optimize;
+  }
+  if (opts.optimize === true) {
+    opts.makeRe = true;
+  }
+  return opts;
+};
 
-  if ((type && node.type === type) || node.type === 'open' || node.type === 'close') {
-    if (node.escaped !== true) {
-      node.value = '\\' + node.value;
-      node.escaped = true;
+/**
+ * Join patterns in `a` to patterns in `b`
+ */
+
+utils.join = function(a, b, options) {
+  options = options || {};
+  a = utils.arrayify(a);
+  b = utils.arrayify(b);
+
+  if (!a.length) return b;
+  if (!b.length) return a;
+
+  var len = a.length;
+  var idx = -1;
+  var arr = [];
+
+  while (++idx < len) {
+    var val = a[idx];
+    if (Array.isArray(val)) {
+      for (var i = 0; i < val.length; i++) {
+        val[i] = utils.join(val[i], b, options);
+      }
+      arr.push(val);
+      continue;
+    }
+
+    for (var j = 0; j < b.length; j++) {
+      var bval = b[j];
+
+      if (Array.isArray(bval)) {
+        arr.push(utils.join(val, bval, options));
+      } else {
+        arr.push(val + bval);
+      }
     }
   }
+  return arr;
 };
 
 /**
- * Returns true if the given brace node should be enclosed in literal braces
+ * Split the given string on `,` if not escaped.
  */
 
-exports.encloseBrace = node => {
-  if (node.type !== 'brace') return false;
-  if ((node.commas >> 0 + node.ranges >> 0) === 0) {
-    node.invalid = true;
-    return true;
+utils.split = function(str, options) {
+  var opts = utils.extend({sep: ','}, options);
+  if (typeof opts.keepQuotes !== 'boolean') {
+    opts.keepQuotes = true;
   }
-  return false;
+  if (opts.unescape === false) {
+    opts.keepEscaping = true;
+  }
+  return splitString(str, opts, utils.escapeBrackets(opts));
 };
 
 /**
- * Returns true if a brace node is invalid.
+ * Expand ranges or sets in the given `pattern`.
+ *
+ * @param {String} `str`
+ * @param {Object} `options`
+ * @return {Object}
  */
 
-exports.isInvalidBrace = block => {
-  if (block.type !== 'brace') return false;
-  if (block.invalid === true || block.dollar) return true;
-  if ((block.commas >> 0 + block.ranges >> 0) === 0) {
-    block.invalid = true;
-    return true;
+utils.expand = function(str, options) {
+  var opts = utils.extend({rangeLimit: 10000}, options);
+  var segs = utils.split(str, opts);
+  var tok = { segs: segs };
+
+  if (utils.isQuotedString(str)) {
+    return tok;
   }
-  if (block.open !== true || block.close !== true) {
-    block.invalid = true;
-    return true;
+
+  if (opts.rangeLimit === true) {
+    opts.rangeLimit = 10000;
   }
-  return false;
-};
 
-/**
- * Returns true if a node is an open or close node
- */
-
-exports.isOpenOrClose = node => {
-  if (node.type === 'open' || node.type === 'close') {
-    return true;
-  }
-  return node.open === true || node.close === true;
-};
-
-/**
- * Reduce an array of text nodes.
- */
-
-exports.reduce = nodes => nodes.reduce((acc, node) => {
-  if (node.type === 'text') acc.push(node.value);
-  if (node.type === 'range') node.type = 'text';
-  return acc;
-}, []);
-
-/**
- * Flatten an array
- */
-
-exports.flatten = (...args) => {
-  const result = [];
-  const flat = arr => {
-    for (let i = 0; i < arr.length; i++) {
-      let ele = arr[i];
-      Array.isArray(ele) ? flat(ele, result) : ele !== void 0 && result.push(ele);
+  if (segs.length > 1) {
+    if (opts.optimize === false) {
+      tok.val = segs[0];
+      return tok;
     }
-    return result;
+
+    tok.segs = utils.stringifyArray(tok.segs);
+  } else if (segs.length === 1) {
+    var arr = str.split('..');
+
+    if (arr.length === 1) {
+      tok.val = tok.segs[tok.segs.length - 1] || tok.val || str;
+      tok.segs = [];
+      return tok;
+    }
+
+    if (arr.length === 2 && arr[0] === arr[1]) {
+      tok.escaped = true;
+      tok.val = arr[0];
+      tok.segs = [];
+      return tok;
+    }
+
+    if (arr.length > 1) {
+      if (opts.optimize !== false) {
+        opts.optimize = true;
+        delete opts.expand;
+      }
+
+      if (opts.optimize !== true) {
+        var min = Math.min(arr[0], arr[1]);
+        var max = Math.max(arr[0], arr[1]);
+        var step = arr[2] || 1;
+
+        if (opts.rangeLimit !== false && ((max - min) / step >= opts.rangeLimit)) {
+          throw new RangeError('expanded array length exceeds range limit. Use options.rangeLimit to increase or disable the limit.');
+        }
+      }
+
+      arr.push(opts);
+      tok.segs = utils.fillRange.apply(null, arr);
+
+      if (!tok.segs.length) {
+        tok.escaped = true;
+        tok.val = str;
+        return tok;
+      }
+
+      if (opts.optimize === true) {
+        tok.segs = utils.stringifyArray(tok.segs);
+      }
+
+      if (tok.segs === '') {
+        tok.val = str;
+      } else {
+        tok.val = tok.segs[0];
+      }
+      return tok;
+    }
+  } else {
+    tok.val = str;
+  }
+  return tok;
+};
+
+/**
+ * Ensure commas inside brackets and parens are not split.
+ * @param {Object} `tok` Token from the `split-string` module
+ * @return {undefined}
+ */
+
+utils.escapeBrackets = function(options) {
+  return function(tok) {
+    if (tok.escaped && tok.val === 'b') {
+      tok.val = '\\b';
+      return;
+    }
+
+    if (tok.val !== '(' && tok.val !== '[') return;
+    var opts = utils.extend({}, options);
+    var brackets = [];
+    var parens = [];
+    var stack = [];
+    var val = tok.val;
+    var str = tok.str;
+    var i = tok.idx - 1;
+
+    while (++i < str.length) {
+      var ch = str[i];
+
+      if (ch === '\\') {
+        val += (opts.keepEscaping === false ? '' : ch) + str[++i];
+        continue;
+      }
+
+      if (ch === '(') {
+        parens.push(ch);
+        stack.push(ch);
+      }
+
+      if (ch === '[') {
+        brackets.push(ch);
+        stack.push(ch);
+      }
+
+      if (ch === ')') {
+        parens.pop();
+        stack.pop();
+        if (!stack.length) {
+          val += ch;
+          break;
+        }
+      }
+
+      if (ch === ']') {
+        brackets.pop();
+        stack.pop();
+        if (!stack.length) {
+          val += ch;
+          break;
+        }
+      }
+      val += ch;
+    }
+
+    tok.split = false;
+    tok.val = val.slice(1);
+    tok.idx = i;
   };
-  flat(args);
-  return result;
+};
+
+/**
+ * Returns true if the given string looks like a regex quantifier
+ * @return {Boolean}
+ */
+
+utils.isQuantifier = function(str) {
+  return /^(?:[0-9]?,[0-9]|[0-9],)$/.test(str);
+};
+
+/**
+ * Cast `val` to an array.
+ * @param {*} `val`
+ */
+
+utils.stringifyArray = function(arr) {
+  return [utils.arrayify(arr).join('|')];
+};
+
+/**
+ * Cast `val` to an array.
+ * @param {*} `val`
+ */
+
+utils.arrayify = function(arr) {
+  if (typeof arr === 'undefined') {
+    return [];
+  }
+  if (typeof arr === 'string') {
+    return [arr];
+  }
+  return arr;
+};
+
+/**
+ * Returns true if the given `str` is a non-empty string
+ * @return {Boolean}
+ */
+
+utils.isString = function(str) {
+  return str != null && typeof str === 'string';
+};
+
+/**
+ * Get the last element from `array`
+ * @param {Array} `array`
+ * @return {*}
+ */
+
+utils.last = function(arr, n) {
+  return arr[arr.length - (n || 1)];
+};
+
+utils.escapeRegex = function(str) {
+  return str.replace(/\\?([!^*?()[\]{}+?/])/g, '\\$1');
 };
 
 
@@ -34914,444 +35381,26 @@ brackets.match = function(arr, pattern) {
 
 /***/ }),
 
-/***/ 63183:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-var options_1 = __nccwpck_require__(36666);
-var delay_factory_1 = __nccwpck_require__(58348);
-function backOff(request, options) {
-    if (options === void 0) { options = {}; }
-    return __awaiter(this, void 0, void 0, function () {
-        var sanitizedOptions, backOff;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    sanitizedOptions = options_1.getSanitizedOptions(options);
-                    backOff = new BackOff(request, sanitizedOptions);
-                    return [4 /*yield*/, backOff.execute()];
-                case 1: return [2 /*return*/, _a.sent()];
-            }
-        });
-    });
-}
-exports.backOff = backOff;
-var BackOff = /** @class */ (function () {
-    function BackOff(request, options) {
-        this.request = request;
-        this.options = options;
-        this.attemptNumber = 0;
-    }
-    BackOff.prototype.execute = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var e_1, shouldRetry;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        if (!!this.attemptLimitReached) return [3 /*break*/, 7];
-                        _a.label = 1;
-                    case 1:
-                        _a.trys.push([1, 4, , 6]);
-                        return [4 /*yield*/, this.applyDelay()];
-                    case 2:
-                        _a.sent();
-                        return [4 /*yield*/, this.request()];
-                    case 3: return [2 /*return*/, _a.sent()];
-                    case 4:
-                        e_1 = _a.sent();
-                        this.attemptNumber++;
-                        return [4 /*yield*/, this.options.retry(e_1, this.attemptNumber)];
-                    case 5:
-                        shouldRetry = _a.sent();
-                        if (!shouldRetry || this.attemptLimitReached) {
-                            throw e_1;
-                        }
-                        return [3 /*break*/, 6];
-                    case 6: return [3 /*break*/, 0];
-                    case 7: throw new Error("Something went wrong.");
-                }
-            });
-        });
-    };
-    Object.defineProperty(BackOff.prototype, "attemptLimitReached", {
-        get: function () {
-            return this.attemptNumber >= this.options.numOfAttempts;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    BackOff.prototype.applyDelay = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var delay;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        delay = delay_factory_1.DelayFactory(this.options, this.attemptNumber);
-                        return [4 /*yield*/, delay.apply()];
-                    case 1:
-                        _a.sent();
-                        return [2 /*return*/];
-                }
-            });
-        });
-    };
-    return BackOff;
-}());
-//# sourceMappingURL=backoff.js.map
-
-/***/ }),
-
-/***/ 85710:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-var delay_base_1 = __nccwpck_require__(97741);
-var AlwaysDelay = /** @class */ (function (_super) {
-    __extends(AlwaysDelay, _super);
-    function AlwaysDelay() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    return AlwaysDelay;
-}(delay_base_1.Delay));
-exports.AlwaysDelay = AlwaysDelay;
-//# sourceMappingURL=always.delay.js.map
-
-/***/ }),
-
-/***/ 97741:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-var jitter_factory_1 = __nccwpck_require__(85229);
-var Delay = /** @class */ (function () {
-    function Delay(options) {
-        this.options = options;
-        this.attempt = 0;
-    }
-    Delay.prototype.apply = function () {
-        var _this = this;
-        return new Promise(function (resolve) { return setTimeout(resolve, _this.jitteredDelay); });
-    };
-    Delay.prototype.setAttemptNumber = function (attempt) {
-        this.attempt = attempt;
-    };
-    Object.defineProperty(Delay.prototype, "jitteredDelay", {
-        get: function () {
-            var jitter = jitter_factory_1.JitterFactory(this.options);
-            return jitter(this.delay);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Delay.prototype, "delay", {
-        get: function () {
-            var constant = this.options.startingDelay;
-            var base = this.options.timeMultiple;
-            var power = this.numOfDelayedAttempts;
-            var delay = constant * Math.pow(base, power);
-            return Math.min(delay, this.options.maxDelay);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Delay.prototype, "numOfDelayedAttempts", {
-        get: function () {
-            return this.attempt;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    return Delay;
-}());
-exports.Delay = Delay;
-//# sourceMappingURL=delay.base.js.map
-
-/***/ }),
-
-/***/ 58348:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-var skip_first_delay_1 = __nccwpck_require__(4317);
-var always_delay_1 = __nccwpck_require__(85710);
-function DelayFactory(options, attempt) {
-    var delay = initDelayClass(options);
-    delay.setAttemptNumber(attempt);
-    return delay;
-}
-exports.DelayFactory = DelayFactory;
-function initDelayClass(options) {
-    if (!options.delayFirstAttempt) {
-        return new skip_first_delay_1.SkipFirstDelay(options);
-    }
-    return new always_delay_1.AlwaysDelay(options);
-}
-//# sourceMappingURL=delay.factory.js.map
-
-/***/ }),
-
-/***/ 4317:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-var delay_base_1 = __nccwpck_require__(97741);
-var SkipFirstDelay = /** @class */ (function (_super) {
-    __extends(SkipFirstDelay, _super);
-    function SkipFirstDelay() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    SkipFirstDelay.prototype.apply = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                return [2 /*return*/, this.isFirstAttempt ? true : _super.prototype.apply.call(this)];
-            });
-        });
-    };
-    Object.defineProperty(SkipFirstDelay.prototype, "isFirstAttempt", {
-        get: function () {
-            return this.attempt === 0;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(SkipFirstDelay.prototype, "numOfDelayedAttempts", {
-        get: function () {
-            return this.attempt - 1;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    return SkipFirstDelay;
-}(delay_base_1.Delay));
-exports.SkipFirstDelay = SkipFirstDelay;
-//# sourceMappingURL=skip-first.delay.js.map
-
-/***/ }),
-
-/***/ 58571:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-function fullJitter(delay) {
-    var jitteredDelay = Math.random() * delay;
-    return Math.round(jitteredDelay);
-}
-exports.fullJitter = fullJitter;
-//# sourceMappingURL=full.jitter.js.map
-
-/***/ }),
-
-/***/ 85229:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-var full_jitter_1 = __nccwpck_require__(58571);
-var no_jitter_1 = __nccwpck_require__(82585);
-function JitterFactory(options) {
-    switch (options.jitter) {
-        case "full":
-            return full_jitter_1.fullJitter;
-        case "none":
-        default:
-            return no_jitter_1.noJitter;
-    }
-}
-exports.JitterFactory = JitterFactory;
-//# sourceMappingURL=jitter.factory.js.map
-
-/***/ }),
-
-/***/ 82585:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-function noJitter(delay) {
-    return delay;
-}
-exports.noJitter = noJitter;
-//# sourceMappingURL=no.jitter.js.map
-
-/***/ }),
-
-/***/ 36666:
-/***/ (function(__unused_webpack_module, exports) {
-
-"use strict";
-
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-var defaultOptions = {
-    delayFirstAttempt: false,
-    jitter: "none",
-    maxDelay: Infinity,
-    numOfAttempts: 10,
-    retry: function () { return true; },
-    startingDelay: 100,
-    timeMultiple: 2
-};
-function getSanitizedOptions(options) {
-    var sanitized = __assign(__assign({}, defaultOptions), options);
-    if (sanitized.numOfAttempts < 1) {
-        sanitized.numOfAttempts = 1;
-    }
-    return sanitized;
-}
-exports.getSanitizedOptions = getSanitizedOptions;
-//# sourceMappingURL=options.js.map
-
-/***/ }),
-
 /***/ 67512:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-var isExtendable = __nccwpck_require__(18831);
-var assignSymbols = __nccwpck_require__(68782);
+var isObject = __nccwpck_require__(70429);
 
-module.exports = Object.assign || function(obj/*, objects*/) {
-  if (obj === null || typeof obj === 'undefined') {
-    throw new TypeError('Cannot convert undefined or null to object');
-  }
-  if (!isObject(obj)) {
-    obj = {};
-  }
-  for (var i = 1; i < arguments.length; i++) {
-    var val = arguments[i];
-    if (isString(val)) {
-      val = toObject(val);
-    }
-    if (isObject(val)) {
-      assign(obj, val);
-      assignSymbols(obj, val);
+module.exports = function extend(o/*, objects*/) {
+  if (!isObject(o)) { o = {}; }
+
+  var len = arguments.length;
+  for (var i = 1; i < len; i++) {
+    var obj = arguments[i];
+
+    if (isObject(obj)) {
+      assign(o, obj);
     }
   }
-  return obj;
+  return o;
 };
 
 function assign(a, b) {
@@ -35362,22 +35411,6 @@ function assign(a, b) {
   }
 }
 
-function isString(val) {
-  return (val && typeof val === 'string');
-}
-
-function toObject(str) {
-  var obj = {};
-  for (var i in str) {
-    obj[i] = str[i];
-  }
-  return obj;
-}
-
-function isObject(val) {
-  return (val && typeof val === 'object') || isExtendable(val);
-}
-
 /**
  * Returns true if the given `key` is an own property of `obj`.
  */
@@ -35385,77 +35418,6 @@ function isObject(val) {
 function hasOwn(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj, key);
 }
-
-function isEnum(obj, key) {
-  return Object.prototype.propertyIsEnumerable.call(obj, key);
-}
-
-
-/***/ }),
-
-/***/ 18831:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-/*!
- * is-extendable <https://github.com/jonschlinkert/is-extendable>
- *
- * Copyright (c) 2015-2017, Jon Schlinkert.
- * Released under the MIT License.
- */
-
-
-
-var isPlainObject = __nccwpck_require__(21375);
-
-module.exports = function isExtendable(val) {
-  return isPlainObject(val) || typeof val === 'function' || Array.isArray(val);
-};
-
-
-/***/ }),
-
-/***/ 21375:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-/*!
- * is-plain-object <https://github.com/jonschlinkert/is-plain-object>
- *
- * Copyright (c) 2014-2017, Jon Schlinkert.
- * Released under the MIT License.
- */
-
-
-
-var isObject = __nccwpck_require__(5509);
-
-function isObjectObject(o) {
-  return isObject(o) === true
-    && Object.prototype.toString.call(o) === '[object Object]';
-}
-
-module.exports = function isPlainObject(o) {
-  var ctor,prot;
-
-  if (isObjectObject(o) === false) return false;
-
-  // If has modified constructor
-  ctor = o.constructor;
-  if (typeof ctor !== 'function') return false;
-
-  // If has modified prototype
-  prot = ctor.prototype;
-  if (isObjectObject(prot) === false) return false;
-
-  // If constructor does not have an Object-specific method
-  if (prot.hasOwnProperty('isPrototypeOf') === false) {
-    return false;
-  }
-
-  // Most likely a plain Object
-  return true;
-};
 
 
 /***/ }),
@@ -37623,252 +37585,211 @@ module.exports = function filenameRegex() {
 /*!
  * fill-range <https://github.com/jonschlinkert/fill-range>
  *
- * Copyright (c) 2014-present, Jon Schlinkert.
- * Licensed under the MIT License.
+ * Copyright (c) 2014-2015, 2017, Jon Schlinkert.
+ * Released under the MIT License.
  */
 
 
 
-const util = __nccwpck_require__(73837);
-const toRegexRange = __nccwpck_require__(1861);
+var util = __nccwpck_require__(73837);
+var isNumber = __nccwpck_require__(75680);
+var extend = __nccwpck_require__(67512);
+var repeat = __nccwpck_require__(96976);
+var toRegex = __nccwpck_require__(1861);
 
-const isObject = val => val !== null && typeof val === 'object' && !Array.isArray(val);
+/**
+ * Return a range of numbers or letters.
+ *
+ * @param  {String} `start` Start of the range
+ * @param  {String} `stop` End of the range
+ * @param  {String} `step` Increment or decrement to use.
+ * @param  {Function} `fn` Custom function to modify each element in the range.
+ * @return {Array}
+ */
 
-const transform = toNumber => {
-  return value => toNumber === true ? Number(value) : String(value);
-};
-
-const isValidValue = value => {
-  return typeof value === 'number' || (typeof value === 'string' && value !== '');
-};
-
-const isNumber = num => Number.isInteger(+num);
-
-const zeros = input => {
-  let value = `${input}`;
-  let index = -1;
-  if (value[0] === '-') value = value.slice(1);
-  if (value === '0') return false;
-  while (value[++index] === '0');
-  return index > 0;
-};
-
-const stringify = (start, end, options) => {
-  if (typeof start === 'string' || typeof end === 'string') {
-    return true;
-  }
-  return options.stringify === true;
-};
-
-const pad = (input, maxLength, toNumber) => {
-  if (maxLength > 0) {
-    let dash = input[0] === '-' ? '-' : '';
-    if (dash) input = input.slice(1);
-    input = (dash + input.padStart(dash ? maxLength - 1 : maxLength, '0'));
-  }
-  if (toNumber === false) {
-    return String(input);
-  }
-  return input;
-};
-
-const toMaxLen = (input, maxLength) => {
-  let negative = input[0] === '-' ? '-' : '';
-  if (negative) {
-    input = input.slice(1);
-    maxLength--;
-  }
-  while (input.length < maxLength) input = '0' + input;
-  return negative ? ('-' + input) : input;
-};
-
-const toSequence = (parts, options) => {
-  parts.negatives.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
-  parts.positives.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
-
-  let prefix = options.capture ? '' : '?:';
-  let positives = '';
-  let negatives = '';
-  let result;
-
-  if (parts.positives.length) {
-    positives = parts.positives.join('|');
-  }
-
-  if (parts.negatives.length) {
-    negatives = `-(${prefix}${parts.negatives.join('|')})`;
-  }
-
-  if (positives && negatives) {
-    result = `${positives}|${negatives}`;
-  } else {
-    result = positives || negatives;
-  }
-
-  if (options.wrap) {
-    return `(${prefix}${result})`;
-  }
-
-  return result;
-};
-
-const toRange = (a, b, isNumbers, options) => {
-  if (isNumbers) {
-    return toRegexRange(a, b, { wrap: false, ...options });
-  }
-
-  let start = String.fromCharCode(a);
-  if (a === b) return start;
-
-  let stop = String.fromCharCode(b);
-  return `[${start}-${stop}]`;
-};
-
-const toRegex = (start, end, options) => {
-  if (Array.isArray(start)) {
-    let wrap = options.wrap === true;
-    let prefix = options.capture ? '' : '?:';
-    return wrap ? `(${prefix}${start.join('|')})` : start.join('|');
-  }
-  return toRegexRange(start, end, options);
-};
-
-const rangeError = (...args) => {
-  return new RangeError('Invalid range arguments: ' + util.inspect(...args));
-};
-
-const invalidRange = (start, end, options) => {
-  if (options.strictRanges === true) throw rangeError([start, end]);
-  return [];
-};
-
-const invalidStep = (step, options) => {
-  if (options.strictRanges === true) {
-    throw new TypeError(`Expected step "${step}" to be a number`);
-  }
-  return [];
-};
-
-const fillNumbers = (start, end, step = 1, options = {}) => {
-  let a = Number(start);
-  let b = Number(end);
-
-  if (!Number.isInteger(a) || !Number.isInteger(b)) {
-    if (options.strictRanges === true) throw rangeError([start, end]);
+function fillRange(start, stop, step, options) {
+  if (typeof start === 'undefined') {
     return [];
   }
 
-  // fix negative zero
-  if (a === 0) a = 0;
-  if (b === 0) b = 0;
-
-  let descending = a > b;
-  let startString = String(start);
-  let endString = String(end);
-  let stepString = String(step);
-  step = Math.max(Math.abs(step), 1);
-
-  let padded = zeros(startString) || zeros(endString) || zeros(stepString);
-  let maxLen = padded ? Math.max(startString.length, endString.length, stepString.length) : 0;
-  let toNumber = padded === false && stringify(start, end, options) === false;
-  let format = options.transform || transform(toNumber);
-
-  if (options.toRegex && step === 1) {
-    return toRange(toMaxLen(start, maxLen), toMaxLen(end, maxLen), true, options);
-  }
-
-  let parts = { negatives: [], positives: [] };
-  let push = num => parts[num < 0 ? 'negatives' : 'positives'].push(Math.abs(num));
-  let range = [];
-  let index = 0;
-
-  while (descending ? a >= b : a <= b) {
-    if (options.toRegex === true && step > 1) {
-      push(a);
-    } else {
-      range.push(pad(format(a, index), maxLen, toNumber));
+  if (typeof stop === 'undefined' || start === stop) {
+    // special case, for handling negative zero
+    var isString = typeof start === 'string';
+    if (isNumber(start) && !toNumber(start)) {
+      return [isString ? '0' : 0];
     }
-    a = descending ? a - step : a + step;
-    index++;
-  }
-
-  if (options.toRegex === true) {
-    return step > 1
-      ? toSequence(parts, options)
-      : toRegex(range, null, { wrap: false, ...options });
-  }
-
-  return range;
-};
-
-const fillLetters = (start, end, step = 1, options = {}) => {
-  if ((!isNumber(start) && start.length > 1) || (!isNumber(end) && end.length > 1)) {
-    return invalidRange(start, end, options);
-  }
-
-
-  let format = options.transform || (val => String.fromCharCode(val));
-  let a = `${start}`.charCodeAt(0);
-  let b = `${end}`.charCodeAt(0);
-
-  let descending = a > b;
-  let min = Math.min(a, b);
-  let max = Math.max(a, b);
-
-  if (options.toRegex && step === 1) {
-    return toRange(min, max, false, options);
-  }
-
-  let range = [];
-  let index = 0;
-
-  while (descending ? a >= b : a <= b) {
-    range.push(format(a, index));
-    a = descending ? a - step : a + step;
-    index++;
-  }
-
-  if (options.toRegex === true) {
-    return toRegex(range, null, { wrap: false, options });
-  }
-
-  return range;
-};
-
-const fill = (start, end, step, options = {}) => {
-  if (end == null && isValidValue(start)) {
     return [start];
   }
 
-  if (!isValidValue(start) || !isValidValue(end)) {
-    return invalidRange(start, end, options);
+  if (typeof step !== 'number' && typeof step !== 'string') {
+    options = step;
+    step = undefined;
   }
 
-  if (typeof step === 'function') {
-    return fill(start, end, 1, { transform: step });
+  if (typeof options === 'function') {
+    options = { transform: options };
   }
 
-  if (isObject(step)) {
-    return fill(start, end, 0, step);
+  var opts = extend({step: step}, options);
+  if (opts.step && !isValidNumber(opts.step)) {
+    if (opts.strictRanges === true) {
+      throw new TypeError('expected options.step to be a number');
+    }
+    return [];
   }
 
-  let opts = { ...options };
-  if (opts.capture === true) opts.wrap = true;
-  step = step || opts.step || 1;
-
-  if (!isNumber(step)) {
-    if (step != null && !isObject(step)) return invalidStep(step, opts);
-    return fill(start, end, 1, step);
+  opts.isNumber = isValidNumber(start) && isValidNumber(stop);
+  if (!opts.isNumber && !isValid(start, stop)) {
+    if (opts.strictRanges === true) {
+      throw new RangeError('invalid range arguments: ' + util.inspect([start, stop]));
+    }
+    return [];
   }
 
-  if (isNumber(start) && isNumber(end)) {
-    return fillNumbers(start, end, step, opts);
+  opts.isPadded = isPadded(start) || isPadded(stop);
+  opts.toString = opts.stringify
+    || typeof opts.step === 'string'
+    || typeof start === 'string'
+    || typeof stop === 'string'
+    || !opts.isNumber;
+
+  if (opts.isPadded) {
+    opts.maxLength = Math.max(String(start).length, String(stop).length);
   }
 
-  return fillLetters(start, end, Math.max(Math.abs(step), 1), opts);
-};
+  // support legacy minimatch/fill-range options
+  if (typeof opts.optimize === 'boolean') opts.toRegex = opts.optimize;
+  if (typeof opts.makeRe === 'boolean') opts.toRegex = opts.makeRe;
+  return expand(start, stop, opts);
+}
 
-module.exports = fill;
+function expand(start, stop, options) {
+  var a = options.isNumber ? toNumber(start) : start.charCodeAt(0);
+  var b = options.isNumber ? toNumber(stop) : stop.charCodeAt(0);
+
+  var step = Math.abs(toNumber(options.step)) || 1;
+  if (options.toRegex && step === 1) {
+    return toRange(a, b, start, stop, options);
+  }
+
+  var zero = {greater: [], lesser: []};
+  var asc = a < b;
+  var arr = new Array(Math.round((asc ? b - a : a - b) / step));
+  var idx = 0;
+
+  while (asc ? a <= b : a >= b) {
+    var val = options.isNumber ? a : String.fromCharCode(a);
+    if (options.toRegex && (val >= 0 || !options.isNumber)) {
+      zero.greater.push(val);
+    } else {
+      zero.lesser.push(Math.abs(val));
+    }
+
+    if (options.isPadded) {
+      val = zeros(val, options);
+    }
+
+    if (options.toString) {
+      val = String(val);
+    }
+
+    if (typeof options.transform === 'function') {
+      arr[idx++] = options.transform(val, a, b, step, idx, arr, options);
+    } else {
+      arr[idx++] = val;
+    }
+
+    if (asc) {
+      a += step;
+    } else {
+      a -= step;
+    }
+  }
+
+  if (options.toRegex === true) {
+    return toSequence(arr, zero, options);
+  }
+  return arr;
+}
+
+function toRange(a, b, start, stop, options) {
+  if (options.isPadded) {
+    return toRegex(start, stop, options);
+  }
+
+  if (options.isNumber) {
+    return toRegex(Math.min(a, b), Math.max(a, b), options);
+  }
+
+  var start = String.fromCharCode(Math.min(a, b));
+  var stop = String.fromCharCode(Math.max(a, b));
+  return '[' + start + '-' + stop + ']';
+}
+
+function toSequence(arr, zeros, options) {
+  var greater = '', lesser = '';
+  if (zeros.greater.length) {
+    greater = zeros.greater.join('|');
+  }
+  if (zeros.lesser.length) {
+    lesser = '-(' + zeros.lesser.join('|') + ')';
+  }
+  var res = greater && lesser
+    ? greater + '|' + lesser
+    : greater || lesser;
+
+  if (options.capture) {
+    return '(' + res + ')';
+  }
+  return res;
+}
+
+function zeros(val, options) {
+  if (options.isPadded) {
+    var str = String(val);
+    var len = str.length;
+    var dash = '';
+    if (str.charAt(0) === '-') {
+      dash = '-';
+      str = str.slice(1);
+    }
+    var diff = options.maxLength - len;
+    var pad = repeat('0', diff);
+    val = (dash + pad + str);
+  }
+  if (options.stringify) {
+    return String(val);
+  }
+  return val;
+}
+
+function toNumber(val) {
+  return Number(val) || 0;
+}
+
+function isPadded(str) {
+  return /^-?0\d/.test(str);
+}
+
+function isValid(min, max) {
+  return (isValidNumber(min) || isValidLetter(min))
+      && (isValidNumber(max) || isValidLetter(max));
+}
+
+function isValidLetter(ch) {
+  return typeof ch === 'string' && ch.length === 1 && /^\w+$/.test(ch);
+}
+
+function isValidNumber(n) {
+  return isNumber(n) && !/\./.test(n);
+}
+
+/**
+ * Expose `fillRange`
+ * @type {Function}
+ */
+
+module.exports = fillRange;
 
 
 /***/ }),
@@ -38604,12 +38525,15 @@ var isWin32 = (__nccwpck_require__(22037).platform)() === 'win32';
 
 var slash = '/';
 var backslash = /\\/g;
-var escaped = /\\([!*?|[\](){}])/g;
+var enclosure = /[\{\[].*[\}\]]$/;
+var globby = /(^|[^\\])([\{\[]|\([^\)]+$)/;
+var escaped = /\\([\!\*\?\|\[\]\(\)\{\}])/g;
 
 /**
  * @param {string} str
  * @param {Object} opts
  * @param {boolean} [opts.flipBackslashes=true]
+ * @returns {string}
  */
 module.exports = function globParent(str, opts) {
   var options = Object.assign({ flipBackslashes: true }, opts);
@@ -38620,7 +38544,7 @@ module.exports = function globParent(str, opts) {
   }
 
   // special case for strings ending in enclosure containing path separator
-  if (isEnclosure(str)) {
+  if (enclosure.test(str)) {
     str += slash;
   }
 
@@ -38630,47 +38554,11 @@ module.exports = function globParent(str, opts) {
   // remove path parts that are globby
   do {
     str = pathPosixDirname(str);
-  } while (isGlobby(str));
+  } while (isGlob(str) || globby.test(str));
 
   // remove escape chars and return result
   return str.replace(escaped, '$1');
 };
-
-function isEnclosure(str) {
-  var lastChar = str.slice(-1);
-
-  var enclosureStart;
-  switch (lastChar) {
-    case '}':
-      enclosureStart = '{';
-      break;
-    case ']':
-      enclosureStart = '[';
-      break;
-    default:
-      return false;
-  }
-
-  var foundIndex = str.indexOf(enclosureStart);
-  if (foundIndex < 0) {
-    return false;
-  }
-
-  return str.slice(foundIndex + 1, -1).includes(slash);
-}
-
-function isGlobby(str) {
-  if (/\([^()]+$/.test(str)) {
-    return true;
-  }
-  if (str[0] === '{' || str[0] === '[') {
-    return true;
-  }
-  if (/[^\\][{[]/.test(str)) {
-    return true;
-  }
-  return isGlob(str);
-}
 
 
 /***/ }),
@@ -42874,7 +42762,7 @@ module.exports = function(val, prop) {
 
 
 var typeOf = __nccwpck_require__(86961);
-var isNumber = __nccwpck_require__(95420);
+var isNumber = __nccwpck_require__(75680);
 
 module.exports = function hasValue(val) {
   // is-number checks for NaN and other edge cases
@@ -42923,36 +42811,6 @@ module.exports = function hasValue(val) {
       return false;
     }
   }
-};
-
-
-/***/ }),
-
-/***/ 95420:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-/*!
- * is-number <https://github.com/jonschlinkert/is-number>
- *
- * Copyright (c) 2014-2015, Jon Schlinkert.
- * Licensed under the MIT License.
- */
-
-
-
-var typeOf = __nccwpck_require__(86961);
-
-module.exports = function isNumber(num) {
-  var type = typeOf(num);
-
-  if (type === 'string') {
-    if (!num.trim()) return false;
-  } else if (type !== 'number') {
-    return false;
-  }
-
-  return (num - num + 1) >= 0;
 };
 
 
@@ -43979,26 +43837,30 @@ module.exports = function isGlob(str) {
 /***/ }),
 
 /***/ 75680:
-/***/ ((module) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 /*!
  * is-number <https://github.com/jonschlinkert/is-number>
  *
- * Copyright (c) 2014-present, Jon Schlinkert.
- * Released under the MIT License.
+ * Copyright (c) 2014-2015, Jon Schlinkert.
+ * Licensed under the MIT License.
  */
 
 
 
-module.exports = function(num) {
-  if (typeof num === 'number') {
-    return num - num === 0;
+var typeOf = __nccwpck_require__(86961);
+
+module.exports = function isNumber(num) {
+  var type = typeOf(num);
+
+  if (type === 'string') {
+    if (!num.trim()) return false;
+  } else if (type !== 'number') {
+    return false;
   }
-  if (typeof num === 'string' && num.trim() !== '') {
-    return Number.isFinite ? Number.isFinite(+num) : isFinite(+num);
-  }
-  return false;
+
+  return (num - num + 1) >= 0;
 };
 
 
@@ -65733,7 +65595,7 @@ function plural(ms, n, name) {
 
 var util = __nccwpck_require__(73837);
 var toRegex = __nccwpck_require__(16855);
-var extend = __nccwpck_require__(67512);
+var extend = __nccwpck_require__(56254);
 
 /**
  * Local dependencies
@@ -67333,7 +67195,7 @@ var isWindows = __nccwpck_require__(49125)();
 var Snapdragon = __nccwpck_require__(52403);
 utils.define = __nccwpck_require__(49783);
 utils.diff = __nccwpck_require__(28915);
-utils.extend = __nccwpck_require__(67512);
+utils.extend = __nccwpck_require__(56254);
 utils.pick = __nccwpck_require__(89962);
 utils.typeOf = __nccwpck_require__(86961);
 utils.unique = __nccwpck_require__(40340);
@@ -67744,6 +67606,141 @@ module.exports = function defineProperty(obj, key, val) {
   });
 
   return obj;
+};
+
+
+/***/ }),
+
+/***/ 56254:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var isExtendable = __nccwpck_require__(10513);
+var assignSymbols = __nccwpck_require__(68782);
+
+module.exports = Object.assign || function(obj/*, objects*/) {
+  if (obj === null || typeof obj === 'undefined') {
+    throw new TypeError('Cannot convert undefined or null to object');
+  }
+  if (!isObject(obj)) {
+    obj = {};
+  }
+  for (var i = 1; i < arguments.length; i++) {
+    var val = arguments[i];
+    if (isString(val)) {
+      val = toObject(val);
+    }
+    if (isObject(val)) {
+      assign(obj, val);
+      assignSymbols(obj, val);
+    }
+  }
+  return obj;
+};
+
+function assign(a, b) {
+  for (var key in b) {
+    if (hasOwn(b, key)) {
+      a[key] = b[key];
+    }
+  }
+}
+
+function isString(val) {
+  return (val && typeof val === 'string');
+}
+
+function toObject(str) {
+  var obj = {};
+  for (var i in str) {
+    obj[i] = str[i];
+  }
+  return obj;
+}
+
+function isObject(val) {
+  return (val && typeof val === 'object') || isExtendable(val);
+}
+
+/**
+ * Returns true if the given `key` is an own property of `obj`.
+ */
+
+function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function isEnum(obj, key) {
+  return Object.prototype.propertyIsEnumerable.call(obj, key);
+}
+
+
+/***/ }),
+
+/***/ 10513:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * is-extendable <https://github.com/jonschlinkert/is-extendable>
+ *
+ * Copyright (c) 2015-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+
+
+var isPlainObject = __nccwpck_require__(53400);
+
+module.exports = function isExtendable(val) {
+  return isPlainObject(val) || typeof val === 'function' || Array.isArray(val);
+};
+
+
+/***/ }),
+
+/***/ 53400:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * is-plain-object <https://github.com/jonschlinkert/is-plain-object>
+ *
+ * Copyright (c) 2014-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+
+
+var isObject = __nccwpck_require__(5509);
+
+function isObjectObject(o) {
+  return isObject(o) === true
+    && Object.prototype.toString.call(o) === '[object Object]';
+}
+
+module.exports = function isPlainObject(o) {
+  var ctor,prot;
+
+  if (isObjectObject(o) === false) return false;
+
+  // If has modified constructor
+  ctor = o.constructor;
+  if (typeof ctor !== 'function') return false;
+
+  // If has modified prototype
+  prot = ctor.prototype;
+  if (isObjectObject(prot) === false) return false;
+
+  // If constructor does not have an Object-specific method
+  if (prot.hasOwnProperty('isPrototypeOf') === false) {
+    return false;
+  }
+
+  // Most likely a plain Object
+  return true;
 };
 
 
@@ -75439,7 +75436,7 @@ module.exports = function defineProperty(obj, prop, val) {
 "use strict";
 
 
-var isObject = __nccwpck_require__(70429);
+var isObject = __nccwpck_require__(94051);
 
 module.exports = function extend(o/*, objects*/) {
   if (!isObject(o)) { o = {}; }
@@ -75500,6 +75497,95 @@ module.exports = function isDescriptor(obj, key) {
   }
   return isData(obj, key);
 };
+
+
+/***/ }),
+
+/***/ 94051:
+/***/ ((module) => {
+
+"use strict";
+/*!
+ * is-extendable <https://github.com/jonschlinkert/is-extendable>
+ *
+ * Copyright (c) 2015, Jon Schlinkert.
+ * Licensed under the MIT License.
+ */
+
+
+
+module.exports = function isExtendable(val) {
+  return typeof val !== 'undefined' && val !== null
+    && (typeof val === 'object' || typeof val === 'function');
+};
+
+
+/***/ }),
+
+/***/ 49059:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var isExtendable = __nccwpck_require__(22633);
+var assignSymbols = __nccwpck_require__(68782);
+
+module.exports = Object.assign || function(obj/*, objects*/) {
+  if (obj === null || typeof obj === 'undefined') {
+    throw new TypeError('Cannot convert undefined or null to object');
+  }
+  if (!isObject(obj)) {
+    obj = {};
+  }
+  for (var i = 1; i < arguments.length; i++) {
+    var val = arguments[i];
+    if (isString(val)) {
+      val = toObject(val);
+    }
+    if (isObject(val)) {
+      assign(obj, val);
+      assignSymbols(obj, val);
+    }
+  }
+  return obj;
+};
+
+function assign(a, b) {
+  for (var key in b) {
+    if (hasOwn(b, key)) {
+      a[key] = b[key];
+    }
+  }
+}
+
+function isString(val) {
+  return (val && typeof val === 'string');
+}
+
+function toObject(str) {
+  var obj = {};
+  for (var i in str) {
+    obj[i] = str[i];
+  }
+  return obj;
+}
+
+function isObject(val) {
+  return (val && typeof val === 'object') || isExtendable(val);
+}
+
+/**
+ * Returns true if the given `key` is an own property of `obj`.
+ */
+
+function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function isEnum(obj, key) {
+  return Object.prototype.propertyIsEnumerable.call(obj, key);
+}
 
 
 /***/ }),
@@ -76392,7 +76478,7 @@ module.exports = function defineProperty(obj, prop, val) {
 "use strict";
 
 
-var isObject = __nccwpck_require__(70429);
+var isObject = __nccwpck_require__(50155);
 
 module.exports = function extend(o/*, objects*/) {
   if (!isObject(o)) { o = {}; }
@@ -76423,6 +76509,27 @@ function assign(a, b) {
 function hasOwn(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj, key);
 }
+
+
+/***/ }),
+
+/***/ 50155:
+/***/ ((module) => {
+
+"use strict";
+/*!
+ * is-extendable <https://github.com/jonschlinkert/is-extendable>
+ *
+ * Copyright (c) 2015, Jon Schlinkert.
+ * Licensed under the MIT License.
+ */
+
+
+
+module.exports = function isExtendable(val) {
+  return typeof val !== 'undefined' && val !== null
+    && (typeof val === 'object' || typeof val === 'function');
+};
 
 
 /***/ }),
@@ -76567,6 +76674,73 @@ module.exports = isDataDescriptor;
 
 /***/ }),
 
+/***/ 22633:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * is-extendable <https://github.com/jonschlinkert/is-extendable>
+ *
+ * Copyright (c) 2015-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+
+
+var isPlainObject = __nccwpck_require__(30791);
+
+module.exports = function isExtendable(val) {
+  return isPlainObject(val) || typeof val === 'function' || Array.isArray(val);
+};
+
+
+/***/ }),
+
+/***/ 30791:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * is-plain-object <https://github.com/jonschlinkert/is-plain-object>
+ *
+ * Copyright (c) 2014-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+
+
+var isObject = __nccwpck_require__(5509);
+
+function isObjectObject(o) {
+  return isObject(o) === true
+    && Object.prototype.toString.call(o) === '[object Object]';
+}
+
+module.exports = function isPlainObject(o) {
+  var ctor,prot;
+
+  if (isObjectObject(o) === false) return false;
+
+  // If has modified constructor
+  ctor = o.constructor;
+  if (typeof ctor !== 'function') return false;
+
+  // If has modified prototype
+  prot = ctor.prototype;
+  if (isObjectObject(prot) === false) return false;
+
+  // If constructor does not have an Object-specific method
+  if (prot.hasOwnProperty('isPrototypeOf') === false) {
+    return false;
+  }
+
+  // Most likely a plain Object
+  return true;
+};
+
+
+/***/ }),
+
 /***/ 47275:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -76580,7 +76754,7 @@ module.exports = isDataDescriptor;
 var util = __nccwpck_require__(73837);
 var braces = __nccwpck_require__(50610);
 var toRegex = __nccwpck_require__(16855);
-var extend = __nccwpck_require__(67512);
+var extend = __nccwpck_require__(49059);
 
 /**
  * Local dependencies
@@ -77652,7 +77826,7 @@ var path = __nccwpck_require__(71017);
 var Snapdragon = __nccwpck_require__(52403);
 utils.define = __nccwpck_require__(2644);
 utils.diff = __nccwpck_require__(28915);
-utils.extend = __nccwpck_require__(67512);
+utils.extend = __nccwpck_require__(49059);
 utils.pick = __nccwpck_require__(89962);
 utils.typeOf = __nccwpck_require__(86961);
 utils.unique = __nccwpck_require__(40340);
@@ -80952,7 +81126,7 @@ module.exports.basic = basic;
 "use strict";
 
 
-var extend = __nccwpck_require__(67512);
+var extend = __nccwpck_require__(68755);
 var safe = __nccwpck_require__(65634);
 
 /**
@@ -81026,6 +81200,141 @@ module.exports = toRegex;
 
 /***/ }),
 
+/***/ 68755:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var isExtendable = __nccwpck_require__(27347);
+var assignSymbols = __nccwpck_require__(68782);
+
+module.exports = Object.assign || function(obj/*, objects*/) {
+  if (obj === null || typeof obj === 'undefined') {
+    throw new TypeError('Cannot convert undefined or null to object');
+  }
+  if (!isObject(obj)) {
+    obj = {};
+  }
+  for (var i = 1; i < arguments.length; i++) {
+    var val = arguments[i];
+    if (isString(val)) {
+      val = toObject(val);
+    }
+    if (isObject(val)) {
+      assign(obj, val);
+      assignSymbols(obj, val);
+    }
+  }
+  return obj;
+};
+
+function assign(a, b) {
+  for (var key in b) {
+    if (hasOwn(b, key)) {
+      a[key] = b[key];
+    }
+  }
+}
+
+function isString(val) {
+  return (val && typeof val === 'string');
+}
+
+function toObject(str) {
+  var obj = {};
+  for (var i in str) {
+    obj[i] = str[i];
+  }
+  return obj;
+}
+
+function isObject(val) {
+  return (val && typeof val === 'object') || isExtendable(val);
+}
+
+/**
+ * Returns true if the given `key` is an own property of `obj`.
+ */
+
+function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function isEnum(obj, key) {
+  return Object.prototype.propertyIsEnumerable.call(obj, key);
+}
+
+
+/***/ }),
+
+/***/ 27347:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * is-extendable <https://github.com/jonschlinkert/is-extendable>
+ *
+ * Copyright (c) 2015-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+
+
+var isPlainObject = __nccwpck_require__(2160);
+
+module.exports = function isExtendable(val) {
+  return isPlainObject(val) || typeof val === 'function' || Array.isArray(val);
+};
+
+
+/***/ }),
+
+/***/ 2160:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * is-plain-object <https://github.com/jonschlinkert/is-plain-object>
+ *
+ * Copyright (c) 2014-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+
+
+var isObject = __nccwpck_require__(5509);
+
+function isObjectObject(o) {
+  return isObject(o) === true
+    && Object.prototype.toString.call(o) === '[object Object]';
+}
+
+module.exports = function isPlainObject(o) {
+  var ctor,prot;
+
+  if (isObjectObject(o) === false) return false;
+
+  // If has modified constructor
+  ctor = o.constructor;
+  if (typeof ctor !== 'function') return false;
+
+  // If has modified prototype
+  prot = ctor.prototype;
+  if (isObjectObject(prot) === false) return false;
+
+  // If constructor does not have an Object-specific method
+  if (prot.hasOwnProperty('isPrototypeOf') === false) {
+    return false;
+  }
+
+  // Most likely a plain Object
+  return true;
+};
+
+
+/***/ }),
+
 /***/ 39499:
 /***/ ((module) => {
 
@@ -81045,6 +81354,110 @@ module.exports = function (str) {
 function isSeparator(str, i) {
 	var char = str[i];
 	return i > 0 && (char === '/' || (isWin && char === '\\'));
+}
+
+
+/***/ }),
+
+/***/ 73301:
+/***/ ((module) => {
+
+"use strict";
+/*!
+ * repeat-element <https://github.com/jonschlinkert/repeat-element>
+ *
+ * Copyright (c) 2015-present, Jon Schlinkert.
+ * Licensed under the MIT license.
+ */
+
+
+
+module.exports = function repeat(ele, num) {
+  var arr = new Array(num);
+
+  for (var i = 0; i < num; i++) {
+    arr[i] = ele;
+  }
+
+  return arr;
+};
+
+
+/***/ }),
+
+/***/ 96976:
+/***/ ((module) => {
+
+"use strict";
+/*!
+ * repeat-string <https://github.com/jonschlinkert/repeat-string>
+ *
+ * Copyright (c) 2014-2015, Jon Schlinkert.
+ * Licensed under the MIT License.
+ */
+
+
+
+/**
+ * Results cache
+ */
+
+var res = '';
+var cache;
+
+/**
+ * Expose `repeat`
+ */
+
+module.exports = repeat;
+
+/**
+ * Repeat the given `string` the specified `number`
+ * of times.
+ *
+ * **Example:**
+ *
+ * ```js
+ * var repeat = require('repeat-string');
+ * repeat('A', 5);
+ * //=> AAAAA
+ * ```
+ *
+ * @param {String} `string` The string to repeat
+ * @param {Number} `number` The number of times to repeat the string
+ * @return {String} Repeated string
+ * @api public
+ */
+
+function repeat(str, num) {
+  if (typeof str !== 'string') {
+    throw new TypeError('expected a string');
+  }
+
+  // cover common, quick use cases
+  if (num === 1) return str;
+  if (num === 2) return str + str;
+
+  var max = str.length * num;
+  if (cache !== str || typeof cache === 'undefined') {
+    cache = str;
+    res = '';
+  } else if (res.length >= max) {
+    return res.substr(0, max);
+  }
+
+  while (max > res.length && num > 1) {
+    if (num & 1) {
+      res += str;
+    }
+
+    num >>= 1;
+    str += str;
+  }
+
+  res += str;
+  res = res.substr(0, max);
+  return res;
 }
 
 
@@ -85329,7 +85742,7 @@ function coerce (version, options) {
 
 
 var split = __nccwpck_require__(84960);
-var extend = __nccwpck_require__(51321);
+var extend = __nccwpck_require__(67512);
 var isPlainObject = __nccwpck_require__(48321);
 var isObject = __nccwpck_require__(70429);
 
@@ -85373,47 +85786,6 @@ module.exports = function(obj, prop, val) {
 
 function isValidKey(key) {
   return key !== '__proto__' && key !== 'constructor' && key !== 'prototype';
-}
-
-
-/***/ }),
-
-/***/ 51321:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var isObject = __nccwpck_require__(70429);
-
-module.exports = function extend(o/*, objects*/) {
-  if (!isObject(o)) { o = {}; }
-
-  var len = arguments.length;
-  for (var i = 1; i < len; i++) {
-    var obj = arguments[i];
-
-    if (isObject(obj)) {
-      assign(o, obj);
-    }
-  }
-  return o;
-};
-
-function assign(a, b) {
-  for (var key in b) {
-    if (hasOwn(b, key)) {
-      a[key] = b[key];
-    }
-  }
-}
-
-/**
- * Returns true if the given `key` is an own property of `obj`.
- */
-
-function hasOwn(obj, key) {
-  return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
 
@@ -85479,6 +85851,1572 @@ module.exports = path => {
 
 	return path.replace(/\\/g, '/');
 };
+
+
+/***/ }),
+
+/***/ 55244:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var isObject = __nccwpck_require__(5509);
+var define = __nccwpck_require__(45432);
+var utils = __nccwpck_require__(2297);
+var ownNames;
+
+/**
+ * Create a new AST `Node` with the given `val` and `type`.
+ *
+ * ```js
+ * var node = new Node('*', 'Star');
+ * var node = new Node({type: 'star', val: '*'});
+ * ```
+ * @name Node
+ * @param {String|Object} `val` Pass a matched substring, or an object to merge onto the node.
+ * @param {String} `type` The node type to use when `val` is a string.
+ * @return {Object} node instance
+ * @api public
+ */
+
+function Node(val, type, parent) {
+  if (typeof type !== 'string') {
+    parent = type;
+    type = null;
+  }
+
+  define(this, 'parent', parent);
+  define(this, 'isNode', true);
+  define(this, 'expect', null);
+
+  if (typeof type !== 'string' && isObject(val)) {
+    lazyKeys();
+    var keys = Object.keys(val);
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      if (ownNames.indexOf(key) === -1) {
+        this[key] = val[key];
+      }
+    }
+  } else {
+    this.type = type;
+    this.val = val;
+  }
+}
+
+/**
+ * Returns true if the given value is a node.
+ *
+ * ```js
+ * var Node = require('snapdragon-node');
+ * var node = new Node({type: 'foo'});
+ * console.log(Node.isNode(node)); //=> true
+ * console.log(Node.isNode({})); //=> false
+ * ```
+ * @param {Object} `node`
+ * @returns {Boolean}
+ * @api public
+ */
+
+Node.isNode = function(node) {
+  return utils.isNode(node);
+};
+
+/**
+ * Define a non-enumberable property on the node instance.
+ * Useful for adding properties that shouldn't be extended
+ * or visible during debugging.
+ *
+ * ```js
+ * var node = new Node();
+ * node.define('foo', 'something non-enumerable');
+ * ```
+ * @param {String} `name`
+ * @param {any} `val`
+ * @return {Object} returns the node instance
+ * @api public
+ */
+
+Node.prototype.define = function(name, val) {
+  define(this, name, val);
+  return this;
+};
+
+/**
+ * Returns true if `node.val` is an empty string, or `node.nodes` does
+ * not contain any non-empty text nodes.
+ *
+ * ```js
+ * var node = new Node({type: 'text'});
+ * node.isEmpty(); //=> true
+ * node.val = 'foo';
+ * node.isEmpty(); //=> false
+ * ```
+ * @param {Function} `fn` (optional) Filter function that is called on `node` and/or child nodes. `isEmpty` will return false immediately when the filter function returns false on any nodes.
+ * @return {Boolean}
+ * @api public
+ */
+
+Node.prototype.isEmpty = function(fn) {
+  return utils.isEmpty(this, fn);
+};
+
+/**
+ * Given node `foo` and node `bar`, push node `bar` onto `foo.nodes`, and
+ * set `foo` as `bar.parent`.
+ *
+ * ```js
+ * var foo = new Node({type: 'foo'});
+ * var bar = new Node({type: 'bar'});
+ * foo.push(bar);
+ * ```
+ * @param {Object} `node`
+ * @return {Number} Returns the length of `node.nodes`
+ * @api public
+ */
+
+Node.prototype.push = function(node) {
+  assert(Node.isNode(node), 'expected node to be an instance of Node');
+  define(node, 'parent', this);
+
+  this.nodes = this.nodes || [];
+  return this.nodes.push(node);
+};
+
+/**
+ * Given node `foo` and node `bar`, unshift node `bar` onto `foo.nodes`, and
+ * set `foo` as `bar.parent`.
+ *
+ * ```js
+ * var foo = new Node({type: 'foo'});
+ * var bar = new Node({type: 'bar'});
+ * foo.unshift(bar);
+ * ```
+ * @param {Object} `node`
+ * @return {Number} Returns the length of `node.nodes`
+ * @api public
+ */
+
+Node.prototype.unshift = function(node) {
+  assert(Node.isNode(node), 'expected node to be an instance of Node');
+  define(node, 'parent', this);
+
+  this.nodes = this.nodes || [];
+  return this.nodes.unshift(node);
+};
+
+/**
+ * Pop a node from `node.nodes`.
+ *
+ * ```js
+ * var node = new Node({type: 'foo'});
+ * node.push(new Node({type: 'a'}));
+ * node.push(new Node({type: 'b'}));
+ * node.push(new Node({type: 'c'}));
+ * node.push(new Node({type: 'd'}));
+ * console.log(node.nodes.length);
+ * //=> 4
+ * node.pop();
+ * console.log(node.nodes.length);
+ * //=> 3
+ * ```
+ * @return {Number} Returns the popped `node`
+ * @api public
+ */
+
+Node.prototype.pop = function() {
+  return this.nodes && this.nodes.pop();
+};
+
+/**
+ * Shift a node from `node.nodes`.
+ *
+ * ```js
+ * var node = new Node({type: 'foo'});
+ * node.push(new Node({type: 'a'}));
+ * node.push(new Node({type: 'b'}));
+ * node.push(new Node({type: 'c'}));
+ * node.push(new Node({type: 'd'}));
+ * console.log(node.nodes.length);
+ * //=> 4
+ * node.shift();
+ * console.log(node.nodes.length);
+ * //=> 3
+ * ```
+ * @return {Object} Returns the shifted `node`
+ * @api public
+ */
+
+Node.prototype.shift = function() {
+  return this.nodes && this.nodes.shift();
+};
+
+/**
+ * Remove `node` from `node.nodes`.
+ *
+ * ```js
+ * node.remove(childNode);
+ * ```
+ * @param {Object} `node`
+ * @return {Object} Returns the removed node.
+ * @api public
+ */
+
+Node.prototype.remove = function(node) {
+  assert(Node.isNode(node), 'expected node to be an instance of Node');
+  this.nodes = this.nodes || [];
+  var idx = node.index;
+  if (idx !== -1) {
+    node.index = -1;
+    return this.nodes.splice(idx, 1);
+  }
+  return null;
+};
+
+/**
+ * Get the first child node from `node.nodes` that matches the given `type`.
+ * If `type` is a number, the child node at that index is returned.
+ *
+ * ```js
+ * var child = node.find(1); //<= index of the node to get
+ * var child = node.find('foo'); //<= node.type of a child node
+ * var child = node.find(/^(foo|bar)$/); //<= regex to match node.type
+ * var child = node.find(['foo', 'bar']); //<= array of node.type(s)
+ * ```
+ * @param {String} `type`
+ * @return {Object} Returns a child node or undefined.
+ * @api public
+ */
+
+Node.prototype.find = function(type) {
+  return utils.findNode(this.nodes, type);
+};
+
+/**
+ * Return true if the node is the given `type`.
+ *
+ * ```js
+ * var node = new Node({type: 'bar'});
+ * cosole.log(node.isType('foo'));          // false
+ * cosole.log(node.isType(/^(foo|bar)$/));  // true
+ * cosole.log(node.isType(['foo', 'bar'])); // true
+ * ```
+ * @param {String} `type`
+ * @return {Boolean}
+ * @api public
+ */
+
+Node.prototype.isType = function(type) {
+  return utils.isType(this, type);
+};
+
+/**
+ * Return true if the `node.nodes` has the given `type`.
+ *
+ * ```js
+ * var foo = new Node({type: 'foo'});
+ * var bar = new Node({type: 'bar'});
+ * foo.push(bar);
+ *
+ * cosole.log(foo.hasType('qux'));          // false
+ * cosole.log(foo.hasType(/^(qux|bar)$/));  // true
+ * cosole.log(foo.hasType(['qux', 'bar'])); // true
+ * ```
+ * @param {String} `type`
+ * @return {Boolean}
+ * @api public
+ */
+
+Node.prototype.hasType = function(type) {
+  return utils.hasType(this, type);
+};
+
+/**
+ * Get the siblings array, or `null` if it doesn't exist.
+ *
+ * ```js
+ * var foo = new Node({type: 'foo'});
+ * var bar = new Node({type: 'bar'});
+ * var baz = new Node({type: 'baz'});
+ * foo.push(bar);
+ * foo.push(baz);
+ *
+ * console.log(bar.siblings.length) // 2
+ * console.log(baz.siblings.length) // 2
+ * ```
+ * @return {Array}
+ * @api public
+ */
+
+Object.defineProperty(Node.prototype, 'siblings', {
+  set: function() {
+    throw new Error('node.siblings is a getter and cannot be defined');
+  },
+  get: function() {
+    return this.parent ? this.parent.nodes : null;
+  }
+});
+
+/**
+ * Get the node's current index from `node.parent.nodes`.
+ * This should always be correct, even when the parent adds nodes.
+ *
+ * ```js
+ * var foo = new Node({type: 'foo'});
+ * var bar = new Node({type: 'bar'});
+ * var baz = new Node({type: 'baz'});
+ * var qux = new Node({type: 'qux'});
+ * foo.push(bar);
+ * foo.push(baz);
+ * foo.unshift(qux);
+ *
+ * console.log(bar.index) // 1
+ * console.log(baz.index) // 2
+ * console.log(qux.index) // 0
+ * ```
+ * @return {Number}
+ * @api public
+ */
+
+Object.defineProperty(Node.prototype, 'index', {
+  set: function(index) {
+    define(this, 'idx', index);
+  },
+  get: function() {
+    if (!Array.isArray(this.siblings)) {
+      return -1;
+    }
+    var tok = this.idx !== -1 ? this.siblings[this.idx] : null;
+    if (tok !== this) {
+      this.idx = this.siblings.indexOf(this);
+    }
+    return this.idx;
+  }
+});
+
+/**
+ * Get the previous node from the siblings array or `null`.
+ *
+ * ```js
+ * var foo = new Node({type: 'foo'});
+ * var bar = new Node({type: 'bar'});
+ * var baz = new Node({type: 'baz'});
+ * foo.push(bar);
+ * foo.push(baz);
+ *
+ * console.log(baz.prev.type) // 'bar'
+ * ```
+ * @return {Object}
+ * @api public
+ */
+
+Object.defineProperty(Node.prototype, 'prev', {
+  set: function() {
+    throw new Error('node.prev is a getter and cannot be defined');
+  },
+  get: function() {
+    if (Array.isArray(this.siblings)) {
+      return this.siblings[this.index - 1] || this.parent.prev;
+    }
+    return null;
+  }
+});
+
+/**
+ * Get the siblings array, or `null` if it doesn't exist.
+ *
+ * ```js
+ * var foo = new Node({type: 'foo'});
+ * var bar = new Node({type: 'bar'});
+ * var baz = new Node({type: 'baz'});
+ * foo.push(bar);
+ * foo.push(baz);
+ *
+ * console.log(bar.siblings.length) // 2
+ * console.log(baz.siblings.length) // 2
+ * ```
+ * @return {Object}
+ * @api public
+ */
+
+Object.defineProperty(Node.prototype, 'next', {
+  set: function() {
+    throw new Error('node.next is a getter and cannot be defined');
+  },
+  get: function() {
+    if (Array.isArray(this.siblings)) {
+      return this.siblings[this.index + 1] || this.parent.next;
+    }
+    return null;
+  }
+});
+
+/**
+ * Get the first node from `node.nodes`.
+ *
+ * ```js
+ * var foo = new Node({type: 'foo'});
+ * var bar = new Node({type: 'bar'});
+ * var baz = new Node({type: 'baz'});
+ * var qux = new Node({type: 'qux'});
+ * foo.push(bar);
+ * foo.push(baz);
+ * foo.push(qux);
+ *
+ * console.log(foo.first.type) // 'bar'
+ * ```
+ * @return {Object} The first node, or undefiend
+ * @api public
+ */
+
+Object.defineProperty(Node.prototype, 'first', {
+  get: function() {
+    return this.nodes ? this.nodes[0] : null;
+  }
+});
+
+/**
+ * Get the last node from `node.nodes`.
+ *
+ * ```js
+ * var foo = new Node({type: 'foo'});
+ * var bar = new Node({type: 'bar'});
+ * var baz = new Node({type: 'baz'});
+ * var qux = new Node({type: 'qux'});
+ * foo.push(bar);
+ * foo.push(baz);
+ * foo.push(qux);
+ *
+ * console.log(foo.last.type) // 'qux'
+ * ```
+ * @return {Object} The last node, or undefiend
+ * @api public
+ */
+
+Object.defineProperty(Node.prototype, 'last', {
+  get: function() {
+    return this.nodes ? utils.last(this.nodes) : null;
+  }
+});
+
+/**
+ * Get the last node from `node.nodes`.
+ *
+ * ```js
+ * var foo = new Node({type: 'foo'});
+ * var bar = new Node({type: 'bar'});
+ * var baz = new Node({type: 'baz'});
+ * var qux = new Node({type: 'qux'});
+ * foo.push(bar);
+ * foo.push(baz);
+ * foo.push(qux);
+ *
+ * console.log(foo.last.type) // 'qux'
+ * ```
+ * @return {Object} The last node, or undefiend
+ * @api public
+ */
+
+Object.defineProperty(Node.prototype, 'scope', {
+  get: function() {
+    if (this.isScope !== true) {
+      return this.parent ? this.parent.scope : this;
+    }
+    return this;
+  }
+});
+
+/**
+ * Get own property names from Node prototype, but only the
+ * first time `Node` is instantiated
+ */
+
+function lazyKeys() {
+  if (!ownNames) {
+    ownNames = Object.getOwnPropertyNames(Node.prototype);
+  }
+}
+
+/**
+ * Simplified assertion. Throws an error is `val` is falsey.
+ */
+
+function assert(val, message) {
+  if (!val) throw new Error(message);
+}
+
+/**
+ * Expose `Node`
+ */
+
+exports = module.exports = Node;
+
+
+/***/ }),
+
+/***/ 45432:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * define-property <https://github.com/jonschlinkert/define-property>
+ *
+ * Copyright (c) 2015, 2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+
+
+var isDescriptor = __nccwpck_require__(20567);
+
+module.exports = function defineProperty(obj, prop, val) {
+  if (typeof obj !== 'object' && typeof obj !== 'function') {
+    throw new TypeError('expected an object or function.');
+  }
+
+  if (typeof prop !== 'string') {
+    throw new TypeError('expected `prop` to be a string.');
+  }
+
+  if (isDescriptor(val) && ('set' in val || 'get' in val)) {
+    return Object.defineProperty(obj, prop, val);
+  }
+
+  return Object.defineProperty(obj, prop, {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: val
+  });
+};
+
+
+/***/ }),
+
+/***/ 2297:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var typeOf = __nccwpck_require__(86961);
+var utils = module.exports;
+
+/**
+ * Returns true if the given value is a node.
+ *
+ * ```js
+ * var Node = require('snapdragon-node');
+ * var node = new Node({type: 'foo'});
+ * console.log(utils.isNode(node)); //=> true
+ * console.log(utils.isNode({})); //=> false
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @returns {Boolean}
+ * @api public
+ */
+
+utils.isNode = function(node) {
+  return typeOf(node) === 'object' && node.isNode === true;
+};
+
+/**
+ * Emit an empty string for the given `node`.
+ *
+ * ```js
+ * // do nothing for beginning-of-string
+ * snapdragon.compiler.set('bos', utils.noop);
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @returns {undefined}
+ * @api public
+ */
+
+utils.noop = function(node) {
+  append(this, '', node);
+};
+
+/**
+ * Appdend `node.val` to `compiler.output`, exactly as it was created
+ * by the parser.
+ *
+ * ```js
+ * snapdragon.compiler.set('text', utils.identity);
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @returns {undefined}
+ * @api public
+ */
+
+utils.identity = function(node) {
+  append(this, node.val, node);
+};
+
+/**
+ * Previously named `.emit`, this method appends the given `val`
+ * to `compiler.output` for the given node. Useful when you know
+ * what value should be appended advance, regardless of the actual
+ * value of `node.val`.
+ *
+ * ```js
+ * snapdragon.compiler
+ *   .set('i', function(node) {
+ *     this.mapVisit(node);
+ *   })
+ *   .set('i.open', utils.append('<i>'))
+ *   .set('i.close', utils.append('</i>'))
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @returns {Function} Returns a compiler middleware function.
+ * @api public
+ */
+
+utils.append = function(val) {
+  return function(node) {
+    append(this, val, node);
+  };
+};
+
+/**
+ * Used in compiler middleware, this onverts an AST node into
+ * an empty `text` node and deletes `node.nodes` if it exists.
+ * The advantage of this method is that, as opposed to completely
+ * removing the node, indices will not need to be re-calculated
+ * in sibling nodes, and nothing is appended to the output.
+ *
+ * ```js
+ * utils.toNoop(node);
+ * // convert `node.nodes` to the given value instead of deleting it
+ * utils.toNoop(node, []);
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @param {Array} `nodes` Optionally pass a new `nodes` value, to replace the existing `node.nodes` array.
+ * @api public
+ */
+
+utils.toNoop = function(node, nodes) {
+  if (nodes) {
+    node.nodes = nodes;
+  } else {
+    delete node.nodes;
+    node.type = 'text';
+    node.val = '';
+  }
+};
+
+/**
+ * Visit `node` with the given `fn`. The built-in `.visit` method in snapdragon
+ * automatically calls registered compilers, this allows you to pass a visitor
+ * function.
+ *
+ * ```js
+ * snapdragon.compiler.set('i', function(node) {
+ *   utils.visit(node, function(childNode) {
+ *     // do stuff with "childNode"
+ *     return childNode;
+ *   });
+ * });
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @param {Function} `fn`
+ * @return {Object} returns the node after recursively visiting all child nodes.
+ * @api public
+ */
+
+utils.visit = function(node, fn) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  assert(isFunction(fn), 'expected a visitor function');
+  fn(node);
+  return node.nodes ? utils.mapVisit(node, fn) : node;
+};
+
+/**
+ * Map [visit](#visit) the given `fn` over `node.nodes`. This is called by
+ * [visit](#visit), use this method if you do not want `fn` to be called on
+ * the first node.
+ *
+ * ```js
+ * snapdragon.compiler.set('i', function(node) {
+ *   utils.mapVisit(node, function(childNode) {
+ *     // do stuff with "childNode"
+ *     return childNode;
+ *   });
+ * });
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @param {Object} `options`
+ * @param {Function} `fn`
+ * @return {Object} returns the node
+ * @api public
+ */
+
+utils.mapVisit = function(node, fn) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  assert(isArray(node.nodes), 'expected node.nodes to be an array');
+  assert(isFunction(fn), 'expected a visitor function');
+
+  for (var i = 0; i < node.nodes.length; i++) {
+    utils.visit(node.nodes[i], fn);
+  }
+  return node;
+};
+
+/**
+ * Unshift an `*.open` node onto `node.nodes`.
+ *
+ * ```js
+ * var Node = require('snapdragon-node');
+ * snapdragon.parser.set('brace', function(node) {
+ *   var match = this.match(/^{/);
+ *   if (match) {
+ *     var parent = new Node({type: 'brace'});
+ *     utils.addOpen(parent, Node);
+ *     console.log(parent.nodes[0]):
+ *     // { type: 'brace.open', val: '' };
+ *
+ *     // push the parent "brace" node onto the stack
+ *     this.push(parent);
+ *
+ *     // return the parent node, so it's also added to the AST
+ *     return brace;
+ *   }
+ * });
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @param {Function} `Node` (required) Node constructor function from [snapdragon-node][].
+ * @param {Function} `filter` Optionaly specify a filter function to exclude the node.
+ * @return {Object} Returns the created opening node.
+ * @api public
+ */
+
+utils.addOpen = function(node, Node, val, filter) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  assert(isFunction(Node), 'expected Node to be a constructor function');
+
+  if (typeof val === 'function') {
+    filter = val;
+    val = '';
+  }
+
+  if (typeof filter === 'function' && !filter(node)) return;
+  var open = new Node({ type: node.type + '.open', val: val});
+  var unshift = node.unshift || node.unshiftNode;
+  if (typeof unshift === 'function') {
+    unshift.call(node, open);
+  } else {
+    utils.unshiftNode(node, open);
+  }
+  return open;
+};
+
+/**
+ * Push a `*.close` node onto `node.nodes`.
+ *
+ * ```js
+ * var Node = require('snapdragon-node');
+ * snapdragon.parser.set('brace', function(node) {
+ *   var match = this.match(/^}/);
+ *   if (match) {
+ *     var parent = this.parent();
+ *     if (parent.type !== 'brace') {
+ *       throw new Error('missing opening: ' + '}');
+ *     }
+ *
+ *     utils.addClose(parent, Node);
+ *     console.log(parent.nodes[parent.nodes.length - 1]):
+ *     // { type: 'brace.close', val: '' };
+ *
+ *     // no need to return a node, since the parent
+ *     // was already added to the AST
+ *     return;
+ *   }
+ * });
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @param {Function} `Node` (required) Node constructor function from [snapdragon-node][].
+ * @param {Function} `filter` Optionaly specify a filter function to exclude the node.
+ * @return {Object} Returns the created closing node.
+ * @api public
+ */
+
+utils.addClose = function(node, Node, val, filter) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  assert(isFunction(Node), 'expected Node to be a constructor function');
+
+  if (typeof val === 'function') {
+    filter = val;
+    val = '';
+  }
+
+  if (typeof filter === 'function' && !filter(node)) return;
+  var close = new Node({ type: node.type + '.close', val: val});
+  var push = node.push || node.pushNode;
+  if (typeof push === 'function') {
+    push.call(node, close);
+  } else {
+    utils.pushNode(node, close);
+  }
+  return close;
+};
+
+/**
+ * Wraps the given `node` with `*.open` and `*.close` nodes.
+ *
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @param {Function} `Node` (required) Node constructor function from [snapdragon-node][].
+ * @param {Function} `filter` Optionaly specify a filter function to exclude the node.
+ * @return {Object} Returns the node
+ * @api public
+ */
+
+utils.wrapNodes = function(node, Node, filter) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  assert(isFunction(Node), 'expected Node to be a constructor function');
+
+  utils.addOpen(node, Node, filter);
+  utils.addClose(node, Node, filter);
+  return node;
+};
+
+/**
+ * Push the given `node` onto `parent.nodes`, and set `parent` as `node.parent.
+ *
+ * ```js
+ * var parent = new Node({type: 'foo'});
+ * var node = new Node({type: 'bar'});
+ * utils.pushNode(parent, node);
+ * console.log(parent.nodes[0].type) // 'bar'
+ * console.log(node.parent.type) // 'foo'
+ * ```
+ * @param {Object} `parent`
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {Object} Returns the child node
+ * @api public
+ */
+
+utils.pushNode = function(parent, node) {
+  assert(utils.isNode(parent), 'expected parent node to be an instance of Node');
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+
+  node.define('parent', parent);
+  parent.nodes = parent.nodes || [];
+  parent.nodes.push(node);
+  return node;
+};
+
+/**
+ * Unshift `node` onto `parent.nodes`, and set `parent` as `node.parent.
+ *
+ * ```js
+ * var parent = new Node({type: 'foo'});
+ * var node = new Node({type: 'bar'});
+ * utils.unshiftNode(parent, node);
+ * console.log(parent.nodes[0].type) // 'bar'
+ * console.log(node.parent.type) // 'foo'
+ * ```
+ * @param {Object} `parent`
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {undefined}
+ * @api public
+ */
+
+utils.unshiftNode = function(parent, node) {
+  assert(utils.isNode(parent), 'expected parent node to be an instance of Node');
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+
+  node.define('parent', parent);
+  parent.nodes = parent.nodes || [];
+  parent.nodes.unshift(node);
+};
+
+/**
+ * Pop the last `node` off of `parent.nodes`. The advantage of
+ * using this method is that it checks for `node.nodes` and works
+ * with any version of `snapdragon-node`.
+ *
+ * ```js
+ * var parent = new Node({type: 'foo'});
+ * utils.pushNode(parent, new Node({type: 'foo'}));
+ * utils.pushNode(parent, new Node({type: 'bar'}));
+ * utils.pushNode(parent, new Node({type: 'baz'}));
+ * console.log(parent.nodes.length); //=> 3
+ * utils.popNode(parent);
+ * console.log(parent.nodes.length); //=> 2
+ * ```
+ * @param {Object} `parent`
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {Number|Undefined} Returns the length of `node.nodes` or undefined.
+ * @api public
+ */
+
+utils.popNode = function(node) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  if (typeof node.pop === 'function') {
+    return node.pop();
+  }
+  return node.nodes && node.nodes.pop();
+};
+
+/**
+ * Shift the first `node` off of `parent.nodes`. The advantage of
+ * using this method is that it checks for `node.nodes` and works
+ * with any version of `snapdragon-node`.
+ *
+ * ```js
+ * var parent = new Node({type: 'foo'});
+ * utils.pushNode(parent, new Node({type: 'foo'}));
+ * utils.pushNode(parent, new Node({type: 'bar'}));
+ * utils.pushNode(parent, new Node({type: 'baz'}));
+ * console.log(parent.nodes.length); //=> 3
+ * utils.shiftNode(parent);
+ * console.log(parent.nodes.length); //=> 2
+ * ```
+ * @param {Object} `parent`
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {Number|Undefined} Returns the length of `node.nodes` or undefined.
+ * @api public
+ */
+
+utils.shiftNode = function(node) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  if (typeof node.shift === 'function') {
+    return node.shift();
+  }
+  return node.nodes && node.nodes.shift();
+};
+
+/**
+ * Remove the specified `node` from `parent.nodes`.
+ *
+ * ```js
+ * var parent = new Node({type: 'abc'});
+ * var foo = new Node({type: 'foo'});
+ * utils.pushNode(parent, foo);
+ * utils.pushNode(parent, new Node({type: 'bar'}));
+ * utils.pushNode(parent, new Node({type: 'baz'}));
+ * console.log(parent.nodes.length); //=> 3
+ * utils.removeNode(parent, foo);
+ * console.log(parent.nodes.length); //=> 2
+ * ```
+ * @param {Object} `parent`
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {Object|undefined} Returns the removed node, if successful, or undefined if it does not exist on `parent.nodes`.
+ * @api public
+ */
+
+utils.removeNode = function(parent, node) {
+  assert(utils.isNode(parent), 'expected parent.node to be an instance of Node');
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+
+  if (!parent.nodes) {
+    return null;
+  }
+
+  if (typeof parent.remove === 'function') {
+    return parent.remove(node);
+  }
+
+  var idx = parent.nodes.indexOf(node);
+  if (idx !== -1) {
+    return parent.nodes.splice(idx, 1);
+  }
+};
+
+/**
+ * Returns true if `node.type` matches the given `type`. Throws a
+ * `TypeError` if `node` is not an instance of `Node`.
+ *
+ * ```js
+ * var Node = require('snapdragon-node');
+ * var node = new Node({type: 'foo'});
+ * console.log(utils.isType(node, 'foo')); // false
+ * console.log(utils.isType(node, 'bar')); // true
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @param {String} `type`
+ * @return {Boolean}
+ * @api public
+ */
+
+utils.isType = function(node, type) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  switch (typeOf(type)) {
+    case 'array':
+      var types = type.slice();
+      for (var i = 0; i < types.length; i++) {
+        if (utils.isType(node, types[i])) {
+          return true;
+        }
+      }
+      return false;
+    case 'string':
+      return node.type === type;
+    case 'regexp':
+      return type.test(node.type);
+    default: {
+      throw new TypeError('expected "type" to be an array, string or regexp');
+    }
+  }
+};
+
+/**
+ * Returns true if the given `node` has the given `type` in `node.nodes`.
+ * Throws a `TypeError` if `node` is not an instance of `Node`.
+ *
+ * ```js
+ * var Node = require('snapdragon-node');
+ * var node = new Node({
+ *   type: 'foo',
+ *   nodes: [
+ *     new Node({type: 'bar'}),
+ *     new Node({type: 'baz'})
+ *   ]
+ * });
+ * console.log(utils.hasType(node, 'xyz')); // false
+ * console.log(utils.hasType(node, 'baz')); // true
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @param {String} `type`
+ * @return {Boolean}
+ * @api public
+ */
+
+utils.hasType = function(node, type) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  if (!Array.isArray(node.nodes)) return false;
+  for (var i = 0; i < node.nodes.length; i++) {
+    if (utils.isType(node.nodes[i], type)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * Returns the first node from `node.nodes` of the given `type`
+ *
+ * ```js
+ * var node = new Node({
+ *   type: 'foo',
+ *   nodes: [
+ *     new Node({type: 'text', val: 'abc'}),
+ *     new Node({type: 'text', val: 'xyz'})
+ *   ]
+ * });
+ *
+ * var textNode = utils.firstOfType(node.nodes, 'text');
+ * console.log(textNode.val);
+ * //=> 'abc'
+ * ```
+ * @param {Array} `nodes`
+ * @param {String} `type`
+ * @return {Object|undefined} Returns the first matching node or undefined.
+ * @api public
+ */
+
+utils.firstOfType = function(nodes, type) {
+  for (var i = 0; i < nodes.length; i++) {
+    var node = nodes[i];
+    if (utils.isType(node, type)) {
+      return node;
+    }
+  }
+};
+
+/**
+ * Returns the node at the specified index, or the first node of the
+ * given `type` from `node.nodes`.
+ *
+ * ```js
+ * var node = new Node({
+ *   type: 'foo',
+ *   nodes: [
+ *     new Node({type: 'text', val: 'abc'}),
+ *     new Node({type: 'text', val: 'xyz'})
+ *   ]
+ * });
+ *
+ * var nodeOne = utils.findNode(node.nodes, 'text');
+ * console.log(nodeOne.val);
+ * //=> 'abc'
+ *
+ * var nodeTwo = utils.findNode(node.nodes, 1);
+ * console.log(nodeTwo.val);
+ * //=> 'xyz'
+ * ```
+ *
+ * @param {Array} `nodes`
+ * @param {String|Number} `type` Node type or index.
+ * @return {Object} Returns a node or undefined.
+ * @api public
+ */
+
+utils.findNode = function(nodes, type) {
+  if (!Array.isArray(nodes)) {
+    return null;
+  }
+  if (typeof type === 'number') {
+    return nodes[type];
+  }
+  return utils.firstOfType(nodes, type);
+};
+
+/**
+ * Returns true if the given node is an "*.open" node.
+ *
+ * ```js
+ * var Node = require('snapdragon-node');
+ * var brace = new Node({type: 'brace'});
+ * var open = new Node({type: 'brace.open'});
+ * var close = new Node({type: 'brace.close'});
+ *
+ * console.log(utils.isOpen(brace)); // false
+ * console.log(utils.isOpen(open)); // true
+ * console.log(utils.isOpen(close)); // false
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {Boolean}
+ * @api public
+ */
+
+utils.isOpen = function(node) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  return node.type.slice(-5) === '.open';
+};
+
+/**
+ * Returns true if the given node is a "*.close" node.
+ *
+ * ```js
+ * var Node = require('snapdragon-node');
+ * var brace = new Node({type: 'brace'});
+ * var open = new Node({type: 'brace.open'});
+ * var close = new Node({type: 'brace.close'});
+ *
+ * console.log(utils.isClose(brace)); // false
+ * console.log(utils.isClose(open)); // false
+ * console.log(utils.isClose(close)); // true
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {Boolean}
+ * @api public
+ */
+
+utils.isClose = function(node) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  return node.type.slice(-6) === '.close';
+};
+
+/**
+ * Returns true if `node.nodes` **has** an `.open` node
+ *
+ * ```js
+ * var Node = require('snapdragon-node');
+ * var brace = new Node({
+ *   type: 'brace',
+ *   nodes: []
+ * });
+ *
+ * var open = new Node({type: 'brace.open'});
+ * console.log(utils.hasOpen(brace)); // false
+ *
+ * brace.pushNode(open);
+ * console.log(utils.hasOpen(brace)); // true
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {Boolean}
+ * @api public
+ */
+
+utils.hasOpen = function(node) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  var first = node.first || node.nodes ? node.nodes[0] : null;
+  if (utils.isNode(first)) {
+    return first.type === node.type + '.open';
+  }
+  return false;
+};
+
+/**
+ * Returns true if `node.nodes` **has** a `.close` node
+ *
+ * ```js
+ * var Node = require('snapdragon-node');
+ * var brace = new Node({
+ *   type: 'brace',
+ *   nodes: []
+ * });
+ *
+ * var close = new Node({type: 'brace.close'});
+ * console.log(utils.hasClose(brace)); // false
+ *
+ * brace.pushNode(close);
+ * console.log(utils.hasClose(brace)); // true
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {Boolean}
+ * @api public
+ */
+
+utils.hasClose = function(node) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  var last = node.last || node.nodes ? node.nodes[node.nodes.length - 1] : null;
+  if (utils.isNode(last)) {
+    return last.type === node.type + '.close';
+  }
+  return false;
+};
+
+/**
+ * Returns true if `node.nodes` has both `.open` and `.close` nodes
+ *
+ * ```js
+ * var Node = require('snapdragon-node');
+ * var brace = new Node({
+ *   type: 'brace',
+ *   nodes: []
+ * });
+ *
+ * var open = new Node({type: 'brace.open'});
+ * var close = new Node({type: 'brace.close'});
+ * console.log(utils.hasOpen(brace)); // false
+ * console.log(utils.hasClose(brace)); // false
+ *
+ * brace.pushNode(open);
+ * brace.pushNode(close);
+ * console.log(utils.hasOpen(brace)); // true
+ * console.log(utils.hasClose(brace)); // true
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {Boolean}
+ * @api public
+ */
+
+utils.hasOpenAndClose = function(node) {
+  return utils.hasOpen(node) && utils.hasClose(node);
+};
+
+/**
+ * Push the given `node` onto the `state.inside` array for the
+ * given type. This array is used as a specialized "stack" for
+ * only the given `node.type`.
+ *
+ * ```js
+ * var state = { inside: {}};
+ * var node = new Node({type: 'brace'});
+ * utils.addType(state, node);
+ * console.log(state.inside);
+ * //=> { brace: [{type: 'brace'}] }
+ * ```
+ * @param {Object} `state` The `compiler.state` object or custom state object.
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {Array} Returns the `state.inside` stack for the given type.
+ * @api public
+ */
+
+utils.addType = function(state, node) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  assert(isObject(state), 'expected state to be an object');
+
+  var type = node.parent
+    ? node.parent.type
+    : node.type.replace(/\.open$/, '');
+
+  if (!state.hasOwnProperty('inside')) {
+    state.inside = {};
+  }
+  if (!state.inside.hasOwnProperty(type)) {
+    state.inside[type] = [];
+  }
+
+  var arr = state.inside[type];
+  arr.push(node);
+  return arr;
+};
+
+/**
+ * Remove the given `node` from the `state.inside` array for the
+ * given type. This array is used as a specialized "stack" for
+ * only the given `node.type`.
+ *
+ * ```js
+ * var state = { inside: {}};
+ * var node = new Node({type: 'brace'});
+ * utils.addType(state, node);
+ * console.log(state.inside);
+ * //=> { brace: [{type: 'brace'}] }
+ * utils.removeType(state, node);
+ * //=> { brace: [] }
+ * ```
+ * @param {Object} `state` The `compiler.state` object or custom state object.
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @return {Array} Returns the `state.inside` stack for the given type.
+ * @api public
+ */
+
+utils.removeType = function(state, node) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  assert(isObject(state), 'expected state to be an object');
+
+  var type = node.parent
+    ? node.parent.type
+    : node.type.replace(/\.close$/, '');
+
+  if (state.inside.hasOwnProperty(type)) {
+    return state.inside[type].pop();
+  }
+};
+
+/**
+ * Returns true if `node.val` is an empty string, or `node.nodes` does
+ * not contain any non-empty text nodes.
+ *
+ * ```js
+ * var node = new Node({type: 'text'});
+ * utils.isEmpty(node); //=> true
+ * node.val = 'foo';
+ * utils.isEmpty(node); //=> false
+ * ```
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @param {Function} `fn`
+ * @return {Boolean}
+ * @api public
+ */
+
+utils.isEmpty = function(node, fn) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+
+  if (!Array.isArray(node.nodes)) {
+    if (node.type !== 'text') {
+      return true;
+    }
+    if (typeof fn === 'function') {
+      return fn(node, node.parent);
+    }
+    return !utils.trim(node.val);
+  }
+
+  for (var i = 0; i < node.nodes.length; i++) {
+    var child = node.nodes[i];
+    if (utils.isOpen(child) || utils.isClose(child)) {
+      continue;
+    }
+    if (!utils.isEmpty(child, fn)) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+/**
+ * Returns true if the `state.inside` stack for the given type exists
+ * and has one or more nodes on it.
+ *
+ * ```js
+ * var state = { inside: {}};
+ * var node = new Node({type: 'brace'});
+ * console.log(utils.isInsideType(state, 'brace')); //=> false
+ * utils.addType(state, node);
+ * console.log(utils.isInsideType(state, 'brace')); //=> true
+ * utils.removeType(state, node);
+ * console.log(utils.isInsideType(state, 'brace')); //=> false
+ * ```
+ * @param {Object} `state`
+ * @param {String} `type`
+ * @return {Boolean}
+ * @api public
+ */
+
+utils.isInsideType = function(state, type) {
+  assert(isObject(state), 'expected state to be an object');
+  assert(isString(type), 'expected type to be a string');
+
+  if (!state.hasOwnProperty('inside')) {
+    return false;
+  }
+
+  if (!state.inside.hasOwnProperty(type)) {
+    return false;
+  }
+
+  return state.inside[type].length > 0;
+};
+
+/**
+ * Returns true if `node` is either a child or grand-child of the given `type`,
+ * or `state.inside[type]` is a non-empty array.
+ *
+ * ```js
+ * var state = { inside: {}};
+ * var node = new Node({type: 'brace'});
+ * var open = new Node({type: 'brace.open'});
+ * console.log(utils.isInside(state, open, 'brace')); //=> false
+ * utils.pushNode(node, open);
+ * console.log(utils.isInside(state, open, 'brace')); //=> true
+ * ```
+ * @param {Object} `state` Either the `compiler.state` object, if it exists, or a user-supplied state object.
+ * @param {Object} `node` Instance of [snapdragon-node][]
+ * @param {String} `type` The `node.type` to check for.
+ * @return {Boolean}
+ * @api public
+ */
+
+utils.isInside = function(state, node, type) {
+  assert(utils.isNode(node), 'expected node to be an instance of Node');
+  assert(isObject(state), 'expected state to be an object');
+
+  if (Array.isArray(type)) {
+    for (var i = 0; i < type.length; i++) {
+      if (utils.isInside(state, node, type[i])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  var parent = node.parent;
+  if (typeof type === 'string') {
+    return (parent && parent.type === type) || utils.isInsideType(state, type);
+  }
+
+  if (typeOf(type) === 'regexp') {
+    if (parent && parent.type && type.test(parent.type)) {
+      return true;
+    }
+
+    var keys = Object.keys(state.inside);
+    var len = keys.length;
+    var idx = -1;
+    while (++idx < len) {
+      var key = keys[idx];
+      var val = state.inside[key];
+
+      if (Array.isArray(val) && val.length !== 0 && type.test(key)) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+/**
+ * Get the last `n` element from the given `array`. Used for getting
+ * a node from `node.nodes.`
+ *
+ * @param {Array} `array`
+ * @param {Number} `n`
+ * @return {undefined}
+ * @api public
+ */
+
+utils.last = function(arr, n) {
+  return arr[arr.length - (n || 1)];
+};
+
+/**
+ * Cast the given `val` to an array.
+ *
+ * ```js
+ * console.log(utils.arrayify(''));
+ * //=> []
+ * console.log(utils.arrayify('foo'));
+ * //=> ['foo']
+ * console.log(utils.arrayify(['foo']));
+ * //=> ['foo']
+ * ```
+ * @param {any} `val`
+ * @return {Array}
+ * @api public
+ */
+
+utils.arrayify = function(val) {
+  if (typeof val === 'string' && val !== '') {
+    return [val];
+  }
+  if (!Array.isArray(val)) {
+    return [];
+  }
+  return val;
+};
+
+/**
+ * Convert the given `val` to a string by joining with `,`. Useful
+ * for creating a cheerio/CSS/DOM-style selector from a list of strings.
+ *
+ * @param {any} `val`
+ * @return {Array}
+ * @api public
+ */
+
+utils.stringify = function(val) {
+  return utils.arrayify(val).join(',');
+};
+
+/**
+ * Ensure that the given value is a string and call `.trim()` on it,
+ * or return an empty string.
+ *
+ * @param {String} `str`
+ * @return {String}
+ * @api public
+ */
+
+utils.trim = function(str) {
+  return typeof str === 'string' ? str.trim() : '';
+};
+
+/**
+ * Return true if val is an object
+ */
+
+function isObject(val) {
+  return typeOf(val) === 'object';
+}
+
+/**
+ * Return true if val is a string
+ */
+
+function isString(val) {
+  return typeof val === 'string';
+}
+
+/**
+ * Return true if val is a function
+ */
+
+function isFunction(val) {
+  return typeof val === 'function';
+}
+
+/**
+ * Return true if val is an array
+ */
+
+function isArray(val) {
+  return Array.isArray(val);
+}
+
+/**
+ * Shim to ensure the `.append` methods work with any version of snapdragon
+ */
+
+function append(compiler, val, node) {
+  if (typeof compiler.append !== 'function') {
+    return compiler.emit(val, node);
+  }
+  return compiler.append(val, node);
+}
+
+/**
+ * Simplified assertion. Throws an error is `val` is falsey.
+ */
+
+function assert(val, message) {
+  if (!val) throw new Error(message);
+}
 
 
 /***/ }),
@@ -86576,7 +88514,7 @@ exports.comment = function(node) {
  * Module dependencies
  */
 
-exports.extend = __nccwpck_require__(78614);
+exports.extend = __nccwpck_require__(67512);
 exports.SourceMap = __nccwpck_require__(56594);
 exports.sourceMapResolve = __nccwpck_require__(63649);
 
@@ -86618,47 +88556,6 @@ exports.arrayify = function(val) {
 exports.last = function(arr, n) {
   return arr[arr.length - (n || 1)];
 };
-
-
-/***/ }),
-
-/***/ 78614:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var isObject = __nccwpck_require__(70429);
-
-module.exports = function extend(o/*, objects*/) {
-  if (!isObject(o)) { o = {}; }
-
-  var len = arguments.length;
-  for (var i = 1; i < len; i++) {
-    var obj = arguments[i];
-
-    if (isObject(obj)) {
-      assign(o, obj);
-    }
-  }
-  return o;
-};
-
-function assign(a, b) {
-  for (var key in b) {
-    if (hasOwn(b, key)) {
-      a[key] = b[key];
-    }
-  }
-}
-
-/**
- * Returns true if the given `key` is an own property of `obj`.
- */
-
-function hasOwn(obj, key) {
-  return Object.prototype.hasOwnProperty.call(obj, key);
-}
 
 
 /***/ }),
@@ -90130,7 +92027,7 @@ exports.SourceNode = __nccwpck_require__(92616).SourceNode;
 
 
 
-var extend = __nccwpck_require__(67512);
+var extend = __nccwpck_require__(22064);
 
 module.exports = function(str, options, fn) {
   if (typeof str !== 'string') {
@@ -90292,6 +92189,141 @@ function keepEscaping(opts, str, idx) {
   }
   return opts.keepEscaping === true || str[idx + 1] === '\\';
 }
+
+
+/***/ }),
+
+/***/ 22064:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var isExtendable = __nccwpck_require__(85776);
+var assignSymbols = __nccwpck_require__(68782);
+
+module.exports = Object.assign || function(obj/*, objects*/) {
+  if (obj === null || typeof obj === 'undefined') {
+    throw new TypeError('Cannot convert undefined or null to object');
+  }
+  if (!isObject(obj)) {
+    obj = {};
+  }
+  for (var i = 1; i < arguments.length; i++) {
+    var val = arguments[i];
+    if (isString(val)) {
+      val = toObject(val);
+    }
+    if (isObject(val)) {
+      assign(obj, val);
+      assignSymbols(obj, val);
+    }
+  }
+  return obj;
+};
+
+function assign(a, b) {
+  for (var key in b) {
+    if (hasOwn(b, key)) {
+      a[key] = b[key];
+    }
+  }
+}
+
+function isString(val) {
+  return (val && typeof val === 'string');
+}
+
+function toObject(str) {
+  var obj = {};
+  for (var i in str) {
+    obj[i] = str[i];
+  }
+  return obj;
+}
+
+function isObject(val) {
+  return (val && typeof val === 'object') || isExtendable(val);
+}
+
+/**
+ * Returns true if the given `key` is an own property of `obj`.
+ */
+
+function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function isEnum(obj, key) {
+  return Object.prototype.propertyIsEnumerable.call(obj, key);
+}
+
+
+/***/ }),
+
+/***/ 85776:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * is-extendable <https://github.com/jonschlinkert/is-extendable>
+ *
+ * Copyright (c) 2015-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+
+
+var isPlainObject = __nccwpck_require__(17637);
+
+module.exports = function isExtendable(val) {
+  return isPlainObject(val) || typeof val === 'function' || Array.isArray(val);
+};
+
+
+/***/ }),
+
+/***/ 17637:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * is-plain-object <https://github.com/jonschlinkert/is-plain-object>
+ *
+ * Copyright (c) 2014-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+
+
+var isObject = __nccwpck_require__(5509);
+
+function isObjectObject(o) {
+  return isObject(o) === true
+    && Object.prototype.toString.call(o) === '[object Object]';
+}
+
+module.exports = function isPlainObject(o) {
+  var ctor,prot;
+
+  if (isObjectObject(o) === false) return false;
+
+  // If has modified constructor
+  ctor = o.constructor;
+  if (typeof ctor !== 'function') return false;
+
+  // If has modified prototype
+  prot = ctor.prototype;
+  if (isObjectObject(prot) === false) return false;
+
+  // If constructor does not have an Object-specific method
+  if (prot.hasOwnProperty('isPrototypeOf') === false) {
+    return false;
+  }
+
+  // Most likely a plain Object
+  return true;
+};
 
 
 /***/ }),
@@ -91800,122 +93832,115 @@ function filter(arr) {
 
 "use strict";
 /*!
- * to-regex-range <https://github.com/micromatch/to-regex-range>
+ * to-regex-range <https://github.com/jonschlinkert/to-regex-range>
  *
- * Copyright (c) 2015-present, Jon Schlinkert.
+ * Copyright (c) 2015, 2017, Jon Schlinkert.
  * Released under the MIT License.
  */
 
 
 
-const isNumber = __nccwpck_require__(75680);
+var repeat = __nccwpck_require__(96976);
+var isNumber = __nccwpck_require__(75680);
+var cache = {};
 
-const toRegexRange = (min, max, options) => {
+function toRegexRange(min, max, options) {
   if (isNumber(min) === false) {
-    throw new TypeError('toRegexRange: expected the first argument to be a number');
+    throw new RangeError('toRegexRange: first argument is invalid.');
   }
 
-  if (max === void 0 || min === max) {
+  if (typeof max === 'undefined' || min === max) {
     return String(min);
   }
 
   if (isNumber(max) === false) {
-    throw new TypeError('toRegexRange: expected the second argument to be a number.');
+    throw new RangeError('toRegexRange: second argument is invalid.');
   }
 
-  let opts = { relaxZeros: true, ...options };
-  if (typeof opts.strictZeros === 'boolean') {
-    opts.relaxZeros = opts.strictZeros === false;
+  options = options || {};
+  var relax = String(options.relaxZeros);
+  var shorthand = String(options.shorthand);
+  var capture = String(options.capture);
+  var key = min + ':' + max + '=' + relax + shorthand + capture;
+  if (cache.hasOwnProperty(key)) {
+    return cache[key].result;
   }
 
-  let relax = String(opts.relaxZeros);
-  let shorthand = String(opts.shorthand);
-  let capture = String(opts.capture);
-  let wrap = String(opts.wrap);
-  let cacheKey = min + ':' + max + '=' + relax + shorthand + capture + wrap;
-
-  if (toRegexRange.cache.hasOwnProperty(cacheKey)) {
-    return toRegexRange.cache[cacheKey].result;
-  }
-
-  let a = Math.min(min, max);
-  let b = Math.max(min, max);
+  var a = Math.min(min, max);
+  var b = Math.max(min, max);
 
   if (Math.abs(a - b) === 1) {
-    let result = min + '|' + max;
-    if (opts.capture) {
-      return `(${result})`;
+    var result = min + '|' + max;
+    if (options.capture) {
+      return '(' + result + ')';
     }
-    if (opts.wrap === false) {
-      return result;
-    }
-    return `(?:${result})`;
+    return result;
   }
 
-  let isPadded = hasPadding(min) || hasPadding(max);
-  let state = { min, max, a, b };
-  let positives = [];
-  let negatives = [];
+  var isPadded = padding(min) || padding(max);
+  var positives = [];
+  var negatives = [];
 
+  var tok = {min: min, max: max, a: a, b: b};
   if (isPadded) {
-    state.isPadded = isPadded;
-    state.maxLen = String(state.max).length;
+    tok.isPadded = isPadded;
+    tok.maxLen = String(tok.max).length;
   }
 
   if (a < 0) {
-    let newMin = b < 0 ? Math.abs(b) : 1;
-    negatives = splitToPatterns(newMin, Math.abs(a), state, opts);
-    a = state.a = 0;
+    var newMin = b < 0 ? Math.abs(b) : 1;
+    var newMax = Math.abs(a);
+    negatives = splitToPatterns(newMin, newMax, tok, options);
+    a = tok.a = 0;
   }
 
   if (b >= 0) {
-    positives = splitToPatterns(a, b, state, opts);
+    positives = splitToPatterns(a, b, tok, options);
   }
 
-  state.negatives = negatives;
-  state.positives = positives;
-  state.result = collatePatterns(negatives, positives, opts);
+  tok.negatives = negatives;
+  tok.positives = positives;
+  tok.result = siftPatterns(negatives, positives, options);
 
-  if (opts.capture === true) {
-    state.result = `(${state.result})`;
-  } else if (opts.wrap !== false && (positives.length + negatives.length) > 1) {
-    state.result = `(?:${state.result})`;
+  if (options.capture && (positives.length + negatives.length) > 1) {
+    tok.result = '(' + tok.result + ')';
   }
 
-  toRegexRange.cache[cacheKey] = state;
-  return state.result;
-};
+  cache[key] = tok;
+  return tok.result;
+}
 
-function collatePatterns(neg, pos, options) {
-  let onlyNegative = filterPatterns(neg, pos, '-', false, options) || [];
-  let onlyPositive = filterPatterns(pos, neg, '', false, options) || [];
-  let intersected = filterPatterns(neg, pos, '-?', true, options) || [];
-  let subpatterns = onlyNegative.concat(intersected).concat(onlyPositive);
+function siftPatterns(neg, pos, options) {
+  var onlyNegative = filterPatterns(neg, pos, '-', false, options) || [];
+  var onlyPositive = filterPatterns(pos, neg, '', false, options) || [];
+  var intersected = filterPatterns(neg, pos, '-?', true, options) || [];
+  var subpatterns = onlyNegative.concat(intersected).concat(onlyPositive);
   return subpatterns.join('|');
 }
 
 function splitToRanges(min, max) {
-  let nines = 1;
-  let zeros = 1;
+  min = Number(min);
+  max = Number(max);
 
-  let stop = countNines(min, nines);
-  let stops = new Set([max]);
+  var nines = 1;
+  var stops = [max];
+  var stop = +countNines(min, nines);
 
   while (min <= stop && stop <= max) {
-    stops.add(stop);
+    stops = push(stops, stop);
     nines += 1;
-    stop = countNines(min, nines);
+    stop = +countNines(min, nines);
   }
 
+  var zeros = 1;
   stop = countZeros(max + 1, zeros) - 1;
 
   while (min < stop && stop <= max) {
-    stops.add(stop);
+    stops = push(stops, stop);
     zeros += 1;
     stop = countZeros(max + 1, zeros) - 1;
   }
 
-  stops = [...stops];
   stops.sort(compare);
   return stops;
 }
@@ -91929,64 +93954,69 @@ function splitToRanges(min, max) {
 
 function rangeToPattern(start, stop, options) {
   if (start === stop) {
-    return { pattern: start, count: [], digits: 0 };
+    return {pattern: String(start), digits: []};
   }
 
-  let zipped = zip(start, stop);
-  let digits = zipped.length;
-  let pattern = '';
-  let count = 0;
+  var zipped = zip(String(start), String(stop));
+  var len = zipped.length, i = -1;
 
-  for (let i = 0; i < digits; i++) {
-    let [startDigit, stopDigit] = zipped[i];
+  var pattern = '';
+  var digits = 0;
+
+  while (++i < len) {
+    var numbers = zipped[i];
+    var startDigit = numbers[0];
+    var stopDigit = numbers[1];
 
     if (startDigit === stopDigit) {
       pattern += startDigit;
 
     } else if (startDigit !== '0' || stopDigit !== '9') {
-      pattern += toCharacterClass(startDigit, stopDigit, options);
+      pattern += toCharacterClass(startDigit, stopDigit);
 
     } else {
-      count++;
+      digits += 1;
     }
   }
 
-  if (count) {
-    pattern += options.shorthand === true ? '\\d' : '[0-9]';
+  if (digits) {
+    pattern += options.shorthand ? '\\d' : '[0-9]';
   }
 
-  return { pattern, count: [count], digits };
+  return { pattern: pattern, digits: [digits] };
 }
 
 function splitToPatterns(min, max, tok, options) {
-  let ranges = splitToRanges(min, max);
-  let tokens = [];
-  let start = min;
-  let prev;
+  var ranges = splitToRanges(min, max);
+  var len = ranges.length;
+  var idx = -1;
 
-  for (let i = 0; i < ranges.length; i++) {
-    let max = ranges[i];
-    let obj = rangeToPattern(String(start), String(max), options);
-    let zeros = '';
+  var tokens = [];
+  var start = min;
+  var prev;
+
+  while (++idx < len) {
+    var range = ranges[idx];
+    var obj = rangeToPattern(start, range, options);
+    var zeros = '';
 
     if (!tok.isPadded && prev && prev.pattern === obj.pattern) {
-      if (prev.count.length > 1) {
-        prev.count.pop();
+      if (prev.digits.length > 1) {
+        prev.digits.pop();
       }
-
-      prev.count.push(obj.count[0]);
-      prev.string = prev.pattern + toQuantifier(prev.count);
-      start = max + 1;
+      prev.digits.push(obj.digits[0]);
+      prev.string = prev.pattern + toQuantifier(prev.digits);
+      start = range + 1;
       continue;
     }
 
     if (tok.isPadded) {
-      zeros = padZeros(max, tok, options);
+      zeros = padZeros(range, tok);
     }
 
-    obj.string = zeros + obj.pattern + toQuantifier(obj.count);
+    obj.string = zeros + obj.pattern + toQuantifier(obj.digits);
     tokens.push(obj);
-    start = max + 1;
+    start = range + 1;
     prev = obj;
   }
 
@@ -91994,31 +94024,40 @@ function splitToPatterns(min, max, tok, options) {
 }
 
 function filterPatterns(arr, comparison, prefix, intersection, options) {
-  let result = [];
+  var res = [];
 
-  for (let ele of arr) {
-    let { string } = ele;
+  for (var i = 0; i < arr.length; i++) {
+    var tok = arr[i];
+    var ele = tok.string;
 
-    // only push if _both_ are negative...
-    if (!intersection && !contains(comparison, 'string', string)) {
-      result.push(prefix + string);
+    if (options.relaxZeros !== false) {
+      if (prefix === '-' && ele.charAt(0) === '0') {
+        if (ele.charAt(1) === '{') {
+          ele = '0*' + ele.replace(/^0\{\d+\}/, '');
+        } else {
+          ele = '0*' + ele.slice(1);
+        }
+      }
     }
 
-    // or _both_ are positive
-    if (intersection && contains(comparison, 'string', string)) {
-      result.push(prefix + string);
+    if (!intersection && !contains(comparison, 'string', ele)) {
+      res.push(prefix + ele);
+    }
+
+    if (intersection && contains(comparison, 'string', ele)) {
+      res.push(prefix + ele);
     }
   }
-  return result;
+  return res;
 }
 
 /**
- * Zip strings
+ * Zip strings (`for in` can be used on string characters)
  */
 
 function zip(a, b) {
-  let arr = [];
-  for (let i = 0; i < a.length; i++) arr.push([a[i], b[i]]);
+  var arr = [];
+  for (var ch in a) arr.push([a[ch], b[ch]]);
   return arr;
 }
 
@@ -92026,12 +94065,22 @@ function compare(a, b) {
   return a > b ? 1 : b > a ? -1 : 0;
 }
 
+function push(arr, ele) {
+  if (arr.indexOf(ele) === -1) arr.push(ele);
+  return arr;
+}
+
 function contains(arr, key, val) {
-  return arr.some(ele => ele[key] === val);
+  for (var i = 0; i < arr.length; i++) {
+    if (arr[i][key] === val) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function countNines(min, len) {
-  return Number(String(min).slice(0, -len) + '9'.repeat(len));
+  return String(min).slice(0, -len) + repeat('9', len);
 }
 
 function countZeros(integer, zeros) {
@@ -92039,48 +94088,37 @@ function countZeros(integer, zeros) {
 }
 
 function toQuantifier(digits) {
-  let [start = 0, stop = ''] = digits;
-  if (stop || start > 1) {
-    return `{${start + (stop ? ',' + stop : '')}}`;
+  var start = digits[0];
+  var stop = digits[1] ? (',' + digits[1]) : '';
+  if (!stop && (!start || start === 1)) {
+    return '';
   }
-  return '';
+  return '{' + start + stop + '}';
 }
 
-function toCharacterClass(a, b, options) {
-  return `[${a}${(b - a === 1) ? '' : '-'}${b}]`;
+function toCharacterClass(a, b) {
+  return '[' + a + ((b - a === 1) ? '' : '-') + b + ']';
 }
 
-function hasPadding(str) {
-  return /^-?(0+)\d/.test(str);
+function padding(str) {
+  return /^-?(0+)\d/.exec(str);
 }
 
-function padZeros(value, tok, options) {
-  if (!tok.isPadded) {
-    return value;
-  }
-
-  let diff = Math.abs(tok.maxLen - String(value).length);
-  let relax = options.relaxZeros !== false;
-
-  switch (diff) {
-    case 0:
-      return '';
-    case 1:
-      return relax ? '0?' : '0';
-    case 2:
-      return relax ? '0{0,2}' : '00';
-    default: {
-      return relax ? `0{0,${diff}}` : `0{${diff}}`;
+function padZeros(val, tok) {
+  if (tok.isPadded) {
+    var diff = Math.abs(tok.maxLen - String(val).length);
+    switch (diff) {
+      case 0:
+        return '';
+      case 1:
+        return '0';
+      default: {
+        return '0{' + diff + '}';
+      }
     }
   }
+  return val;
 }
-
-/**
- * Cache
- */
-
-toRegexRange.cache = {};
-toRegexRange.clearCache = () => (toRegexRange.cache = {});
 
 /**
  * Expose `toRegexRange`
@@ -92099,7 +94137,7 @@ module.exports = toRegexRange;
 
 var safe = __nccwpck_require__(65634);
 var define = __nccwpck_require__(63162);
-var extend = __nccwpck_require__(67512);
+var extend = __nccwpck_require__(64964);
 var not = __nccwpck_require__(32527);
 var MAX_LENGTH = 1024 * 64;
 
@@ -92295,6 +94333,141 @@ module.exports = function defineProperty(obj, key, val) {
   });
 
   return obj;
+};
+
+
+/***/ }),
+
+/***/ 64964:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var isExtendable = __nccwpck_require__(17489);
+var assignSymbols = __nccwpck_require__(68782);
+
+module.exports = Object.assign || function(obj/*, objects*/) {
+  if (obj === null || typeof obj === 'undefined') {
+    throw new TypeError('Cannot convert undefined or null to object');
+  }
+  if (!isObject(obj)) {
+    obj = {};
+  }
+  for (var i = 1; i < arguments.length; i++) {
+    var val = arguments[i];
+    if (isString(val)) {
+      val = toObject(val);
+    }
+    if (isObject(val)) {
+      assign(obj, val);
+      assignSymbols(obj, val);
+    }
+  }
+  return obj;
+};
+
+function assign(a, b) {
+  for (var key in b) {
+    if (hasOwn(b, key)) {
+      a[key] = b[key];
+    }
+  }
+}
+
+function isString(val) {
+  return (val && typeof val === 'string');
+}
+
+function toObject(str) {
+  var obj = {};
+  for (var i in str) {
+    obj[i] = str[i];
+  }
+  return obj;
+}
+
+function isObject(val) {
+  return (val && typeof val === 'object') || isExtendable(val);
+}
+
+/**
+ * Returns true if the given `key` is an own property of `obj`.
+ */
+
+function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function isEnum(obj, key) {
+  return Object.prototype.propertyIsEnumerable.call(obj, key);
+}
+
+
+/***/ }),
+
+/***/ 17489:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * is-extendable <https://github.com/jonschlinkert/is-extendable>
+ *
+ * Copyright (c) 2015-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+
+
+var isPlainObject = __nccwpck_require__(6556);
+
+module.exports = function isExtendable(val) {
+  return isPlainObject(val) || typeof val === 'function' || Array.isArray(val);
+};
+
+
+/***/ }),
+
+/***/ 6556:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * is-plain-object <https://github.com/jonschlinkert/is-plain-object>
+ *
+ * Copyright (c) 2014-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+
+
+var isObject = __nccwpck_require__(5509);
+
+function isObjectObject(o) {
+  return isObject(o) === true
+    && Object.prototype.toString.call(o) === '[object Object]';
+}
+
+module.exports = function isPlainObject(o) {
+  var ctor,prot;
+
+  if (isObjectObject(o) === false) return false;
+
+  // If has modified constructor
+  ctor = o.constructor;
+  if (typeof ctor !== 'function') return false;
+
+  // If has modified prototype
+  prot = ctor.prototype;
+  if (isObjectObject(prot) === false) return false;
+
+  // If constructor does not have an Object-specific method
+  if (prot.hasOwnProperty('isPrototypeOf') === false) {
+    return false;
+  }
+
+  // Most likely a plain Object
+  return true;
 };
 
 
