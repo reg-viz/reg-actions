@@ -205,7 +205,6 @@ const compare = (config) => __awaiter(void 0, void 0, void 0, function* () {
             json: posix_1.default.join((0, path_1.workspace)(), constants.JSON_NAME),
             update: false,
             ignoreChange: true,
-            report: './index.html',
             urlPrefix: '',
             thresholdPixel: config.thresholdPixel,
             thresholdRate: config.thresholdRate,
