@@ -24,6 +24,7 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       json: path.join(workspace(), constants.JSON_NAME),
       update: false,
       ignoreChange: true,
+      report: './index.html',
       urlPrefix: '',
       thresholdPixel: config.thresholdPixel,
       thresholdRate: config.thresholdRate,

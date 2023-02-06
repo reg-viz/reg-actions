@@ -20,13 +20,14 @@
   "author": "GitHub",
   "license": "MIT",
   "resolutions": {
-    "**/ansi-regex": "^5.0.1",
-    "**/glob-parent": "^5.1.2",
-    "**/trim-newlines": "^3.0.1",
-    "**/axios": "^0.21.2",
+    "**/ansi-regex": "^6.0.1",
+    "**/glob-parent": "^6.0.2",
+    "**/trim-newlines": "^4.0.2",
+    "**/axios": "^1.1.3",
     "**/kind-of": "^6.0.3",
-    "**/minimist": "^1.2.3",
-    "**/braces": "^2.3.1"
+    "**/minimist": "^1.2.7",
+    "**/shell-quote": "^1.7.3",
+    "**/braces": "^3.0.2"
   },
   "dependencies": {
     "@actions/artifact": "^1.1.0",
@@ -41,6 +42,7 @@
     "axios": "^1.1.3",
     "chalk": "^5.1.2",
     "cpx": "^1.5.0",
+    "exponential-backoff": "^3.1.0",
     "glob": "^8.0.3",
     "loglevel": "^1.8.0",
     "make-dir": "^3.1.0",

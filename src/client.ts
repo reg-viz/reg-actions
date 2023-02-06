@@ -1,5 +1,6 @@
 import * as github from '@actions/github';
 import * as artifact from '@actions/artifact';
+import { backOff } from 'exponential-backoff';
 
 import { Repository } from './repository';
 import * as constants from './constants';
@@ -12,29 +13,42 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
 
   return {
     fetchRuns: async (page: number) => {
-      return await octokit.rest.actions.listWorkflowRunsForRepo({
-        ...repository,
-        per_page: 50,
-        page,
-      });
+      return backOff(
+        () =>
+          octokit.rest.actions.listWorkflowRunsForRepo({
+            ...repository,
+            per_page: 50,
+            page,
+          }),
+        { numOfAttempts: 5 },
+      );
     },
     fetchArtifacts: async (runId: number) => {
       const input = { ...repository, run_id: runId, per_page: 50 };
-      return octokit.rest.actions.listWorkflowRunArtifacts(input);
+      return backOff(() => octokit.rest.actions.listWorkflowRunArtifacts(input), { numOfAttempts: 5 });
     },
     uploadArtifact: async (files: string[]) => {
-      const _ = await artifactClient.uploadArtifact(constants.ARTIFACT_NAME, files, workspace());
+      const _ = await backOff(() => artifactClient.uploadArtifact(constants.ARTIFACT_NAME, files, workspace()), {
+        numOfAttempts: 5,
+      });
       return;
     },
     downloadArtifact: async (artifactId: number) => {
-      return octokit.rest.actions.downloadArtifact({
-        ...repository,
-        artifact_id: artifactId,
-        archive_format: 'zip',
-      });
+      return backOff(
+        () =>
+          octokit.rest.actions.downloadArtifact({
+            ...repository,
+            artifact_id: artifactId,
+            archive_format: 'zip',
+          }),
+        { numOfAttempts: 5 },
+      );
     },
     postComment: async (issueNumber: number, comment: string) => {
-      const _ = await octokit.rest.issues.createComment({ ...repository, issue_number: issueNumber, body: comment });
+      const _ = await backOff(
+        () => octokit.rest.issues.createComment({ ...repository, issue_number: issueNumber, body: comment }),
+        { numOfAttempts: 5 },
+      );
       return;
     },
   };
