@@ -24,7 +24,7 @@ export type RunClient = {
   fetchArtifacts: (runId: number) => Promise<{ data: { artifacts: Artifact[] } }>;
 };
 
-const limitation = 200;
+const limitation = 100;
 
 export const findRunAndArtifact = async ({
   event,
