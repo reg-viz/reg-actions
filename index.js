@@ -42,7 +42,6 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createClient = void 0;
 const artifact = __importStar(__nccwpck_require__(52605));
 const exponential_backoff_1 = __nccwpck_require__(63183);
-const constants = __importStar(__nccwpck_require__(55105));
 const path_1 = __nccwpck_require__(30013);
 const createClient = (repository, octokit) => {
     const artifactClient = artifact.create();
@@ -54,8 +53,8 @@ const createClient = (repository, octokit) => {
             const input = Object.assign(Object.assign({}, repository), { run_id: runId, per_page: 50 });
             return (0, exponential_backoff_1.backOff)(() => octokit.rest.actions.listWorkflowRunArtifacts(input), { numOfAttempts: 5 });
         }),
-        uploadArtifact: (files) => __awaiter(void 0, void 0, void 0, function* () {
-            const _ = yield (0, exponential_backoff_1.backOff)(() => artifactClient.uploadArtifact(constants.ARTIFACT_NAME, files, (0, path_1.workspace)()), {
+        uploadArtifact: (files, artifactName) => __awaiter(void 0, void 0, void 0, function* () {
+            const _ = yield (0, exponential_backoff_1.backOff)(() => artifactClient.uploadArtifact(artifactName, files, (0, path_1.workspace)()), {
                 numOfAttempts: 5,
             });
             return;
@@ -259,6 +258,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getConfig = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const fs_1 = __nccwpck_require__(57147);
+const constants_1 = __nccwpck_require__(55105);
 const validateGitHubToken = (githubToken) => {
     if (!githubToken) {
         throw new Error(`'github-token' is not set. Please give API token.`);
@@ -326,6 +326,7 @@ const getConfig = () => {
     validateThresholdRate(thresholdRate);
     const targetHash = core.getInput('target-hash') || null;
     validateTargetHash(targetHash);
+    const artifactName = core.getInput('name') || constants_1.ARTIFACT_NAME;
     return {
         githubToken,
         imageDirectoryPath,
@@ -334,6 +335,7 @@ const getConfig = () => {
         thresholdRate,
         thresholdPixel,
         targetHash,
+        artifactName,
     };
 };
 exports.getConfig = getConfig;
@@ -649,9 +651,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.findRunAndArtifact = void 0;
 const logger_1 = __nccwpck_require__(65228);
 const git_1 = __nccwpck_require__(53374);
-const constants_1 = __nccwpck_require__(55105);
 const limitation = 200;
-const findRunAndArtifact = ({ event, client, targetHash: inputTargetHash, }) => __awaiter(void 0, void 0, void 0, function* () {
+const findRunAndArtifact = ({ event, client, targetHash: inputTargetHash, artifactName, }) => __awaiter(void 0, void 0, void 0, function* () {
     let page = 0;
     while (true) {
         if (!event.pull_request) {
@@ -668,7 +669,7 @@ const findRunAndArtifact = ({ event, client, targetHash: inputTargetHash, }) => 
             for (const run of runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort))) {
                 const res = yield client.fetchArtifacts(run.id);
                 const { artifacts } = res.data;
-                const found = artifacts.find(a => a.name === constants_1.ARTIFACT_NAME);
+                const found = artifacts.find(a => a.name === artifactName);
                 if (found) {
                     return { run, artifact: found };
                 }
@@ -788,7 +789,7 @@ const compareAndUpload = (client, config) => __awaiter(void 0, void 0, void 0, f
     const files = (0, glob_1.sync)(path.join((0, path_1.workspace)(), '**/*'));
     logger_1.log.info('Start upload artifact');
     try {
-        yield client.uploadArtifact(files);
+        yield client.uploadArtifact(files, config.artifactName);
     }
     catch (e) {
         logger_1.log.error(e);
@@ -818,7 +819,12 @@ const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, voi
     }
     logger_1.log.info(`start to find run and artifact.`);
     // Find current run and target run and artifact.
-    const runAndArtifact = yield (0, run_1.findRunAndArtifact)({ event, client, targetHash: config.targetHash });
+    const runAndArtifact = yield (0, run_1.findRunAndArtifact)({
+        event,
+        client,
+        targetHash: config.targetHash,
+        artifactName: config.artifactName,
+    });
     // If target artifact is not found, upload images.
     if (!runAndArtifact || !runAndArtifact.run || !runAndArtifact.artifact) {
         logger_1.log.warn('Failed to find current or target runs');
