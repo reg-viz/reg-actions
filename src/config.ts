@@ -81,7 +81,7 @@ export const getConfig = (): Config => {
   validateThresholdRate(thresholdRate);
   const targetHash = core.getInput('target-hash') || null;
   validateTargetHash(targetHash);
-  const artifactName = core.getInput('name') || ARTIFACT_NAME;
+  const artifactName = core.getInput('artifact-name') || ARTIFACT_NAME;
 
   return {
     githubToken,
