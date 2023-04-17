@@ -62,7 +62,7 @@ const copyImages = (imagePath: string) => {
 };
 
 type UploadClient = {
-  uploadArtifact: (files: string[]) => Promise<void>;
+  uploadArtifact: (files: string[], artifactName: string) => Promise<void>;
 };
 
 // Compare images and upload result.
@@ -75,7 +75,7 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
   log.info('Start upload artifact');
 
   try {
-    await client.uploadArtifact(files);
+    await client.uploadArtifact(files, config.artifactName);
   } catch (e) {
     log.error(e);
     throw new Error('Failed to upload artifact');
@@ -118,7 +118,12 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
 
   log.info(`start to find run and artifact.`);
   // Find current run and target run and artifact.
-  const runAndArtifact = await findRunAndArtifact({ event, client, targetHash: config.targetHash });
+  const runAndArtifact = await findRunAndArtifact({
+    event,
+    client,
+    targetHash: config.targetHash,
+    artifactName: config.artifactName,
+  });
 
   // If target artifact is not found, upload images.
   if (!runAndArtifact || !runAndArtifact.run || !runAndArtifact.artifact) {

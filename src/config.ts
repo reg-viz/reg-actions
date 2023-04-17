@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import { statSync } from 'fs';
+import { ARTIFACT_NAME } from './constants';
 
 export interface Config {
   imageDirectoryPath: string;
@@ -9,6 +10,7 @@ export interface Config {
   thresholdRate: number;
   thresholdPixel: number;
   targetHash: string | null;
+  artifactName: string;
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -79,6 +81,7 @@ export const getConfig = (): Config => {
   validateThresholdRate(thresholdRate);
   const targetHash = core.getInput('target-hash') || null;
   validateTargetHash(targetHash);
+  const artifactName = core.getInput('name') || ARTIFACT_NAME;
 
   return {
     githubToken,
@@ -88,5 +91,6 @@ export const getConfig = (): Config => {
     thresholdRate,
     thresholdPixel,
     targetHash,
+    artifactName,
   };
 };

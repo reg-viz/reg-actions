@@ -3,7 +3,6 @@ import * as artifact from '@actions/artifact';
 import { backOff } from 'exponential-backoff';
 
 import { Repository } from './repository';
-import * as constants from './constants';
 import { workspace } from './path';
 
 export type Octokit = ReturnType<typeof github.getOctokit>;
@@ -27,8 +26,8 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       const input = { ...repository, run_id: runId, per_page: 50 };
       return backOff(() => octokit.rest.actions.listWorkflowRunArtifacts(input), { numOfAttempts: 5 });
     },
-    uploadArtifact: async (files: string[]) => {
-      const _ = await backOff(() => artifactClient.uploadArtifact(constants.ARTIFACT_NAME, files, workspace()), {
+    uploadArtifact: async (files: string[], artifactName: string) => {
+      const _ = await backOff(() => artifactClient.uploadArtifact(artifactName, files, workspace()), {
         numOfAttempts: 5,
       });
       return;
