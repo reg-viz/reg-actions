@@ -839,12 +839,14 @@ const genConfig = (input) => {
 const copyImages = (result, temp, dest) => __awaiter(void 0, void 0, void 0, function* () {
     logger_1.log.info(`Copying all files`);
     if (result.deletedItems.length > 0) {
+        logger_1.log.info(`Copying deleted files`);
         const deletedGlobs = result.deletedItems.length === 1
             ? `${path.join((0, path_1.workspace)(), constants.EXPECTED_DIR_NAME)}/${result.deletedItems[0]}`
             : `${path.join((0, path_1.workspace)(), constants.EXPECTED_DIR_NAME)}/(${result.deletedItems.join('|')})`;
         cpx_1.default.copySync(deletedGlobs, `${temp}/${dest}/expected/`);
     }
     if (result.newItems.length > 0) {
+        logger_1.log.info(`Copying new files`);
         const newGlobs = result.newItems.length === 1
             ? `${path.join((0, path_1.workspace)(), constants.ACTUAL_DIR_NAME)}/${result.newItems[0]}`
             : `${path.join((0, path_1.workspace)(), constants.ACTUAL_DIR_NAME)}/(${result.newItems.join('|')})`;
@@ -854,6 +856,7 @@ const copyImages = (result, temp, dest) => __awaiter(void 0, void 0, void 0, fun
         const failedGlobs = result.failedItems.length === 1
             ? `${path.join((0, path_1.workspace)(), constants.DIFF_DIR_NAME)}/${result.failedItems[0]}`
             : `${path.join((0, path_1.workspace)(), constants.DIFF_DIR_NAME)}/(${result.failedItems.join('|')})`;
+        logger_1.log.info(`Copying diff files`, failedGlobs, `${temp}/${dest}/diff/`);
         cpx_1.default.copySync(failedGlobs, `${temp}/${dest}/diff/`);
         const expectedGlobs = result.failedItems.length === 1
             ? `${path.join((0, path_1.workspace)(), constants.EXPECTED_DIR_NAME)}/${result.failedItems[0]}`
