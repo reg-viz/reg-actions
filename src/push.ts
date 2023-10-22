@@ -554,7 +554,10 @@ export const pushImages = async (input: PushImagesInput) => {
   // });
 
   if (input.result.deletedItems.length > 0) {
-    const deletedGlobs = `${(workspace(), constants.EXPECTED_DIR_NAME)}/(${input.result.deletedItems.join('|')})`;
+    const deletedGlobs =
+      input.result.deletedItems.length === 1
+        ? `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${input.result.deletedItems[0]}`
+        : `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/(${input.result.deletedItems.join('|')})`;
     console.log(deletedGlobs);
     try {
       cpx.copySync(deletedGlobs, `${REPO_TEMP}/${destinationFolder}/deleted/`);
@@ -566,8 +569,8 @@ export const pushImages = async (input: PushImagesInput) => {
   if (input.result.newItems.length > 0) {
     const newGlobs =
       input.result.newItems.length === 1
-        ? `${(workspace(), constants.ACTUAL_DIR_NAME)}/${input.result.newItems[0]}`
-        : `${(workspace(), constants.ACTUAL_DIR_NAME)}/(${input.result.newItems.join('|')})`;
+        ? `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${input.result.newItems[0]}`
+        : `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/(${input.result.newItems.join('|')})`;
 
     console.log(newGlobs);
     try {
@@ -578,7 +581,11 @@ export const pushImages = async (input: PushImagesInput) => {
   }
 
   if (input.result.failedItems.length > 0) {
-    const failedGlobs = `${(workspace(), constants.DIFF_DIR_NAME)}/(${input.result.failedItems.join('|')})`;
+    const failedGlobs =
+      input.result.newItems.length === 1
+        ? `${path.join(workspace(), constants.DIFF_DIR_NAME)}/${input.result.failedItems[0]}`
+        : `${path.join(workspace(), constants.DIFF_DIR_NAME)}/(${input.result.failedItems.join('|')})`;
+
     console.log(failedGlobs);
     try {
       cpx.copySync(failedGlobs, `${REPO_TEMP}/${destinationFolder}/diff/`);
