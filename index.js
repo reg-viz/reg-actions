@@ -1420,6 +1420,7 @@ const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, voi
         regBranch: 'reg',
     });
     yield client.postComment(event.number, comment);
+    logger_1.log.info('post summary comment');
     yield client.summary(comment);
 });
 exports.run = run;
