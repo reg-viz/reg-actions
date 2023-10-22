@@ -83,13 +83,16 @@ const newItems = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string 
      
 ### New Items
   
-| New Items     | 
-|:----------:|
 ${result.newItems
   .map(item => {
-    const filename = encodeURIComponent(basename(item));
+    const base = basename(item);
+    const filename = encodeURIComponent(base);
     const img = baseUrl + 'actual/' + filename + '?raw=true';
-    return `| ![NewItem](${img}) |`;
+    return `### \`${base}\`
+    |    |
+    |:--:|
+    | ![NewItem](${img}) |
+       `;
   })
   .join('\n')}
   `;
