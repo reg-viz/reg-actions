@@ -91,25 +91,12 @@ const genConfig = (input: PushImagesInput): Config => {
 const copyImages = async (result: CompareOutput, temp: string, dest: string): Promise<void> => {
   log.info(`Copying all files`);
 
-  const promises: Promise<void>[] = [];
-  const cp = (src: string, dst: string) =>
-    new Promise<void>((resolve, reject) => {
-      cpx.copy(src, dst, err => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        log.info('succeeded to copy images');
-        return resolve();
-      });
-    });
-
   if (result.deletedItems.length > 0) {
     const deletedGlobs =
       result.deletedItems.length === 1
         ? `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${result.deletedItems[0]}`
         : `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/(${result.deletedItems.join('|')})`;
-    promises.push(cp(deletedGlobs, `${temp}/${dest}/expected/`));
+    cpx.copySync(deletedGlobs, `${temp}/${dest}/expected/`);
   }
 
   if (result.newItems.length > 0) {
@@ -118,7 +105,7 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
         ? `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${result.newItems[0]}`
         : `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/(${result.newItems.join('|')})`;
 
-    promises.push(cp(newGlobs, `${temp}/${dest}/actual/`));
+    cpx.copySync(newGlobs, `${temp}/${dest}/actual/`);
   }
 
   if (result.failedItems.length > 0) {
@@ -126,24 +113,20 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
       result.failedItems.length === 1
         ? `${path.join(workspace(), constants.DIFF_DIR_NAME)}/${result.failedItems[0]}`
         : `${path.join(workspace(), constants.DIFF_DIR_NAME)}/(${result.failedItems.join('|')})`;
-    promises.push(cp(failedGlobs, `${temp}/${dest}/diff/`));
+    cpx.copySync(failedGlobs, `${temp}/${dest}/diff/`);
 
     const expectedGlobs =
       result.failedItems.length === 1
         ? `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${result.failedItems[0]}`
         : `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/(${result.failedItems.join('|')})`;
-    promises.push(cp(expectedGlobs, `${temp}/${dest}/expected/`));
+    cpx.copySync(expectedGlobs, `${temp}/${dest}/expected/`);
 
     const actualGlobs =
       result.failedItems.length === 1
         ? `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${result.failedItems[0]}`
         : `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/(${result.failedItems.join('|')})`;
-    promises.push(cp(actualGlobs, `${temp}/${dest}/actual/`));
+    cpx.copySync(actualGlobs, `${temp}/${dest}/actual/`);
   }
-  await Promise.all(promises).catch(e => {
-    log.error('Failed to copy images', e);
-    throw e;
-  });
   return;
 };
 
