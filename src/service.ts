@@ -153,7 +153,7 @@ export const run = async ({
 
     // If we have current run, add comment to PR.
     if (runId) {
-      const comment = createCommentWithoutTarget({ event, runId, result });
+      const comment = createCommentWithoutTarget({ event, runId, result, artifactName: config.artifactName });
       await client.postComment(event.number, comment);
     }
     return;

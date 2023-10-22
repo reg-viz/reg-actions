@@ -19,6 +19,7 @@ export type CreateCommentWithoutTargetInput = {
   event: Event;
   runId: number;
   result: CompareOutput;
+  artifactName: string;
 };
 
 const isSuccess = (result: CompareOutput) => {
@@ -134,6 +135,8 @@ export const createCommentWithTarget = ({
   const baseUrl = createBaseUrl({ owner, repoName, branch: regBranch, runId, artifactName, date });
   const successOrFailMessage = isSuccess(result)
     ? `${badge(result)}
+
+## ${artifactName}
   
 ✨✨ That's perfect, there is no visual difference! ✨✨
     `
@@ -163,8 +166,10 @@ ${deletedItems({ result, baseUrl })}
   return body;
 };
 
-export const createCommentWithoutTarget = ({ result }: CreateCommentWithoutTargetInput): string => {
-  const body = `Failed to find a target artifact.
+export const createCommentWithoutTarget = ({ result, artifactName }: CreateCommentWithoutTargetInput): string => {
+  const body = `## ${artifactName}
+  
+Failed to find a target artifact.
 All items will be treated as new items and will be used as expected data for the next time.
 
 ![target not found](https://img.shields.io/badge/%E2%9C%94%20reg-new%20items-blue)
