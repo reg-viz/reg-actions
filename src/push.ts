@@ -484,7 +484,7 @@ export const pushImages = async (input: PushImagesInput) => {
     const s = err.toString();
     /* istanbul ignore if */
     if (s.indexOf("Couldn't find remote ref") === -1) {
-      log.error("[warning] Failed to fetch target branch, probably doesn't exist");
+      log.warn("Failed to fetch target branch, probably doesn't exist");
       log.error(err);
     }
   });
@@ -532,12 +532,13 @@ export const pushImages = async (input: PushImagesInput) => {
   //   return ['**/*', '!.git'];
   // }
   // })();
+  if (!hasBranch) {
+    const filesToDelete = fgStream(globs, { absolute: true, dot: true, followSymbolicLinks: false, cwd: REPO_TEMP });
 
-  const filesToDelete = fgStream(globs, { absolute: true, dot: true, followSymbolicLinks: false, cwd: REPO_TEMP });
-
-  // Delete all files from the filestream
-  for await (const entry of filesToDelete) {
-    await fs.unlink(entry);
+    // Delete all files from the filestream
+    for await (const entry of filesToDelete) {
+      await fs.unlink(entry);
+    }
   }
 
   // const sourceDir = path.resolve(process.cwd(), config.sourceDir);

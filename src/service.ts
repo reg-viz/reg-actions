@@ -157,24 +157,20 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
       branch: 'reg',
       targetDir: `${runId}_${config.artifactName}`,
       env: process.env,
-      commitName: undefined,
-      commitEmail: undefined,
+      // commitName: undefined,
+      // commitEmail: undefined,
     });
   }
 
-  setTimeout(async () => {
-    const comment = createCommentWithTarget({
-      event,
-      runId,
-      sha,
-      targetRun,
-      result,
-      artifactName: config.artifactName,
-      regBranch: 'reg',
-    });
+  const comment = createCommentWithTarget({
+    event,
+    runId,
+    sha,
+    targetRun,
+    result,
+    artifactName: config.artifactName,
+    regBranch: 'reg',
+  });
 
-    if (event.number != null) {
-      await client.postComment(event.number, comment);
-    }
-  }, 10000);
+  await client.postComment(event.number, comment);
 };
