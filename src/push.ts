@@ -41,8 +41,8 @@ export type PushImagesInput = {
   branch: string;
   targetDir: string;
   env: EnvironmentVariables;
-  commitName?: string;
-  commitEmail?: string;
+  // commitName?: string;
+  // commitEmail?: string;
 };
 
 export interface EnvironmentVariables {
@@ -146,11 +146,10 @@ export const pushImages = async (input: PushImagesInput) => {
 
   const event: Event = JSON.parse((await fs.readFile(env.GITHUB_EVENT_PATH)).toString());
 
-  const name = input.commitName ?? event.pusher?.name ?? env.GITHUB_ACTOR ?? 'Git Publish Subdirectory';
+  const name = /* input.commitName ?? */ event.pusher?.name ?? env.GITHUB_ACTOR ?? 'Git Publish Subdirectory';
   const email =
-    input.commitEmail ??
-    event.pusher?.email ??
-    (env.GITHUB_ACTOR ? `${env.GITHUB_ACTOR}@users.noreply.github.com` : 'nobody@nowhere');
+    // input.commitEmail ??
+    event.pusher?.email ?? (env.GITHUB_ACTOR ? `${env.GITHUB_ACTOR}@users.noreply.github.com` : 'nobody@nowhere');
 
   // Set Git Config
   await configureName(name);
@@ -176,7 +175,7 @@ export const pushImages = async (input: PushImagesInput) => {
   // Check if branch already exists
   log.info(`Checking if branch ${config.branch} exists already`);
 
-  if (!hasBranch(config.branch, execOptions)) {
+  if (!(await hasBranch(config.branch, execOptions))) {
     // Branch does not exist yet, let's check it out as an orphan
     log.info(`${config.branch} does not exist, creating as orphan`);
     await checkout(config.branch, true, execOptions);
