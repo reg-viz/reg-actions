@@ -49,9 +49,9 @@ const createBaseUrl = ({
   branch: string;
   runId: number;
   artifactName: string;
-  date;
+  date: string;
 }): string => {
-  return `https://github.com/${owner}/${repoName}/${branch}/${date}_${runId}_${artifactName}/`;
+  return `https://github.com/${owner}/${repoName}/blob/${branch}/${date}_${runId}_${artifactName}/`;
 };
 
 const differences = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string }): string => {
