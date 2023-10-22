@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 290:
+/***/ 665:
 /***/ ((module) => {
 
 "use strict";
@@ -359,7 +359,7 @@ module.exports = {
 
 /***/ }),
 
-/***/ 232:
+/***/ 730:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -378,7 +378,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const fs_1 = __importDefault(__nccwpck_require__(147));
-const jpeg_js_1 = __importDefault(__nccwpck_require__(541));
+const jpeg_js_1 = __importDefault(__nccwpck_require__(157));
 function decodeJpeg(filename) {
     return __awaiter(this, void 0, void 0, function* () {
         const rawBuffer = yield fs_1.default.promises.readFile(filename);
@@ -390,7 +390,7 @@ exports["default"] = decodeJpeg;
 
 /***/ }),
 
-/***/ 76:
+/***/ 910:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -400,7 +400,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const fs_1 = __importDefault(__nccwpck_require__(147));
-const pngjs_1 = __nccwpck_require__(413);
+const pngjs_1 = __nccwpck_require__(360);
 function decodePng(filename) {
     return new Promise((resolve, reject) => {
         try {
@@ -423,7 +423,7 @@ exports["default"] = decodePng;
 
 /***/ }),
 
-/***/ 277:
+/***/ 60:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -442,7 +442,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const fs_1 = __importDefault(__nccwpck_require__(147));
-const { decode } = __nccwpck_require__(290);
+const { decode } = __nccwpck_require__(665);
 function decodeTiff(filename) {
     return __awaiter(this, void 0, void 0, function* () {
         const rawBuffer = yield fs_1.default.promises.readFile(filename);
@@ -454,7 +454,7 @@ exports["default"] = decodeTiff;
 
 /***/ }),
 
-/***/ 310:
+/***/ 738:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -506,7 +506,7 @@ exports["default"] = expand;
 
 /***/ }),
 
-/***/ 93:
+/***/ 578:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -518,13 +518,13 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.imgDiff = exports.registerDecoder = void 0;
 const fs_1 = __importDefault(__nccwpck_require__(147));
 const path_1 = __importDefault(__nccwpck_require__(17));
-const pixelmatch_1 = __importDefault(__nccwpck_require__(97));
-const pngjs_1 = __nccwpck_require__(413);
-const mkdirp_1 = __importDefault(__nccwpck_require__(276));
-const decode_png_1 = __importDefault(__nccwpck_require__(76));
-const decode_jpeg_1 = __importDefault(__nccwpck_require__(232));
-const decode_tiff_1 = __importDefault(__nccwpck_require__(277));
-const expand_1 = __importDefault(__nccwpck_require__(310));
+const pixelmatch_1 = __importDefault(__nccwpck_require__(390));
+const pngjs_1 = __nccwpck_require__(360);
+const mkdirp_1 = __importDefault(__nccwpck_require__(41));
+const decode_png_1 = __importDefault(__nccwpck_require__(910));
+const decode_jpeg_1 = __importDefault(__nccwpck_require__(730));
+const decode_tiff_1 = __importDefault(__nccwpck_require__(60));
+const expand_1 = __importDefault(__nccwpck_require__(738));
 const extensionDecoderMap = {};
 function registerDecoder(extensions, decoder) {
     extensions.forEach(extension => {
@@ -583,285 +583,11 @@ exports.imgDiff = imgDiff;
 
 /***/ }),
 
-/***/ 276:
+/***/ 157:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-const optsArg = __nccwpck_require__(587)
-const pathArg = __nccwpck_require__(998)
-
-const {mkdirpNative, mkdirpNativeSync} = __nccwpck_require__(320)
-const {mkdirpManual, mkdirpManualSync} = __nccwpck_require__(68)
-const {useNative, useNativeSync} = __nccwpck_require__(648)
-
-
-const mkdirp = (path, opts) => {
-  path = pathArg(path)
-  opts = optsArg(opts)
-  return useNative(opts)
-    ? mkdirpNative(path, opts)
-    : mkdirpManual(path, opts)
-}
-
-const mkdirpSync = (path, opts) => {
-  path = pathArg(path)
-  opts = optsArg(opts)
-  return useNativeSync(opts)
-    ? mkdirpNativeSync(path, opts)
-    : mkdirpManualSync(path, opts)
-}
-
-mkdirp.sync = mkdirpSync
-mkdirp.native = (path, opts) => mkdirpNative(pathArg(path), optsArg(opts))
-mkdirp.manual = (path, opts) => mkdirpManual(pathArg(path), optsArg(opts))
-mkdirp.nativeSync = (path, opts) => mkdirpNativeSync(pathArg(path), optsArg(opts))
-mkdirp.manualSync = (path, opts) => mkdirpManualSync(pathArg(path), optsArg(opts))
-
-module.exports = mkdirp
-
-
-/***/ }),
-
-/***/ 809:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const {dirname} = __nccwpck_require__(17)
-
-const findMade = (opts, parent, path = undefined) => {
-  // we never want the 'made' return value to be a root directory
-  if (path === parent)
-    return Promise.resolve()
-
-  return opts.statAsync(parent).then(
-    st => st.isDirectory() ? path : undefined, // will fail later
-    er => er.code === 'ENOENT'
-      ? findMade(opts, dirname(parent), parent)
-      : undefined
-  )
-}
-
-const findMadeSync = (opts, parent, path = undefined) => {
-  if (path === parent)
-    return undefined
-
-  try {
-    return opts.statSync(parent).isDirectory() ? path : undefined
-  } catch (er) {
-    return er.code === 'ENOENT'
-      ? findMadeSync(opts, dirname(parent), parent)
-      : undefined
-  }
-}
-
-module.exports = {findMade, findMadeSync}
-
-
-/***/ }),
-
-/***/ 68:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const {dirname} = __nccwpck_require__(17)
-
-const mkdirpManual = (path, opts, made) => {
-  opts.recursive = false
-  const parent = dirname(path)
-  if (parent === path) {
-    return opts.mkdirAsync(path, opts).catch(er => {
-      // swallowed by recursive implementation on posix systems
-      // any other error is a failure
-      if (er.code !== 'EISDIR')
-        throw er
-    })
-  }
-
-  return opts.mkdirAsync(path, opts).then(() => made || path, er => {
-    if (er.code === 'ENOENT')
-      return mkdirpManual(parent, opts)
-        .then(made => mkdirpManual(path, opts, made))
-    if (er.code !== 'EEXIST' && er.code !== 'EROFS')
-      throw er
-    return opts.statAsync(path).then(st => {
-      if (st.isDirectory())
-        return made
-      else
-        throw er
-    }, () => { throw er })
-  })
-}
-
-const mkdirpManualSync = (path, opts, made) => {
-  const parent = dirname(path)
-  opts.recursive = false
-
-  if (parent === path) {
-    try {
-      return opts.mkdirSync(path, opts)
-    } catch (er) {
-      // swallowed by recursive implementation on posix systems
-      // any other error is a failure
-      if (er.code !== 'EISDIR')
-        throw er
-      else
-        return
-    }
-  }
-
-  try {
-    opts.mkdirSync(path, opts)
-    return made || path
-  } catch (er) {
-    if (er.code === 'ENOENT')
-      return mkdirpManualSync(path, opts, mkdirpManualSync(parent, opts, made))
-    if (er.code !== 'EEXIST' && er.code !== 'EROFS')
-      throw er
-    try {
-      if (!opts.statSync(path).isDirectory())
-        throw er
-    } catch (_) {
-      throw er
-    }
-  }
-}
-
-module.exports = {mkdirpManual, mkdirpManualSync}
-
-
-/***/ }),
-
-/***/ 320:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const {dirname} = __nccwpck_require__(17)
-const {findMade, findMadeSync} = __nccwpck_require__(809)
-const {mkdirpManual, mkdirpManualSync} = __nccwpck_require__(68)
-
-const mkdirpNative = (path, opts) => {
-  opts.recursive = true
-  const parent = dirname(path)
-  if (parent === path)
-    return opts.mkdirAsync(path, opts)
-
-  return findMade(opts, path).then(made =>
-    opts.mkdirAsync(path, opts).then(() => made)
-    .catch(er => {
-      if (er.code === 'ENOENT')
-        return mkdirpManual(path, opts)
-      else
-        throw er
-    }))
-}
-
-const mkdirpNativeSync = (path, opts) => {
-  opts.recursive = true
-  const parent = dirname(path)
-  if (parent === path)
-    return opts.mkdirSync(path, opts)
-
-  const made = findMadeSync(opts, path)
-  try {
-    opts.mkdirSync(path, opts)
-    return made
-  } catch (er) {
-    if (er.code === 'ENOENT')
-      return mkdirpManualSync(path, opts)
-    else
-      throw er
-  }
-}
-
-module.exports = {mkdirpNative, mkdirpNativeSync}
-
-
-/***/ }),
-
-/***/ 587:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const { promisify } = __nccwpck_require__(837)
-const fs = __nccwpck_require__(147)
-const optsArg = opts => {
-  if (!opts)
-    opts = { mode: 0o777, fs }
-  else if (typeof opts === 'object')
-    opts = { mode: 0o777, fs, ...opts }
-  else if (typeof opts === 'number')
-    opts = { mode: opts, fs }
-  else if (typeof opts === 'string')
-    opts = { mode: parseInt(opts, 8), fs }
-  else
-    throw new TypeError('invalid options argument')
-
-  opts.mkdir = opts.mkdir || opts.fs.mkdir || fs.mkdir
-  opts.mkdirAsync = promisify(opts.mkdir)
-  opts.stat = opts.stat || opts.fs.stat || fs.stat
-  opts.statAsync = promisify(opts.stat)
-  opts.statSync = opts.statSync || opts.fs.statSync || fs.statSync
-  opts.mkdirSync = opts.mkdirSync || opts.fs.mkdirSync || fs.mkdirSync
-  return opts
-}
-module.exports = optsArg
-
-
-/***/ }),
-
-/***/ 998:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const platform = process.env.__TESTING_MKDIRP_PLATFORM__ || process.platform
-const { resolve, parse } = __nccwpck_require__(17)
-const pathArg = path => {
-  if (/\0/.test(path)) {
-    // simulate same failure that node raises
-    throw Object.assign(
-      new TypeError('path must be a string without null bytes'),
-      {
-        path,
-        code: 'ERR_INVALID_ARG_VALUE',
-      }
-    )
-  }
-
-  path = resolve(path)
-  if (platform === 'win32') {
-    const badWinChars = /[*|"<>?:]/
-    const {root} = parse(path)
-    if (badWinChars.test(path.substr(root.length))) {
-      throw Object.assign(new Error('Illegal characters in path.'), {
-        path,
-        code: 'EINVAL',
-      })
-    }
-  }
-
-  return path
-}
-module.exports = pathArg
-
-
-/***/ }),
-
-/***/ 648:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const fs = __nccwpck_require__(147)
-
-const version = process.env.__TESTING_MKDIRP_NODE_VERSION__ || process.version
-const versArr = version.replace(/^v/, '').split('.')
-const hasNative = +versArr[0] > 10 || +versArr[0] === 10 && +versArr[1] >= 12
-
-const useNative = !hasNative ? () => false : opts => opts.mkdir === fs.mkdir
-const useNativeSync = !hasNative ? () => false : opts => opts.mkdirSync === fs.mkdirSync
-
-module.exports = {useNative, useNativeSync}
-
-
-/***/ }),
-
-/***/ 541:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-var encode = __nccwpck_require__(179),
-    decode = __nccwpck_require__(66);
+var encode = __nccwpck_require__(776),
+    decode = __nccwpck_require__(154);
 
 module.exports = {
   encode: encode,
@@ -871,7 +597,7 @@ module.exports = {
 
 /***/ }),
 
-/***/ 66:
+/***/ 154:
 /***/ ((module) => {
 
 /* -*- tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- /
@@ -1452,7 +1178,9 @@ var JpegImage = (function jpegImage() {
         return array;
       }
       function prepareComponents(frame) {
-        var maxH = 0, maxV = 0;
+        // According to the JPEG standard, the sampling factor must be between 1 and 4
+        // See https://github.com/libjpeg-turbo/libjpeg-turbo/blob/9abeff46d87bd201a952e276f3e4339556a403a3/libjpeg.txt#L1138-L1146
+        var maxH = 1, maxV = 1;
         var component, componentId;
         for (componentId in frame.components) {
           if (frame.components.hasOwnProperty(componentId)) {
@@ -1621,6 +1349,11 @@ var JpegImage = (function jpegImage() {
               var h = data[offset + 1] >> 4;
               var v = data[offset + 1] & 15;
               var qId = data[offset + 2];
+
+              if ( h <= 0 || v <= 0 ) {
+                throw new Error('Invalid sampling factor, expected values above 0');
+              }
+
               frame.componentsOrder.push(componentId);
               frame.components[componentId] = {
                 h: h,
@@ -1996,13 +1729,19 @@ function decode(jpegData, userOpts = {}) {
     if(decoder.comments.length > 0) {
       image["comments"] = decoder.comments;
     }
-  } catch (err){
-    if (err instanceof RangeError){
+  } catch (err) {
+    if (err instanceof RangeError) {
       throw new Error("Could not allocate enough memory for the image. " +
                       "Required: " + bytesNeeded);
-    } else {
-      throw err;
+    } 
+    
+    if (err instanceof ReferenceError) {
+      if (err.message === "Buffer is not defined") {
+        throw new Error("Buffer is not globally defined in this environment. " +
+                        "Consider setting useTArray to true");
+      }
     }
+    throw err;
   }
 
   decoder.copyToImageData(image, opts.formatAsRGBA);
@@ -2013,7 +1752,7 @@ function decode(jpegData, userOpts = {}) {
 
 /***/ }),
 
-/***/ 179:
+/***/ 776:
 /***/ ((module) => {
 
 /*
@@ -2553,6 +2292,20 @@ function JPEGEncoder(quality) {
 				writeByte(std_ac_chrominance_values[p]);
 			}
 		}
+		
+		function writeCOM(comments)
+		{
+			if (typeof comments === "undefined" || comments.constructor !== Array) return;
+			comments.forEach(e => {
+				if (typeof e !== "string") return;
+				writeWord(0xFFFE); // marker
+				var l = e.length;
+				writeWord(l + 2); // length itself as well
+				var i;
+				for (i = 0; i < l; i++)
+					writeByte(e.charCodeAt(i));
+			});
+		}
 	
 		function writeSOS()
 		{
@@ -2643,6 +2396,7 @@ function JPEGEncoder(quality) {
 			// Add JPEG headers
 			writeWord(0xFFD8); // SOI
 			writeAPP0();
+			writeCOM(image.comments);
 			writeAPP1(image.exifBuffer);
 			writeDQT();
 			writeSOF0(image.width,image.height);
@@ -2797,7 +2551,7 @@ function encode(imgData, qu) {
   return {
     data: data,
     width: imgData.width,
-    height: imgData.height
+    height: imgData.height,
   };
 }
 
@@ -2816,7 +2570,7 @@ function getImageDataFromImage(idOrElement){
 
 /***/ }),
 
-/***/ 446:
+/***/ 643:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -2869,7 +2623,281 @@ module.exports.sync = md5FileSync
 
 /***/ }),
 
-/***/ 97:
+/***/ 41:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const optsArg = __nccwpck_require__(687)
+const pathArg = __nccwpck_require__(271)
+
+const {mkdirpNative, mkdirpNativeSync} = __nccwpck_require__(583)
+const {mkdirpManual, mkdirpManualSync} = __nccwpck_require__(959)
+const {useNative, useNativeSync} = __nccwpck_require__(863)
+
+
+const mkdirp = (path, opts) => {
+  path = pathArg(path)
+  opts = optsArg(opts)
+  return useNative(opts)
+    ? mkdirpNative(path, opts)
+    : mkdirpManual(path, opts)
+}
+
+const mkdirpSync = (path, opts) => {
+  path = pathArg(path)
+  opts = optsArg(opts)
+  return useNativeSync(opts)
+    ? mkdirpNativeSync(path, opts)
+    : mkdirpManualSync(path, opts)
+}
+
+mkdirp.sync = mkdirpSync
+mkdirp.native = (path, opts) => mkdirpNative(pathArg(path), optsArg(opts))
+mkdirp.manual = (path, opts) => mkdirpManual(pathArg(path), optsArg(opts))
+mkdirp.nativeSync = (path, opts) => mkdirpNativeSync(pathArg(path), optsArg(opts))
+mkdirp.manualSync = (path, opts) => mkdirpManualSync(pathArg(path), optsArg(opts))
+
+module.exports = mkdirp
+
+
+/***/ }),
+
+/***/ 136:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const {dirname} = __nccwpck_require__(17)
+
+const findMade = (opts, parent, path = undefined) => {
+  // we never want the 'made' return value to be a root directory
+  if (path === parent)
+    return Promise.resolve()
+
+  return opts.statAsync(parent).then(
+    st => st.isDirectory() ? path : undefined, // will fail later
+    er => er.code === 'ENOENT'
+      ? findMade(opts, dirname(parent), parent)
+      : undefined
+  )
+}
+
+const findMadeSync = (opts, parent, path = undefined) => {
+  if (path === parent)
+    return undefined
+
+  try {
+    return opts.statSync(parent).isDirectory() ? path : undefined
+  } catch (er) {
+    return er.code === 'ENOENT'
+      ? findMadeSync(opts, dirname(parent), parent)
+      : undefined
+  }
+}
+
+module.exports = {findMade, findMadeSync}
+
+
+/***/ }),
+
+/***/ 959:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const {dirname} = __nccwpck_require__(17)
+
+const mkdirpManual = (path, opts, made) => {
+  opts.recursive = false
+  const parent = dirname(path)
+  if (parent === path) {
+    return opts.mkdirAsync(path, opts).catch(er => {
+      // swallowed by recursive implementation on posix systems
+      // any other error is a failure
+      if (er.code !== 'EISDIR')
+        throw er
+    })
+  }
+
+  return opts.mkdirAsync(path, opts).then(() => made || path, er => {
+    if (er.code === 'ENOENT')
+      return mkdirpManual(parent, opts)
+        .then(made => mkdirpManual(path, opts, made))
+    if (er.code !== 'EEXIST' && er.code !== 'EROFS')
+      throw er
+    return opts.statAsync(path).then(st => {
+      if (st.isDirectory())
+        return made
+      else
+        throw er
+    }, () => { throw er })
+  })
+}
+
+const mkdirpManualSync = (path, opts, made) => {
+  const parent = dirname(path)
+  opts.recursive = false
+
+  if (parent === path) {
+    try {
+      return opts.mkdirSync(path, opts)
+    } catch (er) {
+      // swallowed by recursive implementation on posix systems
+      // any other error is a failure
+      if (er.code !== 'EISDIR')
+        throw er
+      else
+        return
+    }
+  }
+
+  try {
+    opts.mkdirSync(path, opts)
+    return made || path
+  } catch (er) {
+    if (er.code === 'ENOENT')
+      return mkdirpManualSync(path, opts, mkdirpManualSync(parent, opts, made))
+    if (er.code !== 'EEXIST' && er.code !== 'EROFS')
+      throw er
+    try {
+      if (!opts.statSync(path).isDirectory())
+        throw er
+    } catch (_) {
+      throw er
+    }
+  }
+}
+
+module.exports = {mkdirpManual, mkdirpManualSync}
+
+
+/***/ }),
+
+/***/ 583:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const {dirname} = __nccwpck_require__(17)
+const {findMade, findMadeSync} = __nccwpck_require__(136)
+const {mkdirpManual, mkdirpManualSync} = __nccwpck_require__(959)
+
+const mkdirpNative = (path, opts) => {
+  opts.recursive = true
+  const parent = dirname(path)
+  if (parent === path)
+    return opts.mkdirAsync(path, opts)
+
+  return findMade(opts, path).then(made =>
+    opts.mkdirAsync(path, opts).then(() => made)
+    .catch(er => {
+      if (er.code === 'ENOENT')
+        return mkdirpManual(path, opts)
+      else
+        throw er
+    }))
+}
+
+const mkdirpNativeSync = (path, opts) => {
+  opts.recursive = true
+  const parent = dirname(path)
+  if (parent === path)
+    return opts.mkdirSync(path, opts)
+
+  const made = findMadeSync(opts, path)
+  try {
+    opts.mkdirSync(path, opts)
+    return made
+  } catch (er) {
+    if (er.code === 'ENOENT')
+      return mkdirpManualSync(path, opts)
+    else
+      throw er
+  }
+}
+
+module.exports = {mkdirpNative, mkdirpNativeSync}
+
+
+/***/ }),
+
+/***/ 687:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const { promisify } = __nccwpck_require__(837)
+const fs = __nccwpck_require__(147)
+const optsArg = opts => {
+  if (!opts)
+    opts = { mode: 0o777, fs }
+  else if (typeof opts === 'object')
+    opts = { mode: 0o777, fs, ...opts }
+  else if (typeof opts === 'number')
+    opts = { mode: opts, fs }
+  else if (typeof opts === 'string')
+    opts = { mode: parseInt(opts, 8), fs }
+  else
+    throw new TypeError('invalid options argument')
+
+  opts.mkdir = opts.mkdir || opts.fs.mkdir || fs.mkdir
+  opts.mkdirAsync = promisify(opts.mkdir)
+  opts.stat = opts.stat || opts.fs.stat || fs.stat
+  opts.statAsync = promisify(opts.stat)
+  opts.statSync = opts.statSync || opts.fs.statSync || fs.statSync
+  opts.mkdirSync = opts.mkdirSync || opts.fs.mkdirSync || fs.mkdirSync
+  return opts
+}
+module.exports = optsArg
+
+
+/***/ }),
+
+/***/ 271:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const platform = process.env.__TESTING_MKDIRP_PLATFORM__ || process.platform
+const { resolve, parse } = __nccwpck_require__(17)
+const pathArg = path => {
+  if (/\0/.test(path)) {
+    // simulate same failure that node raises
+    throw Object.assign(
+      new TypeError('path must be a string without null bytes'),
+      {
+        path,
+        code: 'ERR_INVALID_ARG_VALUE',
+      }
+    )
+  }
+
+  path = resolve(path)
+  if (platform === 'win32') {
+    const badWinChars = /[*|"<>?:]/
+    const {root} = parse(path)
+    if (badWinChars.test(path.substr(root.length))) {
+      throw Object.assign(new Error('Illegal characters in path.'), {
+        path,
+        code: 'EINVAL',
+      })
+    }
+  }
+
+  return path
+}
+module.exports = pathArg
+
+
+/***/ }),
+
+/***/ 863:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const fs = __nccwpck_require__(147)
+
+const version = process.env.__TESTING_MKDIRP_NODE_VERSION__ || process.version
+const versArr = version.replace(/^v/, '').split('.')
+const hasNative = +versArr[0] > 10 || +versArr[0] === 10 && +versArr[1] >= 12
+
+const useNative = !hasNative ? () => false : opts => opts.mkdir === fs.mkdir
+const useNativeSync = !hasNative ? () => false : opts => opts.mkdirSync === fs.mkdirSync
+
+module.exports = {useNative, useNativeSync}
+
+
+/***/ }),
+
+/***/ 390:
 /***/ ((module) => {
 
 "use strict";
@@ -2880,7 +2908,7 @@ module.exports = pixelmatch;
 const defaultOptions = {
     threshold: 0.1,         // matching threshold (0 to 1); smaller is more sensitive
     includeAA: false,       // whether to skip anti-aliasing detection
-    alpha: 0.1,             // opacity of original image in diff ouput
+    alpha: 0.1,             // opacity of original image in diff output
     aaColor: [255, 255, 0], // color of anti-aliased pixels in diff output
     diffColor: [255, 0, 0], // color of different pixels in diff output
     diffColorAlt: null,     // whether to detect dark on light differences between img1 and img2 and set an alternative color to differentiate between the two
@@ -3113,13 +3141,13 @@ function drawGrayPixel(img, i, alpha, output) {
 
 /***/ }),
 
-/***/ 54:
+/***/ 792:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-let interlaceUtils = __nccwpck_require__(365);
+let interlaceUtils = __nccwpck_require__(857);
 
 let pixelBppMapper = [
   // 0 - dummy entry
@@ -3388,13 +3416,13 @@ exports.dataToBitMap = function (data, bitmapInfo) {
 
 /***/ }),
 
-/***/ 659:
+/***/ 137:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-let constants = __nccwpck_require__(316);
+let constants = __nccwpck_require__(288);
 
 module.exports = function (dataIn, width, height, options) {
   let outHasAlpha =
@@ -3554,7 +3582,7 @@ module.exports = function (dataIn, width, height, options) {
 
 /***/ }),
 
-/***/ 36:
+/***/ 621:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -3751,7 +3779,7 @@ ChunkStream.prototype._process = function () {
 
 /***/ }),
 
-/***/ 316:
+/***/ 288:
 /***/ ((module) => {
 
 "use strict";
@@ -3791,7 +3819,7 @@ module.exports = {
 
 /***/ }),
 
-/***/ 987:
+/***/ 111:
 /***/ ((module) => {
 
 "use strict";
@@ -3839,13 +3867,13 @@ CrcCalculator.crc32 = function (buf) {
 
 /***/ }),
 
-/***/ 581:
+/***/ 744:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-let paethPredictor = __nccwpck_require__(252);
+let paethPredictor = __nccwpck_require__(763);
 
 function filterNone(pxData, pxPos, byteWidth, rawData, rawPos) {
   for (let x = 0; x < byteWidth; x++) {
@@ -4018,15 +4046,15 @@ module.exports = function (pxData, width, height, options, bpp) {
 
 /***/ }),
 
-/***/ 528:
+/***/ 61:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
 let util = __nccwpck_require__(837);
-let ChunkStream = __nccwpck_require__(36);
-let Filter = __nccwpck_require__(601);
+let ChunkStream = __nccwpck_require__(621);
+let Filter = __nccwpck_require__(953);
 
 let FilterAsync = (module.exports = function (bitmapInfo) {
   ChunkStream.call(this);
@@ -4050,14 +4078,14 @@ util.inherits(FilterAsync, ChunkStream);
 
 /***/ }),
 
-/***/ 505:
+/***/ 678:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-let SyncReader = __nccwpck_require__(652);
-let Filter = __nccwpck_require__(601);
+let SyncReader = __nccwpck_require__(93);
+let Filter = __nccwpck_require__(953);
 
 exports.process = function (inBuffer, bitmapInfo) {
   let outBuffers = [];
@@ -4079,14 +4107,14 @@ exports.process = function (inBuffer, bitmapInfo) {
 
 /***/ }),
 
-/***/ 601:
+/***/ 953:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-let interlaceUtils = __nccwpck_require__(365);
-let paethPredictor = __nccwpck_require__(252);
+let interlaceUtils = __nccwpck_require__(857);
+let paethPredictor = __nccwpck_require__(763);
 
 function getByteWidth(width, bpp, depth) {
   let byteWidth = width * bpp;
@@ -4264,7 +4292,7 @@ Filter.prototype._reverseFilterLine = function (rawData) {
 
 /***/ }),
 
-/***/ 928:
+/***/ 596:
 /***/ ((module) => {
 
 "use strict";
@@ -4365,7 +4393,7 @@ module.exports = function (indata, imageData, skipRescale = false) {
 
 /***/ }),
 
-/***/ 365:
+/***/ 857:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -4468,7 +4496,7 @@ exports.getInterlaceIterator = function (width) {
 
 /***/ }),
 
-/***/ 584:
+/***/ 46:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -4476,8 +4504,8 @@ exports.getInterlaceIterator = function (width) {
 
 let util = __nccwpck_require__(837);
 let Stream = __nccwpck_require__(781);
-let constants = __nccwpck_require__(316);
-let Packer = __nccwpck_require__(710);
+let constants = __nccwpck_require__(288);
+let Packer = __nccwpck_require__(889);
 
 let PackerAsync = (module.exports = function (opt) {
   Stream.call(this);
@@ -4526,7 +4554,7 @@ PackerAsync.prototype.pack = function (data, width, height, gamma) {
 
 /***/ }),
 
-/***/ 100:
+/***/ 150:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -4537,8 +4565,8 @@ let zlib = __nccwpck_require__(796);
 if (!zlib.deflateSync) {
   hasSyncZlib = false;
 }
-let constants = __nccwpck_require__(316);
-let Packer = __nccwpck_require__(710);
+let constants = __nccwpck_require__(288);
+let Packer = __nccwpck_require__(889);
 
 module.exports = function (metaData, opt) {
   if (!hasSyncZlib) {
@@ -4590,16 +4618,16 @@ module.exports = function (metaData, opt) {
 
 /***/ }),
 
-/***/ 710:
+/***/ 889:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-let constants = __nccwpck_require__(316);
-let CrcStream = __nccwpck_require__(987);
-let bitPacker = __nccwpck_require__(659);
-let filter = __nccwpck_require__(581);
+let constants = __nccwpck_require__(288);
+let CrcStream = __nccwpck_require__(111);
+let bitPacker = __nccwpck_require__(137);
+let filter = __nccwpck_require__(744);
 let zlib = __nccwpck_require__(796);
 
 let Packer = (module.exports = function (options) {
@@ -4727,7 +4755,7 @@ Packer.prototype.packIEND = function () {
 
 /***/ }),
 
-/***/ 252:
+/***/ 763:
 /***/ ((module) => {
 
 "use strict";
@@ -4751,7 +4779,7 @@ module.exports = function paethPredictor(left, above, upLeft) {
 
 /***/ }),
 
-/***/ 699:
+/***/ 415:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -4759,11 +4787,11 @@ module.exports = function paethPredictor(left, above, upLeft) {
 
 let util = __nccwpck_require__(837);
 let zlib = __nccwpck_require__(796);
-let ChunkStream = __nccwpck_require__(36);
-let FilterAsync = __nccwpck_require__(528);
-let Parser = __nccwpck_require__(225);
-let bitmapper = __nccwpck_require__(54);
-let formatNormaliser = __nccwpck_require__(928);
+let ChunkStream = __nccwpck_require__(621);
+let FilterAsync = __nccwpck_require__(61);
+let Parser = __nccwpck_require__(573);
+let bitmapper = __nccwpck_require__(792);
+let formatNormaliser = __nccwpck_require__(596);
 
 let ParserAsync = (module.exports = function (options) {
   ChunkStream.call(this);
@@ -4928,7 +4956,7 @@ ParserAsync.prototype._complete = function (filteredData) {
 
 /***/ }),
 
-/***/ 29:
+/***/ 244:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -4936,15 +4964,15 @@ ParserAsync.prototype._complete = function (filteredData) {
 
 let hasSyncZlib = true;
 let zlib = __nccwpck_require__(796);
-let inflateSync = __nccwpck_require__(331);
+let inflateSync = __nccwpck_require__(27);
 if (!zlib.deflateSync) {
   hasSyncZlib = false;
 }
-let SyncReader = __nccwpck_require__(652);
-let FilterSync = __nccwpck_require__(505);
-let Parser = __nccwpck_require__(225);
-let bitmapper = __nccwpck_require__(54);
-let formatNormaliser = __nccwpck_require__(928);
+let SyncReader = __nccwpck_require__(93);
+let FilterSync = __nccwpck_require__(678);
+let Parser = __nccwpck_require__(573);
+let bitmapper = __nccwpck_require__(792);
+let formatNormaliser = __nccwpck_require__(596);
 
 module.exports = function (buffer, options) {
   if (!hasSyncZlib) {
@@ -5048,14 +5076,14 @@ module.exports = function (buffer, options) {
 
 /***/ }),
 
-/***/ 225:
+/***/ 573:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-let constants = __nccwpck_require__(316);
-let CrcCalculator = __nccwpck_require__(987);
+let constants = __nccwpck_require__(288);
+let CrcCalculator = __nccwpck_require__(111);
 
 let Parser = (module.exports = function (options, dependencies) {
   this._options = options;
@@ -5346,14 +5374,14 @@ Parser.prototype._parseIEND = function (data) {
 
 /***/ }),
 
-/***/ 436:
+/***/ 173:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-let parse = __nccwpck_require__(29);
-let pack = __nccwpck_require__(100);
+let parse = __nccwpck_require__(244);
+let pack = __nccwpck_require__(150);
 
 exports.read = function (buffer, options) {
   return parse(buffer, options || {});
@@ -5366,7 +5394,7 @@ exports.write = function (png, options) {
 
 /***/ }),
 
-/***/ 413:
+/***/ 360:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -5374,9 +5402,9 @@ exports.write = function (png, options) {
 
 let util = __nccwpck_require__(837);
 let Stream = __nccwpck_require__(781);
-let Parser = __nccwpck_require__(699);
-let Packer = __nccwpck_require__(584);
-let PNGSync = __nccwpck_require__(436);
+let Parser = __nccwpck_require__(415);
+let Packer = __nccwpck_require__(46);
+let PNGSync = __nccwpck_require__(173);
 
 let PNG = (exports.PNG = function (options) {
   Stream.call(this);
@@ -5568,7 +5596,7 @@ PNG.prototype.adjustGamma = function () {
 
 /***/ }),
 
-/***/ 331:
+/***/ 27:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -5744,7 +5772,7 @@ exports.inflateSync = inflateSync;
 
 /***/ }),
 
-/***/ 652:
+/***/ 93:
 /***/ ((module) => {
 
 "use strict";
@@ -5909,9 +5937,9 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
 // $FlowIgnore
 
 
-var _imgDiffJs = __nccwpck_require__(93);
+var _imgDiffJs = __nccwpck_require__(578);
 
-var _md5File = __nccwpck_require__(446);
+var _md5File = __nccwpck_require__(643);
 
 var _md5File2 = _interopRequireDefault(_md5File);
 
