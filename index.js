@@ -107,15 +107,19 @@ const differences = ({ result, baseUrl }) => {
      
 ### Differences
   
-| Actual     | Expected   | Difference |
-|:----------:|:----------:|:----------:|
 ${result.failedItems
         .map(item => {
-        const filename = encodeURIComponent((0, path_1.basename)(item));
+        const base = (0, path_1.basename)(item);
+        const filename = encodeURIComponent(base);
         const actual = baseUrl + 'actual/' + filename + '?raw=true';
         const expected = baseUrl + 'expected/' + filename + '?raw=true';
         const diff = baseUrl + 'diff/' + filename + '?raw=true';
-        return `| ![Actual](${actual}) | ![Expected](${expected}) | ![Difference](${diff})|`;
+        return `### \`${base}\`
+   
+| actual|![Actual](${actual}) |
+|--|--|
+|expected|![Expected](${expected})|
+|difference|![Difference](${diff})|`;
     })
         .join('\n')}
   `;
@@ -151,13 +155,17 @@ const deletedItems = ({ result, baseUrl }) => {
    
 ### Deleted Items
   
-| Deleted Items     | 
-|:----------:|
 ${result.deletedItems
         .map(item => {
-        const filename = encodeURIComponent((0, path_1.basename)(item));
+        const base = (0, path_1.basename)(item);
+        const filename = encodeURIComponent(base);
         const img = baseUrl + 'expected/' + filename + '?raw=true';
-        return `| ![Deleted](${img}) |`;
+        return `### \`${base}\`
+       
+|  |
+|--|
+|![DeleteItem](${img})|
+       `;
     })
         .join('\n')}
   `;
