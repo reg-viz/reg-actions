@@ -109,7 +109,10 @@ const differences = ({ result, baseUrl }) => {
 ${result.failedItems
         .map(item => {
         const filename = (0, path_1.basename)(item);
-        return `| ![Actual](${(0, path_1.join)(baseUrl, 'actual', filename)}) | ![Expected](${(0, path_1.join)(baseUrl, 'expected', filename)}) | ![Difference](${(0, path_1.join)(baseUrl, 'diff', filename)})|`;
+        const actual = baseUrl + 'actual/' + filename + '?raw=true';
+        const expected = baseUrl + 'expected/' + filename + '?raw=true';
+        const diff = baseUrl + 'diff/' + filename + '?raw=true';
+        return `| ![Actual](${actual}) | ![Expected](${expected}) | ![Difference](${diff})|`;
     })
         .join('\n')}
   `;
@@ -127,7 +130,6 @@ const newItems = ({ result, baseUrl }) => {
 ${result.newItems
         .map(item => {
         const filename = (0, path_1.basename)(item);
-        console.log((0, path_1.join)(baseUrl, 'actual', filename));
         const img = baseUrl + 'actual/' + filename + '?raw=true';
         return `| ![NewItem](${img}) |`;
     })
@@ -147,7 +149,8 @@ const deletedItems = ({ result, baseUrl }) => {
 ${result.deletedItems
         .map(item => {
         const filename = (0, path_1.basename)(item);
-        return `| ![Deleted](${(0, path_1.join)(baseUrl, 'expected', filename)}) |`;
+        const img = baseUrl + 'expected/' + filename + '?raw=true';
+        return `| ![Deleted](${img}) |`;
     })
         .join('\n')}
   `;
