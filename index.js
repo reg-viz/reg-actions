@@ -865,7 +865,7 @@ const copyImages = (result, temp, dest) => {
 };
 const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, e_1, _b, _c;
-    var _d, _e, _f, _g, _h, _j, _k;
+    var _d, _e, _f, _g, _h;
     const { env } = input;
     const config = genConfig(input);
     const TMP_PATH = yield fs_1.promises.mkdtemp(path.join((0, os_1.tmpdir)(), 'reg-actions-'));
@@ -873,8 +873,10 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
     if (!env.GITHUB_EVENT_PATH)
         throw new Error('Expected GITHUB_EVENT_PATH');
     const event = JSON.parse((yield fs_1.promises.readFile(env.GITHUB_EVENT_PATH)).toString());
-    const name = (_g = (_f = (_d = input.commitName) !== null && _d !== void 0 ? _d : (_e = event.pusher) === null || _e === void 0 ? void 0 : _e.name) !== null && _f !== void 0 ? _f : env.GITHUB_ACTOR) !== null && _g !== void 0 ? _g : 'Git Publish Subdirectory';
-    const email = (_k = (_h = input.commitEmail) !== null && _h !== void 0 ? _h : (_j = event.pusher) === null || _j === void 0 ? void 0 : _j.email) !== null && _k !== void 0 ? _k : (env.GITHUB_ACTOR ? `${env.GITHUB_ACTOR}@users.noreply.github.com` : 'nobody@nowhere');
+    const name = /* input.commitName ?? */ (_f = (_e = (_d = event.pusher) === null || _d === void 0 ? void 0 : _d.name) !== null && _e !== void 0 ? _e : env.GITHUB_ACTOR) !== null && _f !== void 0 ? _f : 'Git Publish Subdirectory';
+    const email = 
+    // input.commitEmail ??
+    (_h = (_g = event.pusher) === null || _g === void 0 ? void 0 : _g.email) !== null && _h !== void 0 ? _h : (env.GITHUB_ACTOR ? `${env.GITHUB_ACTOR}@users.noreply.github.com` : 'nobody@nowhere');
     // Set Git Config
     yield (0, git_1.configureName)(name);
     yield (0, git_1.configureEmail)(email);
@@ -893,7 +895,7 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
     });
     // Check if branch already exists
     logger_1.log.info(`Checking if branch ${config.branch} exists already`);
-    if (!(0, git_1.hasBranch)(config.branch, execOptions)) {
+    if (!(yield (0, git_1.hasBranch)(config.branch, execOptions))) {
         // Branch does not exist yet, let's check it out as an orphan
         logger_1.log.info(`${config.branch} does not exist, creating as orphan`);
         yield (0, git_1.checkout)(config.branch, true, execOptions);
@@ -912,22 +914,22 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
         const filesToDelete = (0, fast_glob_1.stream)(globs, { absolute: true, dot: true, followSymbolicLinks: false, cwd: REPO_TEMP });
         try {
             // Delete all files from the filestream
-            for (var _l = true, filesToDelete_1 = __asyncValues(filesToDelete), filesToDelete_1_1; filesToDelete_1_1 = yield filesToDelete_1.next(), _a = filesToDelete_1_1.done, !_a;) {
+            for (var _j = true, filesToDelete_1 = __asyncValues(filesToDelete), filesToDelete_1_1; filesToDelete_1_1 = yield filesToDelete_1.next(), _a = filesToDelete_1_1.done, !_a;) {
                 _c = filesToDelete_1_1.value;
-                _l = false;
+                _j = false;
                 try {
                     const entry = _c;
                     yield fs_1.promises.unlink(entry);
                 }
                 finally {
-                    _l = true;
+                    _j = true;
                 }
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
         finally {
             try {
-                if (!_l && !_a && (_b = filesToDelete_1.return)) yield _b.call(filesToDelete_1);
+                if (!_j && !_a && (_b = filesToDelete_1.return)) yield _b.call(filesToDelete_1);
             }
             finally { if (e_1) throw e_1.error; }
         }
