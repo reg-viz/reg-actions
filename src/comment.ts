@@ -1,4 +1,4 @@
-import { join, basename } from 'path';
+import { basename } from 'path';
 
 import { Event } from './event';
 import { Run } from './run';
@@ -62,11 +62,11 @@ const differences = ({ result, baseUrl }: { result: CompareOutput; baseUrl: stri
 ${result.failedItems
   .map(item => {
     const filename = basename(item);
-    return `| ![Actual](${join(baseUrl, 'actual', filename)}) | ![Expected](${join(
-      baseUrl,
-      'expected',
-      filename,
-    )}) | ![Difference](${join(baseUrl, 'diff', filename)})|`;
+    const actual = baseUrl + 'actual/' + filename + '?raw=true';
+    const expected = baseUrl + 'expected/' + filename + '?raw=true';
+    const diff = baseUrl + 'diff/' + filename + '?raw=true';
+
+    return `| ![Actual](${actual}) | ![Expected](${expected}) | ![Difference](${diff})|`;
   })
   .join('\n')}
   `;
@@ -85,7 +85,6 @@ const newItems = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string 
 ${result.newItems
   .map(item => {
     const filename = basename(item);
-    console.log(join(baseUrl, 'actual', filename));
     const img = baseUrl + 'actual/' + filename + '?raw=true';
     return `| ![NewItem](${img}) |`;
   })
@@ -106,7 +105,8 @@ const deletedItems = ({ result, baseUrl }: { result: CompareOutput; baseUrl: str
 ${result.deletedItems
   .map(item => {
     const filename = basename(item);
-    return `| ![Deleted](${join(baseUrl, 'expected', filename)}) |`;
+    const img = baseUrl + 'expected/' + filename + '?raw=true';
+    return `| ![Deleted](${img}) |`;
   })
   .join('\n')}
   `;
