@@ -27,11 +27,11 @@ inputs:
     description: "The commit hash to be compared."
     required: false
   artifact-name:
-    description: 'Workflow artifact name.'
+    description: 'Workflow artifact name. `reg` by default.'
     required: false
   branch:
-    description: 'A branch name which manages images.'
-    required: false    
+    description: 'A branch name which manages images. `reg_actions` by default.'
+    required: false
 runs:
   using: "node16"
   main: "index.js"
