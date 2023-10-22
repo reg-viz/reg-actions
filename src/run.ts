@@ -3,7 +3,7 @@ import { components } from '@octokit/openapi-types';
 import { log } from './logger';
 import { findTargetHash } from './git';
 import { Event } from './event';
-import { ARTIFACT_NAME } from './constants';
+// import { ARTIFACT_NAME } from './constants';
 
 export type Run = components['schemas']['workflow-run'];
 

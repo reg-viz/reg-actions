@@ -13,6 +13,7 @@ import { compare, CompareOutput } from './compare';
 import { createCommentWithTarget, createCommentWithoutTarget } from './comment';
 import * as constants from './constants';
 import { workspace } from './path';
+import { pushImages } from './push';
 
 type DownloadClient = {
   downloadArtifact: (id: number) => Promise<{ data: unknown }>;
@@ -48,7 +49,7 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
   }
 };
 
-const copyImages = (imagePath: string) => {
+const copyActualImages = (imagePath: string) => {
   log.info(`Start copyImage from ${imagePath}`);
 
   try {
@@ -93,7 +94,7 @@ const init = async (config: Config) => {
   log.info(`Succeeded to cerate directory.`);
 
   // Copy actual images
-  copyImages(config.imageDirectoryPath);
+  copyActualImages(config.imageDirectoryPath);
 
   log.info(`Succeeded to initialization.`);
 };
@@ -144,6 +145,25 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
   await downloadExpectedImages(client, artifact.id);
 
   const result = await compareAndUpload(client, config);
+
+  log.info(result);
+
+  // If changed, upload images to specified branch.
+  if (result.deletedItems.length !== 0 || result.failedItems.length !== 0 || result.newItems.length !== 0) {
+    // actualDir: path.join(workspace(), constants.ACTUAL_DIR_NAME),
+    // expectedDir: path.join(workspace(), constants.EXPECTED_DIR_NAME),
+    // diffDir: path.join(workspace(), constants.DIFF_DIR_NAME),
+    await pushImages({
+      runId,
+      result,
+      branch: 'reg',
+      // sourceDir: '',
+      targetDir: `${runId}_${config.artifactName}`,
+      env: process.env,
+      commitName: undefined,
+      commitEmail: undefined,
+    });
+  }
 
   const comment = createCommentWithTarget({ event, runId, sha, targetRun, result });
 

@@ -3,7 +3,7 @@ import * as github from '@actions/github';
 
 import { getConfig } from './config';
 import { getEvent } from './event';
-import { run } from './usecase';
+import { run } from './service';
 import { createClient } from './client';
 import { log } from './logger';
 

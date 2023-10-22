@@ -1,8 +1,8 @@
 {
-  "name": "node12-template-action",
+  "name": "reg-actions",
   "version": "0.0.0",
   "private": true,
-  "description": "Node 12 template action",
+  "description": "github actions for reg",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/node12-template.git"
+    "url": "git+https://github.com/bokuweb/reg-actions.git"
   },
   "keywords": [
     "actions",
@@ -19,15 +19,17 @@
   ],
   "author": "GitHub",
   "license": "MIT",
-  "resolutions": {
-    "**/ansi-regex": "^6.0.1",
-    "**/glob-parent": "^6.0.2",
-    "**/trim-newlines": "^4.0.2",
-    "**/axios": "^1.1.3",
-    "**/kind-of": "^6.0.3",
-    "**/minimist": "^1.2.7",
-    "**/shell-quote": "^1.7.3",
-    "**/braces": "^3.0.2"
+  "pnpm": {
+    "overrides": {
+      "ansi-regex": "^6.0.1",
+      "glob-parent": "^6.0.2",
+      "trim-newlines": "^4.0.2",
+      "axios": "^1.1.3",
+      "kind-of": "^6.0.3",
+      "minimist": "^1.2.7",
+      "shell-quote": "^1.7.3",
+      "braces": "^3.0.2"
+    }
   },
   "dependencies": {
     "@actions/artifact": "^1.1.0",
@@ -43,6 +45,7 @@
     "chalk": "^5.1.2",
     "cpx": "^1.5.0",
     "exponential-backoff": "^3.1.0",
+    "fast-glob": "^3.3.1",
     "glob": "^8.0.3",
     "loglevel": "^1.8.0",
     "make-dir": "^3.1.0",
