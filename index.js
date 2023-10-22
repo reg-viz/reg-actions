@@ -128,13 +128,16 @@ const newItems = ({ result, baseUrl }) => {
      
 ### New Items
   
-| New Items     | 
-|:----------:|
 ${result.newItems
         .map(item => {
-        const filename = encodeURIComponent((0, path_1.basename)(item));
+        const base = (0, path_1.basename)(item);
+        const filename = encodeURIComponent(base);
         const img = baseUrl + 'actual/' + filename + '?raw=true';
-        return `| ![NewItem](${img}) |`;
+        return `### \`${base}\`
+    |    |
+    |:--:|
+    | ![NewItem](${img}) |
+       `;
     })
         .join('\n')}
   `;
