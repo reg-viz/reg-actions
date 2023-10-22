@@ -1412,7 +1412,7 @@ const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, voi
         if (event.number != null) {
             yield client.postComment(event.number, comment);
         }
-    }), 3000);
+    }), 10000);
 });
 exports.run = run;
 
