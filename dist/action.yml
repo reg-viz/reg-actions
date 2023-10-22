@@ -26,6 +26,12 @@ inputs:
   target-hash:
     description: "The commit hash to be compared."
     required: false
+  artifact-name:
+    description: 'Workflow artifact name.'
+    required: false
+  branch:
+    description: 'A branch name which manages images.'
+    required: false    
 runs:
   using: "node16"
   main: "index.js"
