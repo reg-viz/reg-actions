@@ -1,6 +1,7 @@
 import * as github from '@actions/github';
 import * as artifact from '@actions/artifact';
 import { backOff } from 'exponential-backoff';
+import { summary } from '@actions/core';
 
 import { Repository } from './repository';
 import { workspace } from './path';
@@ -49,6 +50,9 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
         { numOfAttempts: 5 },
       );
       return;
+    },
+    summary: async (raw: string): Promise<void> => {
+      summary.addRaw(raw).write();
     },
   };
 };

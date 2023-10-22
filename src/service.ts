@@ -4,6 +4,7 @@ import cpx from 'cpx';
 import { sync as globSync } from 'glob';
 import makeDir from 'make-dir';
 import Zip from 'adm-zip';
+import { summary } from '@actions/core';
 
 import { log } from './logger';
 import { Config } from './config';
@@ -103,7 +104,11 @@ type CommentClient = {
   postComment: (issueNumber: number, comment: string) => Promise<void>;
 };
 
-type Client = CommentClient & DownloadClient & UploadClient & RunClient;
+type SummaryClient = {
+  summary: (raw: string) => Promise<void>;
+};
+
+type Client = CommentClient & DownloadClient & UploadClient & RunClient & SummaryClient;
 
 export const run = async (event: Event, runId: number, sha: string, client: Client, config: Config) => {
   // Setup directory for artifact and copy images.
@@ -173,4 +178,6 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
   });
 
   await client.postComment(event.number, comment);
+
+  await client.summary(comment);
 };
