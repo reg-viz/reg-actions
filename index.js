@@ -838,47 +838,32 @@ const genConfig = (input) => {
 };
 const copyImages = (result, temp, dest) => __awaiter(void 0, void 0, void 0, function* () {
     logger_1.log.info(`Copying all files`);
-    const promises = [];
-    const cp = (src, dst) => new Promise((resolve, reject) => {
-        cpx_1.default.copy(src, dst, err => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            logger_1.log.info('succeeded to copy images');
-            return resolve();
-        });
-    });
     if (result.deletedItems.length > 0) {
         const deletedGlobs = result.deletedItems.length === 1
             ? `${path.join((0, path_1.workspace)(), constants.EXPECTED_DIR_NAME)}/${result.deletedItems[0]}`
             : `${path.join((0, path_1.workspace)(), constants.EXPECTED_DIR_NAME)}/(${result.deletedItems.join('|')})`;
-        promises.push(cp(deletedGlobs, `${temp}/${dest}/expected/`));
+        cpx_1.default.copySync(deletedGlobs, `${temp}/${dest}/expected/`);
     }
     if (result.newItems.length > 0) {
         const newGlobs = result.newItems.length === 1
             ? `${path.join((0, path_1.workspace)(), constants.ACTUAL_DIR_NAME)}/${result.newItems[0]}`
             : `${path.join((0, path_1.workspace)(), constants.ACTUAL_DIR_NAME)}/(${result.newItems.join('|')})`;
-        promises.push(cp(newGlobs, `${temp}/${dest}/actual/`));
+        cpx_1.default.copySync(newGlobs, `${temp}/${dest}/actual/`);
     }
     if (result.failedItems.length > 0) {
         const failedGlobs = result.failedItems.length === 1
             ? `${path.join((0, path_1.workspace)(), constants.DIFF_DIR_NAME)}/${result.failedItems[0]}`
             : `${path.join((0, path_1.workspace)(), constants.DIFF_DIR_NAME)}/(${result.failedItems.join('|')})`;
-        promises.push(cp(failedGlobs, `${temp}/${dest}/diff/`));
+        cpx_1.default.copySync(failedGlobs, `${temp}/${dest}/diff/`);
         const expectedGlobs = result.failedItems.length === 1
             ? `${path.join((0, path_1.workspace)(), constants.EXPECTED_DIR_NAME)}/${result.failedItems[0]}`
             : `${path.join((0, path_1.workspace)(), constants.EXPECTED_DIR_NAME)}/(${result.failedItems.join('|')})`;
-        promises.push(cp(expectedGlobs, `${temp}/${dest}/expected/`));
+        cpx_1.default.copySync(expectedGlobs, `${temp}/${dest}/expected/`);
         const actualGlobs = result.failedItems.length === 1
             ? `${path.join((0, path_1.workspace)(), constants.ACTUAL_DIR_NAME)}/${result.failedItems[0]}`
             : `${path.join((0, path_1.workspace)(), constants.ACTUAL_DIR_NAME)}/(${result.failedItems.join('|')})`;
-        promises.push(cp(actualGlobs, `${temp}/${dest}/actual/`));
+        cpx_1.default.copySync(actualGlobs, `${temp}/${dest}/actual/`);
     }
-    yield Promise.all(promises).catch(e => {
-        logger_1.log.error('Failed to copy images', e);
-        throw e;
-    });
     return;
 });
 const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
