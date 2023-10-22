@@ -97,9 +97,9 @@ const badge = (result) => {
     }
     return '![success](https://img.shields.io/badge/%E2%9C%94%20reg-passed-green)';
 };
-const createBaseUrl = ({ owner, repoName, branch, runId, artifactName, }) => {
+const createBaseUrl = ({ owner, repoName, branch, runId, artifactName, date, }) => {
     //raw.githubusercontent.com/bokuweb/reg-actions/reg/6602221723_reg/actual/sample.png
-    return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/${runId}_${artifactName}/`;
+    return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/${date}_${runId}_${artifactName}/`;
 };
 const differences = ({ result, baseUrl }) => {
     if (result.failedItems.length === 0)
@@ -160,12 +160,12 @@ ${result.deletedItems
   `;
     return comment;
 };
-const createCommentWithTarget = ({ event, runId, regBranch, artifactName, sha: currentHash, targetRun, result, }) => {
+const createCommentWithTarget = ({ event, runId, regBranch, artifactName, sha: currentHash, targetRun, result, date, }) => {
     const [owner, repoName] = event.repository.full_name.split('/');
     const targetHash = targetRun.head_sha;
     const currentHashShort = currentHash.slice(0, 7);
     const targetHashShort = targetHash.slice(0, 7);
-    const baseUrl = createBaseUrl({ owner, repoName, branch: regBranch, runId, artifactName });
+    const baseUrl = createBaseUrl({ owner, repoName, branch: regBranch, runId, artifactName, date });
     const successOrFailMessage = isSuccess(result)
         ? `${badge(result)}
   
@@ -195,7 +195,7 @@ ${deletedItems({ result, baseUrl })}
     return body;
 };
 exports.createCommentWithTarget = createCommentWithTarget;
-const createCommentWithoutTarget = ({ event, runId, result }) => {
+const createCommentWithoutTarget = ({ result }) => {
     const body = `Failed to find a target artifact.
 All items will be treated as new items and will be used as expected data for the next time.
 
@@ -392,6 +392,7 @@ const getConfig = () => {
     const targetHash = core.getInput('target-hash') || null;
     validateTargetHash(targetHash);
     const artifactName = core.getInput('artifact-name') || constants_1.ARTIFACT_NAME;
+    const branch = core.getInput('branch') || 'reg_actions';
     return {
         githubToken,
         imageDirectoryPath,
@@ -401,6 +402,7 @@ const getConfig = () => {
         thresholdPixel,
         targetHash,
         artifactName,
+        branch,
     };
 };
 exports.getConfig = getConfig;
@@ -575,6 +577,19 @@ exports.push = push;
 
 /***/ }),
 
+/***/ 97:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.targetDir = void 0;
+const targetDir = ({ runId, artifactName, date }) => `${date}_${runId}_${artifactName}`;
+exports.targetDir = targetDir;
+
+
+/***/ }),
+
 /***/ 32380:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -665,13 +680,14 @@ const logger_1 = __nccwpck_require__(32380);
 const main = () => __awaiter(void 0, void 0, void 0, function* () {
     const config = (0, config_1.getConfig)();
     const { repo, runId, sha } = github.context;
+    const date = new Date().toISOString().split('T')[0];
     logger_1.log.info(`runid = ${runId}, sha = ${sha}`);
     const event = (0, event_1.getEvent)();
     logger_1.log.info(`succeeded to get event, number = ${event.number}`);
     const octokit = github.getOctokit(config.githubToken);
     const client = (0, client_1.createClient)(repo, octokit);
     logger_1.log.info(`start`);
-    yield (0, service_1.run)(event, runId, sha, client, config);
+    yield (0, service_1.run)({ event, runId, sha, client, date, config });
 });
 main().catch(e => core.setFailed(e.message));
 
@@ -1049,6 +1065,7 @@ const comment_1 = __nccwpck_require__(87906);
 const constants = __importStar(__nccwpck_require__(30244));
 const path_1 = __nccwpck_require__(42510);
 const push_1 = __nccwpck_require__(81391);
+const helper_1 = __nccwpck_require__(97);
 // Download expected images from target artifact.
 const downloadExpectedImages = (client, latestArtifactId) => __awaiter(void 0, void 0, void 0, function* () {
     logger_1.log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
@@ -1108,7 +1125,7 @@ const init = (config) => __awaiter(void 0, void 0, void 0, function* () {
     copyActualImages(config.imageDirectoryPath);
     logger_1.log.info(`Succeeded to initialization.`);
 });
-const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, void 0, function* () {
+const run = ({ event, runId, sha, client, date, config, }) => __awaiter(void 0, void 0, void 0, function* () {
     // Setup directory for artifact and copy images.
     yield init(config);
     // If event is not pull request, upload images then finish actions.
@@ -1148,8 +1165,8 @@ const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, voi
             githubToken: config.githubToken,
             runId,
             result,
-            branch: 'reg',
-            targetDir: `${runId}_${config.artifactName}`,
+            branch: config.branch,
+            targetDir: (0, helper_1.targetDir)({ runId, artifactName: config.artifactName, date }),
             env: process.env,
             // commitName: undefined,
             // commitEmail: undefined,
@@ -1160,9 +1177,10 @@ const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, voi
         runId,
         sha,
         targetRun,
+        date,
         result,
         artifactName: config.artifactName,
-        regBranch: 'reg',
+        regBranch: config.branch,
     });
     yield client.postComment(event.number, comment);
     logger_1.log.info('post summary comment');
