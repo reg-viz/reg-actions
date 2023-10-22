@@ -86,12 +86,12 @@ ${result.newItems
   .map(item => {
     const filename = basename(item);
     console.log(join(baseUrl, 'actual', filename));
-    const img = join(baseUrl, 'actual', filename);
+    const img = join(baseUrl, 'actual', filename) + '?raw=true';
 
-    // return `| ![NewItem](${img}) |`;
+    return `| ![NewItem](${img}) |`;
     // https://raw.githubusercontent.com/bokuweb/reg-actions/reg/6602221723_reg/actual/sample.png
     // https://raw.githubusercontent.com/bokuweb/reg-actions/reg/6602221723_reg/actual/sample.png
-    return `| ![NewItem](https://github.com/bokuweb/reg-actions/blob/reg/6602242983_reg/actual/sample.png?raw=true) |`;
+    // return `| ![NewItem](https://github.com/bokuweb/reg-actions/blob/reg/6602242983_reg/actual/sample.png?raw=true) |`;
   })
   .join('\n')}
   `;
