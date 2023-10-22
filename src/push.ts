@@ -29,7 +29,7 @@ import * as path from 'path';
 import cpx from 'cpx';
 
 // import git from 'isomorphic-git';
-import { mkdirP, cp } from '@actions/io';
+import { mkdirP } from '@actions/io';
 import { add, checkout, clone, commit, configureEmail, configureName, fetchOrigin, hasBranch, push } from './git';
 import { log } from './logger';
 import { CompareOutput } from './compare';

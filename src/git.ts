@@ -75,7 +75,7 @@ export const hasBranch = async (branch: string, options: ExecOptions = {}): Prom
 };
 
 export const checkout = async (branch: string, orphan: boolean, options: ExecOptions = {}): Promise<ExecResult> => {
-  const args = orphan ? ['checkout', '--orphan', branch] : ['checkout', '--orphan', branch];
+  const args = orphan ? ['checkout', '--orphan', branch] : ['checkout', branch];
   return capture('git', args, options);
 };
 
