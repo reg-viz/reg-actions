@@ -168,6 +168,8 @@ const createCommentWithTarget = ({ event, runId, regBranch, artifactName, sha: c
     const baseUrl = createBaseUrl({ owner, repoName, branch: regBranch, runId, artifactName, date });
     const successOrFailMessage = isSuccess(result)
         ? `${badge(result)}
+
+## ${artifactName}
   
 ✨✨ That's perfect, there is no visual difference! ✨✨
     `
@@ -195,8 +197,10 @@ ${deletedItems({ result, baseUrl })}
     return body;
 };
 exports.createCommentWithTarget = createCommentWithTarget;
-const createCommentWithoutTarget = ({ result }) => {
-    const body = `Failed to find a target artifact.
+const createCommentWithoutTarget = ({ result, artifactName }) => {
+    const body = `## ${artifactName}
+  
+Failed to find a target artifact.
 All items will be treated as new items and will be used as expected data for the next time.
 
 ![target not found](https://img.shields.io/badge/%E2%9C%94%20reg-new%20items-blue)
@@ -1151,7 +1155,7 @@ const run = ({ event, runId, sha, client, date, config, }) => __awaiter(void 0, 
         const result = yield compareAndUpload(client, config);
         // If we have current run, add comment to PR.
         if (runId) {
-            const comment = (0, comment_1.createCommentWithoutTarget)({ event, runId, result });
+            const comment = (0, comment_1.createCommentWithoutTarget)({ event, runId, result, artifactName: config.artifactName });
             yield client.postComment(event.number, comment);
         }
         return;
