@@ -1006,7 +1006,7 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
         const s = err.toString();
         /* istanbul ignore if */
         if (s.indexOf("Couldn't find remote ref") === -1) {
-            logger_1.log.error("[warning] Failed to fetch target branch, probably doesn't exist");
+            logger_1.log.warn("Failed to fetch target branch, probably doesn't exist");
             logger_1.log.error(err);
         }
     });
@@ -1051,27 +1051,29 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
     //   return ['**/*', '!.git'];
     // }
     // })();
-    const filesToDelete = (0, fast_glob_1.stream)(globs, { absolute: true, dot: true, followSymbolicLinks: false, cwd: REPO_TEMP });
-    try {
-        // Delete all files from the filestream
-        for (var _l = true, filesToDelete_1 = __asyncValues(filesToDelete), filesToDelete_1_1; filesToDelete_1_1 = yield filesToDelete_1.next(), _a = filesToDelete_1_1.done, !_a;) {
-            _c = filesToDelete_1_1.value;
-            _l = false;
-            try {
-                const entry = _c;
-                yield fs_1.promises.unlink(entry);
-            }
-            finally {
-                _l = true;
-            }
-        }
-    }
-    catch (e_1_1) { e_1 = { error: e_1_1 }; }
-    finally {
+    if (!git_1.hasBranch) {
+        const filesToDelete = (0, fast_glob_1.stream)(globs, { absolute: true, dot: true, followSymbolicLinks: false, cwd: REPO_TEMP });
         try {
-            if (!_l && !_a && (_b = filesToDelete_1.return)) yield _b.call(filesToDelete_1);
+            // Delete all files from the filestream
+            for (var _l = true, filesToDelete_1 = __asyncValues(filesToDelete), filesToDelete_1_1; filesToDelete_1_1 = yield filesToDelete_1.next(), _a = filesToDelete_1_1.done, !_a;) {
+                _c = filesToDelete_1_1.value;
+                _l = false;
+                try {
+                    const entry = _c;
+                    yield fs_1.promises.unlink(entry);
+                }
+                finally {
+                    _l = true;
+                }
+            }
         }
-        finally { if (e_1) throw e_1.error; }
+        catch (e_1_1) { e_1 = { error: e_1_1 }; }
+        finally {
+            try {
+                if (!_l && !_a && (_b = filesToDelete_1.return)) yield _b.call(filesToDelete_1);
+            }
+            finally { if (e_1) throw e_1.error; }
+        }
     }
     // const sourceDir = path.resolve(process.cwd(), config.sourceDir);
     const destinationFolder = input.targetDir;
@@ -1400,24 +1402,20 @@ const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, voi
             branch: 'reg',
             targetDir: `${runId}_${config.artifactName}`,
             env: process.env,
-            commitName: undefined,
-            commitEmail: undefined,
+            // commitName: undefined,
+            // commitEmail: undefined,
         });
     }
-    setTimeout(() => __awaiter(void 0, void 0, void 0, function* () {
-        const comment = (0, comment_1.createCommentWithTarget)({
-            event,
-            runId,
-            sha,
-            targetRun,
-            result,
-            artifactName: config.artifactName,
-            regBranch: 'reg',
-        });
-        if (event.number != null) {
-            yield client.postComment(event.number, comment);
-        }
-    }), 10000);
+    const comment = (0, comment_1.createCommentWithTarget)({
+        event,
+        runId,
+        sha,
+        targetRun,
+        result,
+        artifactName: config.artifactName,
+        regBranch: 'reg',
+    });
+    yield client.postComment(event.number, comment);
 });
 exports.run = run;
 
