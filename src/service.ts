@@ -162,15 +162,19 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
     });
   }
 
-  const comment = createCommentWithTarget({
-    event,
-    runId,
-    sha,
-    targetRun,
-    result,
-    artifactName: config.artifactName,
-    regBranch: 'reg',
-  });
+  setTimeout(async () => {
+    const comment = createCommentWithTarget({
+      event,
+      runId,
+      sha,
+      targetRun,
+      result,
+      artifactName: config.artifactName,
+      regBranch: 'reg',
+    });
 
-  await client.postComment(event.number, comment);
+    if (event.number != null) {
+      await client.postComment(event.number, comment);
+    }
+  }, 3000);
 };
