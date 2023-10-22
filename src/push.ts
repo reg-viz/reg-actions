@@ -566,7 +566,7 @@ export const pushImages = async (input: PushImagesInput) => {
   if (input.result.newItems.length > 0) {
     const newGlobs =
       input.result.newItems.length === 1
-        ? `${(workspace(), constants.ACTUAL_DIR_NAME)}/${input.result.newItems[0]})`
+        ? `${(workspace(), constants.ACTUAL_DIR_NAME)}/${input.result.newItems[0]}`
         : `${(workspace(), constants.ACTUAL_DIR_NAME)}/(${input.result.newItems.join('|')})`;
 
     console.log(newGlobs);
