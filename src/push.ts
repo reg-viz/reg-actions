@@ -87,11 +87,59 @@ const genConfig = (input: PushImagesInput): Config => {
   return config;
 };
 
+const copyImages = (result: CompareOutput, temp: string, dest: string): Promise<void[]> => {
+  log.info(`Copying all files`);
+
+  const promises: Promise<void>[] = [];
+  const cp = (src: string, dst: string) =>
+    new Promise<void>(resolve => {
+      cpx.copy(src, dst, () => resolve());
+    });
+
+  if (result.deletedItems.length > 0) {
+    const deletedGlobs =
+      result.deletedItems.length === 1
+        ? `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${result.deletedItems[0]}`
+        : `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/(${result.deletedItems.join('|')})`;
+    promises.push(cp(deletedGlobs, `${temp}/${dest}/expected/`));
+  }
+
+  if (result.newItems.length > 0) {
+    const newGlobs =
+      result.newItems.length === 1
+        ? `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${result.newItems[0]}`
+        : `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/(${result.newItems.join('|')})`;
+
+    promises.push(cp(newGlobs, `${temp}/${dest}/actual/`));
+  }
+
+  if (result.failedItems.length > 0) {
+    const failedGlobs =
+      result.failedItems.length === 1
+        ? `${path.join(workspace(), constants.DIFF_DIR_NAME)}/${result.failedItems[0]}`
+        : `${path.join(workspace(), constants.DIFF_DIR_NAME)}/(${result.failedItems.join('|')})`;
+    promises.push(cp(failedGlobs, `${temp}/${dest}/diff/`));
+
+    const expectedGlobs =
+      result.failedItems.length === 1
+        ? `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${result.failedItems[0]}`
+        : `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/(${result.failedItems.join('|')})`;
+    promises.push(cp(expectedGlobs, `${temp}/${dest}/expected/`));
+
+    const actualGlobs =
+      result.failedItems.length === 1
+        ? `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${result.failedItems[0]}`
+        : `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/(${result.failedItems.join('|')})`;
+    promises.push(cp(actualGlobs, `${temp}/${dest}/actual/`));
+  }
+  return Promise.all(promises);
+};
+
 export const pushImages = async (input: PushImagesInput) => {
   const { env } = input;
   const config = genConfig(input);
 
-  const TMP_PATH = await fs.mkdtemp(path.join(tmpdir(), 'git-publish-subdir-action-'));
+  const TMP_PATH = await fs.mkdtemp(path.join(tmpdir(), 'reg-actions-'));
   const REPO_TEMP = path.join(TMP_PATH, 'repo');
 
   if (!env.GITHUB_EVENT_PATH) throw new Error('Expected GITHUB_EVENT_PATH');
@@ -158,49 +206,8 @@ export const pushImages = async (input: PushImagesInput) => {
   // Make sure the destination sourceDir exists
   await mkdirP(path.resolve(REPO_TEMP, destDir));
 
-  log.info(`Copying all files`);
-
-  if (input.result.deletedItems.length > 0) {
-    const deletedGlobs =
-      input.result.deletedItems.length === 1
-        ? `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${input.result.deletedItems[0]}`
-        : `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/(${input.result.deletedItems.join('|')})`;
-    console.log(deletedGlobs);
-    try {
-      cpx.copySync(deletedGlobs, `${REPO_TEMP}/${destDir}/expected/`);
-    } catch (e) {
-      log.error(`Failed to copy images ${e}`);
-    }
-  }
-
-  if (input.result.newItems.length > 0) {
-    const newGlobs =
-      input.result.newItems.length === 1
-        ? `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${input.result.newItems[0]}`
-        : `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/(${input.result.newItems.join('|')})`;
-
-    console.log(newGlobs);
-    try {
-      cpx.copySync(newGlobs, `${REPO_TEMP}/${destDir}/actual/`);
-    } catch (e) {
-      log.error(`Failed to copy images ${e}`);
-    }
-  }
-
-  if (input.result.failedItems.length > 0) {
-    const failedGlobs =
-      input.result.newItems.length === 1
-        ? `${path.join(workspace(), constants.DIFF_DIR_NAME)}/${input.result.failedItems[0]}`
-        : `${path.join(workspace(), constants.DIFF_DIR_NAME)}/(${input.result.failedItems.join('|')})`;
-
-    console.log(failedGlobs);
-    try {
-      cpx.copySync(failedGlobs, `${REPO_TEMP}/${destDir}/diff/`);
-    } catch (e) {
-      log.error(`Failed to copy images ${e}`);
-    }
-  }
-
+  await copyImages(input.result, REPO_TEMP, destDir);
+  
   await add(execOptions);
 
   const message = `Update ${input.branch} to output generated at runId:${input.runId}`;
