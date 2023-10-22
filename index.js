@@ -836,11 +836,18 @@ const genConfig = (input) => {
     };
     return config;
 };
-const copyImages = (result, temp, dest) => {
+const copyImages = (result, temp, dest) => __awaiter(void 0, void 0, void 0, function* () {
     logger_1.log.info(`Copying all files`);
     const promises = [];
-    const cp = (src, dst) => new Promise(resolve => {
-        cpx_1.default.copy(src, dst, () => resolve());
+    const cp = (src, dst) => new Promise((resolve, reject) => {
+        cpx_1.default.copy(src, dst, err => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            logger_1.log.info('succeeded to copy images');
+            return resolve();
+        });
     });
     if (result.deletedItems.length > 0) {
         const deletedGlobs = result.deletedItems.length === 1
@@ -868,8 +875,12 @@ const copyImages = (result, temp, dest) => {
             : `${path.join((0, path_1.workspace)(), constants.ACTUAL_DIR_NAME)}/(${result.failedItems.join('|')})`;
         promises.push(cp(actualGlobs, `${temp}/${dest}/actual/`));
     }
-    return Promise.all(promises);
-};
+    yield Promise.all(promises).catch(e => {
+        logger_1.log.error('Failed to copy images', e);
+        throw e;
+    });
+    return;
+});
 const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, e_1, _b, _c;
     var _d, _e, _f, _g, _h;
@@ -902,7 +913,8 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
     });
     // Check if branch already exists
     logger_1.log.info(`Checking if branch ${config.branch} exists already`);
-    if (!(yield (0, git_1.hasBranch)(config.branch, execOptions))) {
+    const branchExist = yield (0, git_1.hasBranch)(config.branch, execOptions);
+    if (!branchExist) {
         // Branch does not exist yet, let's check it out as an orphan
         logger_1.log.info(`${config.branch} does not exist, creating as orphan`);
         yield (0, git_1.checkout)(config.branch, true, execOptions);
@@ -915,10 +927,11 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
     /**
      * The list of globs we'll use for clearing
      */
-    logger_1.log.info(`Removing all files from target dir ${input.targetDir} on target branch`);
-    const globs = ['**/*', '!.git'];
-    if (!git_1.hasBranch) {
+    if (!branchExist) {
+        const globs = ['**/*', '!.git'];
+        logger_1.log.info(`Removing all files from target branch`);
         const filesToDelete = (0, fast_glob_1.stream)(globs, { absolute: true, dot: true, followSymbolicLinks: false, cwd: REPO_TEMP });
+        logger_1.log.info(filesToDelete);
         try {
             // Delete all files from the filestream
             for (var _j = true, filesToDelete_1 = __asyncValues(filesToDelete), filesToDelete_1_1; filesToDelete_1_1 = yield filesToDelete_1.next(), _a = filesToDelete_1_1.done, !_a;) {
