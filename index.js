@@ -98,7 +98,7 @@ const badge = (result) => {
     return '![success](https://img.shields.io/badge/%E2%9C%94%20reg-passed-green)';
 };
 const createBaseUrl = ({ owner, repoName, branch, runId, artifactName, date, }) => {
-    return `https://github.com/${owner}/${repoName}/${branch}/${date}_${runId}_${artifactName}/`;
+    return `https://github.com/${owner}/${repoName}/blob/${branch}/${date}_${runId}_${artifactName}/`;
 };
 const differences = ({ result, baseUrl }) => {
     if (result.failedItems.length === 0)
