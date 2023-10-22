@@ -92,6 +92,7 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
   log.info(`Copying all files`);
 
   if (result.deletedItems.length > 0) {
+    log.info(`Copying deleted files`);
     const deletedGlobs =
       result.deletedItems.length === 1
         ? `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${result.deletedItems[0]}`
@@ -100,6 +101,7 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
   }
 
   if (result.newItems.length > 0) {
+    log.info(`Copying new files`);
     const newGlobs =
       result.newItems.length === 1
         ? `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${result.newItems[0]}`
@@ -113,6 +115,7 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
       result.failedItems.length === 1
         ? `${path.join(workspace(), constants.DIFF_DIR_NAME)}/${result.failedItems[0]}`
         : `${path.join(workspace(), constants.DIFF_DIR_NAME)}/(${result.failedItems.join('|')})`;
+    log.info(`Copying diff files`, failedGlobs, `${temp}/${dest}/diff/`);
     cpx.copySync(failedGlobs, `${temp}/${dest}/diff/`);
 
     const expectedGlobs =
