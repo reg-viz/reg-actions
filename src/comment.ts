@@ -47,7 +47,8 @@ const createBaseUrl = ({
   runId: number;
   artifactName: string;
 }): string => {
-  return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/${runId}_${artifactName}/`;
+  //raw.githubusercontent.com/bokuweb/reg-actions/reg/6602221723_reg/actual/sample.png
+  https: return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/${runId}_${artifactName}/`;
 };
 
 const differences = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string }): string => {
@@ -85,8 +86,11 @@ ${result.newItems
   .map(item => {
     const filename = basename(item);
     console.log(join(baseUrl, 'actual', filename));
+    const img = join(baseUrl, 'actual', filename);
 
-    return `| ![NewItem](${join(baseUrl, 'actual', filename)}) |`;
+    // return `| ![NewItem](${img}) |`;
+    // https://raw.githubusercontent.com/bokuweb/reg-actions/reg/6602221723_reg/actual/sample.png
+    return `| ![NewItem](https://raw.githubusercontent.com/bokuweb/reg-actions/reg/6602221723_reg/actual/sample.png) |`;
   })
   .join('\n')}
   `;
