@@ -1,0 +1,22 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: yarn install
+      - run: yarn package
+      - uses: actions/github-script@v5
+        id: target
+        with:
+          result-encoding: string
+          script: |
+            return (Math.random() > 0.5) ? "59b7802" : "34f93ed"
+      - uses: ./dist
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          image-directory-path: "./images"
+          target-hash: "${{ steps.target.outputs.result }}"
