@@ -154,6 +154,7 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
     // expectedDir: path.join(workspace(), constants.EXPECTED_DIR_NAME),
     // diffDir: path.join(workspace(), constants.DIFF_DIR_NAME),
     await pushImages({
+      githubToken: config.githubToken,
       runId,
       result,
       branch: 'reg',

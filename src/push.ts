@@ -95,6 +95,7 @@ import * as constants from './constants';
 // };
 
 export type PushImagesInput = {
+  githubToken: string;
   runId: number;
   result: CompareOutput;
   branch: string;
@@ -136,7 +137,7 @@ export interface EnvironmentVariables {
   /**
    * The GITHUB_TOKEN secret
    */
-  GITHUB_TOKEN?: string;
+  // GITHUB_TOKEN?: string;
   /**
    * Set to "true" to avoid pushing commits that don't change any files.
    *
@@ -272,10 +273,10 @@ const genConfig = (input: PushImagesInput): Config => {
 
   // Determine the type of URL
   // if (repo === REPO_SELF) {
-  if (!env.GITHUB_TOKEN) throw new Error('GITHUB_TOKEN must be specified when REPO == self');
+  if (!input.githubToken) throw new Error('GITHUB_TOKEN must be specified when REPO == self');
   if (!env.GITHUB_REPOSITORY) throw new Error('GITHUB_REPOSITORY must be specified when REPO == self');
 
-  const url = `https://x-access-token:${env.GITHUB_TOKEN}@github.com/${env.GITHUB_REPOSITORY}.git`;
+  const url = `https://x-access-token:${input.githubToken}@github.com/${env.GITHUB_REPOSITORY}.git`;
   const config: Config = {
     repo: url,
     branch,
