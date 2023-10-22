@@ -86,8 +86,7 @@ ${result.newItems
     const filename = basename(item);
     console.log(join(baseUrl, 'actual', filename));
 
-    return `| ![NewItem](${join(baseUrl, 'actual', filename)}) |
-    | ![New](https://raw.githubusercontent.com/bokuweb/reg-actions/reg/6602107104_reg/actual/sample.png) |
+    return `| ![New](https://raw.githubusercontent.com/bokuweb/reg-actions/reg/6602107104_reg/actual/sample.png) |
     `;
   })
   .join('\n')}
