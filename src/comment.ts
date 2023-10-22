@@ -89,9 +89,10 @@ ${result.newItems
     const filename = encodeURIComponent(base);
     const img = baseUrl + 'actual/' + filename + '?raw=true';
     return `### \`${base}\`
-    |    |
-    |:--:|
-    | ![NewItem](${img}) |
+       
+|  |
+|--|
+|![NewItem](${img})|
        `;
   })
   .join('\n')}
