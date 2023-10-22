@@ -207,7 +207,7 @@ export const pushImages = async (input: PushImagesInput) => {
   await mkdirP(path.resolve(REPO_TEMP, destDir));
 
   await copyImages(input.result, REPO_TEMP, destDir);
-  
+
   await add(execOptions);
 
   const message = `Update ${input.branch} to output generated at runId:${input.runId}`;

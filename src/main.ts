@@ -12,6 +12,8 @@ const main = async () => {
 
   const { repo, runId, sha } = github.context;
 
+  const date = new Date().toISOString().split('T')[0];
+
   log.info(`runid = ${runId}, sha = ${sha}`);
 
   const event = getEvent();
@@ -24,7 +26,7 @@ const main = async () => {
 
   log.info(`start`);
 
-  await run(event, runId, sha, client, config);
+  await run({ event, runId, sha, client, date, config });
 };
 
 main().catch(e => core.setFailed(e.message));

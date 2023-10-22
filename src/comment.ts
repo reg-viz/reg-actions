@@ -12,6 +12,7 @@ export type CreateCommentWithTargetInput = {
   artifactName: string;
   targetRun: Run;
   result: CompareOutput;
+  date: string;
 };
 
 export type CreateCommentWithoutTargetInput = {
@@ -40,15 +41,17 @@ const createBaseUrl = ({
   branch,
   runId,
   artifactName,
+  date,
 }: {
   owner: string;
   repoName: string;
   branch: string;
   runId: number;
   artifactName: string;
+  date;
 }): string => {
   //raw.githubusercontent.com/bokuweb/reg-actions/reg/6602221723_reg/actual/sample.png
-  return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/${runId}_${artifactName}/`;
+  return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/${date}_${runId}_${artifactName}/`;
 };
 
 const differences = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string }): string => {
@@ -122,12 +125,13 @@ export const createCommentWithTarget = ({
   sha: currentHash,
   targetRun,
   result,
+  date,
 }: CreateCommentWithTargetInput): string => {
   const [owner, repoName] = event.repository.full_name.split('/');
   const targetHash = targetRun.head_sha;
   const currentHashShort = currentHash.slice(0, 7);
   const targetHashShort = targetHash.slice(0, 7);
-  const baseUrl = createBaseUrl({ owner, repoName, branch: regBranch, runId, artifactName });
+  const baseUrl = createBaseUrl({ owner, repoName, branch: regBranch, runId, artifactName, date });
   const successOrFailMessage = isSuccess(result)
     ? `${badge(result)}
   
@@ -159,7 +163,7 @@ ${deletedItems({ result, baseUrl })}
   return body;
 };
 
-export const createCommentWithoutTarget = ({ event, runId, result }: CreateCommentWithoutTargetInput): string => {
+export const createCommentWithoutTarget = ({ result }: CreateCommentWithoutTargetInput): string => {
   const body = `Failed to find a target artifact.
 All items will be treated as new items and will be used as expected data for the next time.
 

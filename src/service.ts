@@ -15,6 +15,7 @@ import { createCommentWithTarget, createCommentWithoutTarget } from './comment';
 import * as constants from './constants';
 import { workspace } from './path';
 import { pushImages } from './push';
+import { targetDir } from './helper';
 
 type DownloadClient = {
   downloadArtifact: (id: number) => Promise<{ data: unknown }>;
@@ -110,7 +111,21 @@ type SummaryClient = {
 
 type Client = CommentClient & DownloadClient & UploadClient & RunClient & SummaryClient;
 
-export const run = async (event: Event, runId: number, sha: string, client: Client, config: Config) => {
+export const run = async ({
+  event,
+  runId,
+  sha,
+  client,
+  date,
+  config,
+}: {
+  event: Event;
+  runId: number;
+  sha: string;
+  client: Client;
+  date: string;
+  config: Config;
+}) => {
   // Setup directory for artifact and copy images.
   await init(config);
 
@@ -159,8 +174,8 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
       githubToken: config.githubToken,
       runId,
       result,
-      branch: 'reg',
-      targetDir: `${runId}_${config.artifactName}`,
+      branch: config.branch,
+      targetDir: targetDir({ runId, artifactName: config.artifactName, date }),
       env: process.env,
       // commitName: undefined,
       // commitEmail: undefined,
@@ -172,9 +187,10 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
     runId,
     sha,
     targetRun,
+    date,
     result,
     artifactName: config.artifactName,
-    regBranch: 'reg',
+    regBranch: config.branch,
   });
 
   await client.postComment(event.number, comment);
