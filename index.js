@@ -790,31 +790,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.pushImages = void 0;
 const fast_glob_1 = __nccwpck_require__(39238);
-// import fsModule, { promises as fs } from 'fs';
 const fs_1 = __nccwpck_require__(57147);
 const os_1 = __nccwpck_require__(22037);
 const path = __importStar(__nccwpck_require__(71017));
 const cpx_1 = __importDefault(__nccwpck_require__(8159));
-// import git from 'isomorphic-git';
 const io_1 = __nccwpck_require__(27527);
 const git_1 = __nccwpck_require__(45616);
 const logger_1 = __nccwpck_require__(32380);
 const path_1 = __nccwpck_require__(42510);
 const constants = __importStar(__nccwpck_require__(30244));
-const DEFAULT_MESSAGE = 'Update {target-branch} to output generated at {sha}';
 const genConfig = (input) => {
-    // if (!env.REPO) throw new Error('REPO must be specified');
-    // if (!env.BRANCH) throw new Error('BRANCH must be specified');
-    // if (!env.FOLDER) throw new Error('FOLDER must be specified');
     const { branch, env } = input;
-    // const repo = env.REPO;
-    // const branch = env.BRANCH;
-    // const sourceDir = env.FOLDER;
-    // const skipEmptyCommits = env.SKIP_EMPTY_COMMITS === 'true';
-    // const message = env.MESSAGE || DEFAULT_MESSAGE;
-    // const tag = env.TAG;
     // Determine the type of URL
-    // if (repo === REPO_SELF) {
     if (!input.githubToken)
         throw new Error('GITHUB_TOKEN must be specified when REPO == self');
     if (!env.GITHUB_REPOSITORY)
@@ -823,192 +810,32 @@ const genConfig = (input) => {
     const config = {
         repo: url,
         branch,
-        // sourceDir,
-        // skipEmptyCommits,
-        // mode: 'self',
-        // message,
-        // tag,
     };
     return config;
-    // }
-    // const parsedUrl = gitUrlParse(repo);
-    //
-    // if (parsedUrl.protocol === 'ssh') {
-    //   if (!env.SSH_PRIVATE_KEY) throw new Error('SSH_PRIVATE_KEY must be specified when REPO uses ssh');
-    //   const config: Config = {
-    //     repo,
-    //     branch,
-    //     sourceDir,
-    //     skipEmptyCommits,
-    //     mode: 'ssh',
-    //     parsedUrl,
-    //     privateKey: env.SSH_PRIVATE_KEY,
-    //     knownHostsFile: env.KNOWN_HOSTS_FILE,
-    //     message,
-    //     tag,
-    //   };
-    //   return config;
-    // }
-    // throw new Error('Unsupported REPO URL');
 };
-// const writeToProcess = (
-//   command: string,
-//   args: string[],
-//   opts: {
-//     env: { [id: string]: string | undefined };
-//     data: string;
-//     log: Console;
-//   },
-// ) =>
-//   new Promise<void>((resolve, reject) => {
-//     const child = child_process.spawn(command, args, {
-//       env: opts.env,
-//       stdio: 'pipe',
-//     });
-//     child.stdin.setDefaultEncoding('utf-8');
-//     child.stdin.write(opts.data);
-//     child.stdin.end();
-//     child.on('error', reject);
-//     let stderr = '';
-//     child.stdout.on('data', data => {
-//       /* istanbul ignore next */
-//       opts.log.log(data.toString());
-//     });
-//     child.stderr.on('data', data => {
-//       stderr += data;
-//       opts.log.error(data.toString());
-//     });
-//     child.on('close', code => {
-//       /* istanbul ignore else */
-//       if (code === 0) {
-//         resolve();
-//       } else {
-//         reject(new Error(stderr));
-//       }
-//     });
-//   });
 const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, e_1, _b, _c;
     var _d, _e, _f, _g, _h, _j, _k;
     const { env } = input;
     const config = genConfig(input);
-    // Calculate paths that use temp diractory
     const TMP_PATH = yield fs_1.promises.mkdtemp(path.join((0, os_1.tmpdir)(), 'git-publish-subdir-action-'));
     const REPO_TEMP = path.join(TMP_PATH, 'repo');
-    // const SSH_AUTH_SOCK = path.join(TMP_PATH, 'ssh_agent.sock');
     if (!env.GITHUB_EVENT_PATH)
         throw new Error('Expected GITHUB_EVENT_PATH');
     const event = JSON.parse((yield fs_1.promises.readFile(env.GITHUB_EVENT_PATH)).toString());
     const name = (_g = (_f = (_d = input.commitName) !== null && _d !== void 0 ? _d : (_e = event.pusher) === null || _e === void 0 ? void 0 : _e.name) !== null && _f !== void 0 ? _f : env.GITHUB_ACTOR) !== null && _g !== void 0 ? _g : 'Git Publish Subdirectory';
     const email = (_k = (_h = input.commitEmail) !== null && _h !== void 0 ? _h : (_j = event.pusher) === null || _j === void 0 ? void 0 : _j.email) !== null && _k !== void 0 ? _k : (env.GITHUB_ACTOR ? `${env.GITHUB_ACTOR}@users.noreply.github.com` : 'nobody@nowhere');
-    // const tag = env.TAG;
     // Set Git Config
     yield (0, git_1.configureName)(name);
     yield (0, git_1.configureEmail)(email);
-    // interface GitInformation {
-    //   commitMessage: string;
-    //   sha: string;
-    // }
-    /**
-     * Get information about the current git repository
-     */
-    // const getGitInformation = async (): Promise<GitInformation> => {
-    //   // Get the root git directory
-    //   let dir = process.cwd();
-    //   while (true) {
-    //     const isGitRepo = await fs
-    //       .stat(path.join(dir, '.git'))
-    //       .then(s => s.isDirectory())
-    //       .catch(() => false);
-    //     if (isGitRepo) {
-    //       break;
-    //     }
-    //     // We need to traverse up one
-    //     const next = path.dirname(dir);
-    //     if (next === dir) {
-    //       log.log(`[info] Not running in git directory, unable to get information about source commit`);
-    //       return {
-    //         commitMessage: '',
-    //         sha: '',
-    //       };
-    //     } else {
-    //       dir = next;
-    //     }
-    //   }
-    //
-    //   // Get current sha of repo to use in commit message
-    //   //const gitLog = await git.log({
-    //   //  fs: fsModule,
-    //   //  depth: 1,
-    //   //  dir,
-    //   //});
-    //   //const commit = gitLog.length > 0 ? gitLog[0] : undefined;
-    //   //if (!commit) {
-    //   //  log.log(`[info] Unable to get information about HEAD commit`);
-    //   //  return {
-    //   //    commitMessage: '',
-    //   //    sha: '',
-    //   //  };
-    //   //}
-    //   return {
-    //     // Use trim to remove the trailing newline
-    //     commitMessage: commit.commit.message.trim(),
-    //     sha: commit.oid,
-    //   };
-    // };
-    // const gitInfo = await getGitInformation();
     // Environment to pass to children
     const execEnv = env;
-    // if (config.mode === 'ssh') {
-    //   // Copy over the known_hosts file if set
-    //   let known_hosts = config.knownHostsFile;
-    //   // Use well-known known_hosts for certain domains
-    //   if (!known_hosts && config.parsedUrl.resource === 'github.com') {
-    //     known_hosts = KNOWN_HOSTS_GITHUB;
-    //   }
-    //   if (!known_hosts) {
-    //     log.warn(KNOWN_HOSTS_WARNING);
-    //   } else {
-    //     await mkdirP(SSH_FOLDER);
-    //     await fs.copyFile(known_hosts, KNOWN_HOSTS_TARGET);
-    //   }
-    //
-    //   // Setup ssh-agent with private key
-    //   log.log(`Setting up ssh-agent on ${SSH_AUTH_SOCK}`);
-    //   const sshAgentMatch = SSH_AGENT_PID_EXTRACT.exec(
-    //     (await exec(`ssh-agent -a ${SSH_AUTH_SOCK}`, { log, env: execEnv })).stdout,
-    //   );
-    //   /* istanbul ignore if */
-    //   if (!sshAgentMatch) throw new Error('Unexpected output from ssh-agent');
-    //   execEnv.SSH_AGENT_PID = sshAgentMatch[1];
-    //   log.log(`Adding private key to ssh-agent at ${SSH_AUTH_SOCK}`);
-    //   await writeToProcess('ssh-add', ['-'], {
-    //     data: config.privateKey + '\n',
-    //     env: execEnv,
-    //     log,
-    //   });
-    //   log.log(`Private key added`);
-    // }
     // Clone the target repo
     yield (0, git_1.clone)({ repo: config.repo, dist: REPO_TEMP }, { env: execEnv });
-    //await exec(`git clone "${config.repo}" "${REPO_TEMP}"`, { log, env: execEnv }).catch(err => {
-    // const s = err.toString();
-    /* istanbul ignore else */
-    // if (config.mode === 'ssh') {
-    //   /* istanbul ignore else */
-    //   if (s.indexOf('Host key verification failed') !== -1) {
-    //     log.error(KNOWN_HOSTS_ERROR(config.parsedUrl.resource));
-    //   } else if (s.indexOf('Permission denied (publickey') !== -1) {
-    //     log.error(SSH_KEY_ERROR);
-    //   }
-    // }
-    //    throw err;
-    //  });
     const execOptions = { env: execEnv, cwd: REPO_TEMP };
     // Fetch branch if it exists
     yield (0, git_1.fetchOrigin)({ branch: config.branch }, execOptions).catch(err => {
         const s = err.toString();
-        /* istanbul ignore if */
         if (s.indexOf("Couldn't find remote ref") === -1) {
             logger_1.log.warn("Failed to fetch target branch, probably doesn't exist");
             logger_1.log.error(err);
@@ -1016,11 +843,6 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
     });
     // Check if branch already exists
     logger_1.log.info(`Checking if branch ${config.branch} exists already`);
-    // const branchCheck = await exec(`git branch --list "${config.branch}"`, {
-    //   log,
-    //   env: execEnv,
-    //   cwd: REPO_TEMP,
-    // });
     if (!(0, git_1.hasBranch)(config.branch, execOptions)) {
         // Branch does not exist yet, let's check it out as an orphan
         logger_1.log.info(`${config.branch} does not exist, creating as orphan`);
@@ -1029,32 +851,13 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
     else {
         yield (0, git_1.checkout)(config.branch, false, execOptions);
     }
-    // // Update contents of branch
+    // Update contents of branch
     logger_1.log.info(`Updating branch ${config.branch}`);
     /**
      * The list of globs we'll use for clearing
      */
     logger_1.log.info(`Removing all files from target dir ${input.targetDir} on target branch`);
-    // const globs = [`${input.targetDir}/**/*`, '!.git'];
     const globs = ['**/*', '!.git'];
-    // await (async () => {
-    //if (env.CLEAR_GLOBS_FILE) {
-    //  // We need to use a custom mechanism to clear the files
-    //  log.log(`[info] Using custom glob file to clear target branch ${env.CLEAR_GLOBS_FILE}`);
-    //  const globList = (await fs.readFile(env.CLEAR_GLOBS_FILE))
-    //    .toString()
-    //    .split('\n')
-    //    .map(s => s.trim())
-    //    .filter(s => s !== '');
-    //  return globList;
-    // if (input.targetDir) {
-    // return [`${input.targetDir}/**/*`, '!.git'];
-    // } else {
-    //   // Remove all files
-    //   log.info(`Removing all files from target branch`);
-    //   return ['**/*', '!.git'];
-    // }
-    // })();
     if (!git_1.hasBranch) {
         const filesToDelete = (0, fast_glob_1.stream)(globs, { absolute: true, dot: true, followSymbolicLinks: false, cwd: REPO_TEMP });
         try {
@@ -1079,22 +882,17 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
             finally { if (e_1) throw e_1.error; }
         }
     }
-    // const sourceDir = path.resolve(process.cwd(), config.sourceDir);
-    const destinationFolder = input.targetDir;
+    const destDir = input.targetDir;
     // Make sure the destination sourceDir exists
-    yield (0, io_1.mkdirP)(path.resolve(REPO_TEMP, destinationFolder));
+    yield (0, io_1.mkdirP)(path.resolve(REPO_TEMP, destDir));
     logger_1.log.info(`Copying all files`);
-    // await cp(`${sourceDir}/`, `${REPO_TEMP}/${destinationFolder}/`, {
-    //   recursive: true,
-    //   copySourceDirectory: false,
-    // });
     if (input.result.deletedItems.length > 0) {
         const deletedGlobs = input.result.deletedItems.length === 1
             ? `${path.join((0, path_1.workspace)(), constants.EXPECTED_DIR_NAME)}/${input.result.deletedItems[0]}`
             : `${path.join((0, path_1.workspace)(), constants.EXPECTED_DIR_NAME)}/(${input.result.deletedItems.join('|')})`;
         console.log(deletedGlobs);
         try {
-            cpx_1.default.copySync(deletedGlobs, `${REPO_TEMP}/${destinationFolder}/expected/`);
+            cpx_1.default.copySync(deletedGlobs, `${REPO_TEMP}/${destDir}/expected/`);
         }
         catch (e) {
             logger_1.log.error(`Failed to copy images ${e}`);
@@ -1106,7 +904,7 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
             : `${path.join((0, path_1.workspace)(), constants.ACTUAL_DIR_NAME)}/(${input.result.newItems.join('|')})`;
         console.log(newGlobs);
         try {
-            cpx_1.default.copySync(newGlobs, `${REPO_TEMP}/${destinationFolder}/actual/`);
+            cpx_1.default.copySync(newGlobs, `${REPO_TEMP}/${destDir}/actual/`);
         }
         catch (e) {
             logger_1.log.error(`Failed to copy images ${e}`);
@@ -1118,70 +916,19 @@ const pushImages = (input) => __awaiter(void 0, void 0, void 0, function* () {
             : `${path.join((0, path_1.workspace)(), constants.DIFF_DIR_NAME)}/(${input.result.failedItems.join('|')})`;
         console.log(failedGlobs);
         try {
-            cpx_1.default.copySync(failedGlobs, `${REPO_TEMP}/${destinationFolder}/diff/`);
+            cpx_1.default.copySync(failedGlobs, `${REPO_TEMP}/${destDir}/diff/`);
         }
         catch (e) {
             logger_1.log.error(`Failed to copy images ${e}`);
         }
     }
-    // await exec(`git add -A .`, { log, env: execEnv, cwd: REPO_TEMP });
     yield (0, git_1.add)(execOptions);
     const message = `Update ${input.branch} to output generated at runId:${input.runId}`;
-    // .replace(/\{target\-branch\}/g, config.branch)
-    // .replace(/\{sha\}/g, gitInfo.sha.substr(0, 7))
-    // .replace(/\{long\-sha\}/g, gitInfo.sha)
-    // .replace(/\{msg\}/g, gitInfo.commitMessage);
-    // await git.commit({
-    //   fs: fsModule,
-    //   dir: REPO_TEMP,
-    //   message,
-    //   author: { email, name },
-    // });
     yield (0, git_1.commit)(message, execOptions);
-    // if (tag) {
-    //   log.log(`[info] Tagging commit with ${tag}`);
-    //   await git.tag({
-    //     fs: fsModule,
-    //     dir: REPO_TEMP,
-    //     ref: tag,
-    //     force: true,
-    //   });
-    // }
-    // if (config.skipEmptyCommits) {
-    //   log.log(`[info] Checking whether contents have changed before pushing`);
-    //   // Before we push, check whether it changed the tree,
-    //   // and avoid pushing if not
-    //   const head = await git.resolveRef({
-    //     fs: fsModule,
-    //     dir: REPO_TEMP,
-    //     ref: 'HEAD',
-    //   });
-    //   const currentCommit = await git.readCommit({
-    //     fs: fsModule,
-    //     dir: REPO_TEMP,
-    //     oid: head,
-    //   });
-    //   if (currentCommit.commit.parent.length === 1) {
-    //     const previousCommit = await git.readCommit({
-    //       fs: fsModule,
-    //       dir: REPO_TEMP,
-    //       oid: currentCommit.commit.parent[0],
-    //     });
-    //     if (currentCommit.commit.tree === previousCommit.commit.tree) {
-    //       log.log(`[info] Contents of target repo unchanged, exiting.`);
-    //       return;
-    //     }
-    //   }
-    // }
     logger_1.log.info(`Pushing`);
-    // const tagsArg = tag ? '--tags' : '';
     const res = yield (0, git_1.push)(config.branch, execOptions);
     logger_1.log.info(res.stdout);
     logger_1.log.info(`Deployment Successful`);
-    // if (config.mode === 'ssh') {
-    //   log.log(`[info] Killing ssh-agent`);
-    //   await exec(`ssh-agent -k`, { log, env: execEnv });
-    // }
 });
 exports.pushImages = pushImages;
 
