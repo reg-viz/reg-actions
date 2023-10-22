@@ -84,6 +84,8 @@ const newItems = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string 
 ${result.newItems
   .map(item => {
     const filename = basename(item);
+    console.log(join(baseUrl, 'actual', filename));
+
     return `| ![New](${join(baseUrl, 'actual', filename)}) |`;
   })
   .join('\n')}
