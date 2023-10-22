@@ -42,6 +42,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createClient = void 0;
 const artifact = __importStar(__nccwpck_require__(67706));
 const exponential_backoff_1 = __nccwpck_require__(44038);
+const core_1 = __nccwpck_require__(89483);
 const path_1 = __nccwpck_require__(42510);
 const createClient = (repository, octokit) => {
     const artifactClient = artifact.create();
@@ -65,6 +66,9 @@ const createClient = (repository, octokit) => {
         postComment: (issueNumber, comment) => __awaiter(void 0, void 0, void 0, function* () {
             const _ = yield (0, exponential_backoff_1.backOff)(() => octokit.rest.issues.createComment(Object.assign(Object.assign({}, repository), { issue_number: issueNumber, body: comment })), { numOfAttempts: 5 });
             return;
+        }),
+        summary: (raw) => __awaiter(void 0, void 0, void 0, function* () {
+            core_1.summary.addRaw(raw).write();
         }),
     };
 };
@@ -1416,6 +1420,7 @@ const run = (event, runId, sha, client, config) => __awaiter(void 0, void 0, voi
         regBranch: 'reg',
     });
     yield client.postComment(event.number, comment);
+    yield client.summary(comment);
 });
 exports.run = run;
 
