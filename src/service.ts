@@ -179,5 +179,7 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
 
   await client.postComment(event.number, comment);
 
+  log.info('post summary comment');
+
   await client.summary(comment);
 };
