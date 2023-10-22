@@ -111,7 +111,7 @@ const differences = ({ result, baseUrl }) => {
 |:----------:|:----------:|:----------:|
 ${result.failedItems
         .map(item => {
-        const filename = (0, path_1.basename)(item);
+        const filename = encodeURIComponent((0, path_1.basename)(item));
         const actual = baseUrl + 'actual/' + filename + '?raw=true';
         const expected = baseUrl + 'expected/' + filename + '?raw=true';
         const diff = baseUrl + 'diff/' + filename + '?raw=true';
@@ -132,7 +132,7 @@ const newItems = ({ result, baseUrl }) => {
 |:----------:|
 ${result.newItems
         .map(item => {
-        const filename = (0, path_1.basename)(item);
+        const filename = encodeURIComponent((0, path_1.basename)(item));
         const img = baseUrl + 'actual/' + filename + '?raw=true';
         return `| ![NewItem](${img}) |`;
     })
@@ -151,7 +151,7 @@ const deletedItems = ({ result, baseUrl }) => {
 |:----------:|
 ${result.deletedItems
         .map(item => {
-        const filename = (0, path_1.basename)(item);
+        const filename = encodeURIComponent((0, path_1.basename)(item));
         const img = baseUrl + 'expected/' + filename + '?raw=true';
         return `| ![Deleted](${img}) |`;
     })
