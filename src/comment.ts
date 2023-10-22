@@ -74,7 +74,7 @@ ${result.failedItems
 };
 
 const newItems = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string }): string => {
-  if (result.failedItems.length === 0) return '';
+  if (result.newItems.length === 0) return '';
   const comment = `   
      
 ### New Items
@@ -93,7 +93,7 @@ ${result.newItems
 };
 
 const deletedItems = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string }): string => {
-  if (result.failedItems.length === 0) return '';
+  if (result.deletedItems.length === 0) return '';
   const comment = `   
    
 ### Deleted Items
