@@ -25,7 +25,7 @@ import { stream as fgStream } from 'fast-glob';
 import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import * as path from 'path';
-import cpx from 'cpx';
+import cpy from 'cpy';
 
 import { mkdirP } from '@actions/io';
 import { add, checkout, clone, commit, configureEmail, configureName, fetchOrigin, hasBranch, push } from './git';
@@ -93,42 +93,26 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
 
   if (result.deletedItems.length > 0) {
     log.info(`Copying deleted files`);
-    const deletedGlobs =
-      result.deletedItems.length === 1
-        ? `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${result.deletedItems[0]}`
-        : `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/(${result.deletedItems.join('|')})`;
-    cpx.copySync(deletedGlobs, `${temp}/${dest}/expected/`);
+    const deleted = result.deletedItems.map(item => `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${item}`);
+    await cpy(deleted, `${temp}/${dest}/expected/`);
   }
 
   if (result.newItems.length > 0) {
     log.info(`Copying new files`);
-    const newGlobs =
-      result.newItems.length === 1
-        ? `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${result.newItems[0]}`
-        : `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/(${result.newItems.join('|')})`;
-
-    cpx.copySync(newGlobs, `${temp}/${dest}/actual/`);
+    const newGlobs = result.newItems.map(item => `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${item}`);
+    await cpy(newGlobs, `${temp}/${dest}/actual/`);
   }
 
   if (result.failedItems.length > 0) {
-    const failedGlobs =
-      result.failedItems.length === 1
-        ? `${path.join(workspace(), constants.DIFF_DIR_NAME)}/${result.failedItems[0]}`
-        : `${path.join(workspace(), constants.DIFF_DIR_NAME)}/(${result.failedItems.join('|')})`;
-    log.info(`Copying diff files`, failedGlobs, `${temp}/${dest}/diff/`);
-    cpx.copySync(failedGlobs, `${temp}/${dest}/diff/`);
+    const failedGlobs = result.failedItems.map(item => `${path.join(workspace(), constants.DIFF_DIR_NAME)}/${item}`);
+    await cpy(failedGlobs, `${temp}/${dest}/diff/`);
 
-    const expectedGlobs =
-      result.failedItems.length === 1
-        ? `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${result.failedItems[0]}`
-        : `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/(${result.failedItems.join('|')})`;
-    cpx.copySync(expectedGlobs, `${temp}/${dest}/expected/`);
-
-    const actualGlobs =
-      result.failedItems.length === 1
-        ? `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${result.failedItems[0]}`
-        : `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/(${result.failedItems.join('|')})`;
-    cpx.copySync(actualGlobs, `${temp}/${dest}/actual/`);
+    const expectedGlobs = result.failedItems.map(
+      item => `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${item}`,
+    );
+    await cpy(expectedGlobs, `${temp}/${dest}/expected/`);
+    const actualGlobs = result.failedItems.map(item => `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${item}`);
+    await cpy(actualGlobs, `${temp}/${dest}/actual/`);
   }
   return;
 };

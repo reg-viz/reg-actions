@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import cpx from 'cpx';
+import cpy from 'cpy';
 import { sync as globSync } from 'glob';
 import makeDir from 'make-dir';
 import Zip from 'adm-zip';
@@ -50,11 +50,11 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
   }
 };
 
-const copyActualImages = (imagePath: string) => {
+const copyActualImages = async (imagePath: string) => {
   log.info(`Start copyImage from ${imagePath}`);
 
   try {
-    cpx.copySync(
+    await cpy(
       path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`),
       path.join(workspace(), constants.ACTUAL_DIR_NAME),
     );
@@ -95,7 +95,7 @@ const init = async (config: Config) => {
   log.info(`Succeeded to cerate directory.`);
 
   // Copy actual images
-  copyActualImages(config.imageDirectoryPath);
+  await copyActualImages(config.imageDirectoryPath);
 
   log.info(`Succeeded to initialization.`);
 };
