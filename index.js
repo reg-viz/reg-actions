@@ -95,7 +95,7 @@ const badge = (result) => {
 };
 const createBaseUrl = ({ owner, repoName, branch, runId, artifactName, }) => {
     //raw.githubusercontent.com/bokuweb/reg-actions/reg/6602221723_reg/actual/sample.png
-    https: return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/${runId}_${artifactName}/`;
+    return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/${runId}_${artifactName}/`;
 };
 const differences = ({ result, baseUrl }) => {
     if (result.failedItems.length === 0)
