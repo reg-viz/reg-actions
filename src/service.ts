@@ -4,7 +4,6 @@ import cpx from 'cpx';
 import { sync as globSync } from 'glob';
 import makeDir from 'make-dir';
 import Zip from 'adm-zip';
-import { summary } from '@actions/core';
 
 import { log } from './logger';
 import { Config } from './config';

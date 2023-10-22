@@ -136,7 +136,7 @@ export const createCommentWithTarget = ({
   const successOrFailMessage = isSuccess(result)
     ? `${badge(result)}
 
-## ${artifactName}
+## ArtifactName: ${artifactName}
   
 ✨✨ That's perfect, there is no visual difference! ✨✨
     `
@@ -167,7 +167,7 @@ ${deletedItems({ result, baseUrl })}
 };
 
 export const createCommentWithoutTarget = ({ result, artifactName }: CreateCommentWithoutTargetInput): string => {
-  const body = `## ${artifactName}
+  const body = `## ArtifactName: ${artifactName}
   
 Failed to find a target artifact.
 All items will be treated as new items and will be used as expected data for the next time.
