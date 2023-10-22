@@ -150,15 +150,11 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
 
   // If changed, upload images to specified branch.
   if (result.deletedItems.length !== 0 || result.failedItems.length !== 0 || result.newItems.length !== 0) {
-    // actualDir: path.join(workspace(), constants.ACTUAL_DIR_NAME),
-    // expectedDir: path.join(workspace(), constants.EXPECTED_DIR_NAME),
-    // diffDir: path.join(workspace(), constants.DIFF_DIR_NAME),
     await pushImages({
       githubToken: config.githubToken,
       runId,
       result,
       branch: 'reg',
-      // sourceDir: '',
       targetDir: `${runId}_${config.artifactName}`,
       env: process.env,
       commitName: undefined,
@@ -166,7 +162,15 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
     });
   }
 
-  const comment = createCommentWithTarget({ event, runId, sha, targetRun, result });
+  const comment = createCommentWithTarget({
+    event,
+    runId,
+    sha,
+    targetRun,
+    result,
+    artifactName: config.artifactName,
+    regBranch: 'reg',
+  });
 
   await client.postComment(event.number, comment);
 };

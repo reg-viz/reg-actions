@@ -560,7 +560,7 @@ export const pushImages = async (input: PushImagesInput) => {
         : `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/(${input.result.deletedItems.join('|')})`;
     console.log(deletedGlobs);
     try {
-      cpx.copySync(deletedGlobs, `${REPO_TEMP}/${destinationFolder}/deleted/`);
+      cpx.copySync(deletedGlobs, `${REPO_TEMP}/${destinationFolder}/expected/`);
     } catch (e) {
       log.error(`Failed to copy images ${e}`);
     }
@@ -574,7 +574,7 @@ export const pushImages = async (input: PushImagesInput) => {
 
     console.log(newGlobs);
     try {
-      cpx.copySync(newGlobs, `${REPO_TEMP}/${destinationFolder}/new/`);
+      cpx.copySync(newGlobs, `${REPO_TEMP}/${destinationFolder}/actual/`);
     } catch (e) {
       log.error(`Failed to copy images ${e}`);
     }
