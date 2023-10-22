@@ -94,7 +94,8 @@ const badge = (result) => {
     return '![success](https://img.shields.io/badge/%E2%9C%94%20reg-passed-green)';
 };
 const createBaseUrl = ({ owner, repoName, branch, runId, artifactName, }) => {
-    return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/${runId}_${artifactName}/`;
+    //raw.githubusercontent.com/bokuweb/reg-actions/reg/6602221723_reg/actual/sample.png
+    https: return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/${runId}_${artifactName}/`;
 };
 const differences = ({ result, baseUrl }) => {
     if (result.failedItems.length === 0)
@@ -127,7 +128,10 @@ ${result.newItems
         .map(item => {
         const filename = (0, path_1.basename)(item);
         console.log((0, path_1.join)(baseUrl, 'actual', filename));
-        return `| ![NewItem](${(0, path_1.join)(baseUrl, 'actual', filename)}) |`;
+        const img = (0, path_1.join)(baseUrl, 'actual', filename);
+        // return `| ![NewItem](${img}) |`;
+        // https://raw.githubusercontent.com/bokuweb/reg-actions/reg/6602221723_reg/actual/sample.png
+        return `| ![NewItem](https://raw.githubusercontent.com/bokuweb/reg-actions/reg/6602221723_reg/actual/sample.png) |`;
     })
         .join('\n')}
   `;
