@@ -33,5 +33,5 @@ inputs:
     description: 'A branch name which manages images. `reg_actions` by default.'
     required: false
 runs:
-  using: "node16"
+  using: "node20"
   main: "index.js"
