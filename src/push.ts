@@ -33,6 +33,7 @@ import { log } from './logger';
 import { CompareOutput } from './compare';
 import { workspace } from './path';
 import * as constants from './constants';
+import { rejects } from 'assert';
 
 export type PushImagesInput = {
   githubToken: string;
@@ -87,13 +88,20 @@ const genConfig = (input: PushImagesInput): Config => {
   return config;
 };
 
-const copyImages = (result: CompareOutput, temp: string, dest: string): Promise<void[]> => {
+const copyImages = async (result: CompareOutput, temp: string, dest: string): Promise<void> => {
   log.info(`Copying all files`);
 
   const promises: Promise<void>[] = [];
   const cp = (src: string, dst: string) =>
-    new Promise<void>(resolve => {
-      cpx.copy(src, dst, () => resolve());
+    new Promise<void>((resolve, reject) => {
+      cpx.copy(src, dst, err => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        log.info('succeeded to copy images');
+        return resolve();
+      });
     });
 
   if (result.deletedItems.length > 0) {
@@ -132,7 +140,11 @@ const copyImages = (result: CompareOutput, temp: string, dest: string): Promise<
         : `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/(${result.failedItems.join('|')})`;
     promises.push(cp(actualGlobs, `${temp}/${dest}/actual/`));
   }
-  return Promise.all(promises);
+  await Promise.all(promises).catch(e => {
+    log.error('Failed to copy images', e);
+    throw e;
+  });
+  return;
 };
 
 export const pushImages = async (input: PushImagesInput) => {
@@ -175,7 +187,9 @@ export const pushImages = async (input: PushImagesInput) => {
   // Check if branch already exists
   log.info(`Checking if branch ${config.branch} exists already`);
 
-  if (!(await hasBranch(config.branch, execOptions))) {
+  const branchExist = await hasBranch(config.branch, execOptions);
+
+  if (!branchExist) {
     // Branch does not exist yet, let's check it out as an orphan
     log.info(`${config.branch} does not exist, creating as orphan`);
     await checkout(config.branch, true, execOptions);
@@ -189,11 +203,12 @@ export const pushImages = async (input: PushImagesInput) => {
   /**
    * The list of globs we'll use for clearing
    */
-  log.info(`Removing all files from target dir ${input.targetDir} on target branch`);
 
-  const globs = ['**/*', '!.git'];
-  if (!hasBranch) {
+  if (!branchExist) {
+    const globs = ['**/*', '!.git'];
+    log.info(`Removing all files from target branch`);
     const filesToDelete = fgStream(globs, { absolute: true, dot: true, followSymbolicLinks: false, cwd: REPO_TEMP });
+    log.info(filesToDelete);
     // Delete all files from the filestream
     for await (const entry of filesToDelete) {
       await fs.unlink(entry);
