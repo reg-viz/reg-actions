@@ -86,7 +86,7 @@ ${result.newItems
     const filename = basename(item);
     console.log(join(baseUrl, 'actual', filename));
 
-    return `| ![New](${join(baseUrl, 'actual', filename)}) |`;
+    return `![NewItem](${join(baseUrl, 'actual', filename)})`;
   })
   .join('\n')}
   `;
