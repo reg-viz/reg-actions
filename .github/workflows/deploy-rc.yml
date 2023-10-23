@@ -4,7 +4,7 @@ name: DeployRc
 on:
   push:
     branches:
-      - v2-dev
+      - develop
 
 jobs:
   deploy:
