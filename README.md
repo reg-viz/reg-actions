@@ -15,8 +15,8 @@
 * [How to use](#how-to-use)
   * [Minimal setup](#minimal-setup)
   * [Action inputs](#action-inputs)
-* [Authorization](#authorization)
 * [Limitation](#limitation)
+* [Troubleshooting](#troubleshooting)
 * [Contribute](#contribute)
 * [License](#license)
 
