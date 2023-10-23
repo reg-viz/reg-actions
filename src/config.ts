@@ -11,6 +11,7 @@ export interface Config {
   thresholdPixel: number;
   targetHash: string | null;
   artifactName: string;
+  branch: string;
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -82,6 +83,7 @@ export const getConfig = (): Config => {
   const targetHash = core.getInput('target-hash') || null;
   validateTargetHash(targetHash);
   const artifactName = core.getInput('artifact-name') || ARTIFACT_NAME;
+  const branch = core.getInput('branch') || 'reg_actions';
 
   return {
     githubToken,
@@ -92,5 +94,6 @@ export const getConfig = (): Config => {
     thresholdPixel,
     targetHash,
     artifactName,
+    branch,
   };
 };
