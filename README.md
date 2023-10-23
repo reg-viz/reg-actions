@@ -128,6 +128,20 @@ The commit hash to be compared.
 For example you can determine the target hash dynamically using a [github script](https://github.com/actions/github-script).   
 Please see [test_with_target_hash.yml](./.github/workflows/test_with_target_hash.yml).
 
+#### `custom-report-page` (Optional)
+
+- Type: String
+- Default: N/A
+
+The custom report page link.   
+
+#### `report-file-path` (Optional)
+
+- Type: String
+- Default: N/A
+
+Path of the generated report html file. This file can be deployed in other Actions steps, but is not included in the artifact. If omitted, no html report is generated.  
+
 #### `artifact-name` (Optional)
 
 - Type: String

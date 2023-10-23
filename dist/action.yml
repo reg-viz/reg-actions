@@ -32,6 +32,13 @@ inputs:
   branch:
     description: 'A branch name which manages images. `reg_actions` by default.'
     required: false
+  custom-report-page:
+    description: "The custom report page link."
+    required: false
+  report-file-path:
+    description: "Path of the generated report html file. This file can be deployed in other Actions steps, but is not included in the artifact. If omitted, no html report is generated."
+    required: false    
 runs:
   using: "node20"
   main: "index.js"
+

@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import { statSync } from 'fs';
 import { ARTIFACT_NAME } from './constants';
+import { dirname } from 'path';
 
 export interface Config {
   imageDirectoryPath: string;
@@ -12,6 +13,8 @@ export interface Config {
   targetHash: string | null;
   artifactName: string;
   branch: string;
+  customReportPage: string | null;
+  reportFilePath: string | null;
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -70,6 +73,26 @@ const validateTargetHash = (h: string | null) => {
   }
 };
 
+const validateCustomReportPage = (link: string | null) => {
+  if (!link) return;
+  if (!/^(?:http(s)?:\/\/)[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$/.test(link)) {
+    throw new Error(`'custom-report-page' input must be a valid url '${link}'`);
+  }
+};
+
+const validateReportFilePath = (path: string | undefined) => {
+  if (path === undefined || path === '') {
+    return;
+  }
+  try {
+    const s = statSync(dirname(path));
+    if (s.isDirectory()) return;
+    else throw null;
+  } catch (_) {
+    throw new Error(`'report-file-path' is not in a valid directory. Please specify path to report file.`);
+  }
+};
+
 export const getConfig = (): Config => {
   const githubToken = core.getInput('github-token');
   const imageDirectoryPath = core.getInput('image-directory-path');
@@ -84,6 +107,10 @@ export const getConfig = (): Config => {
   validateTargetHash(targetHash);
   const artifactName = core.getInput('artifact-name') || ARTIFACT_NAME;
   const branch = core.getInput('branch') || 'reg_actions';
+  const customReportPage = core.getInput('custom-report-page') || null;
+  validateCustomReportPage(customReportPage);
+  const reportFilePath = core.getInput('report-file-path');
+  validateReportFilePath(reportFilePath);
 
   return {
     githubToken,
@@ -95,5 +122,7 @@ export const getConfig = (): Config => {
     targetHash,
     artifactName,
     branch,
+    customReportPage,
+    reportFilePath,
   };
 };

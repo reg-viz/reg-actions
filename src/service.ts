@@ -152,7 +152,13 @@ export const run = async ({
 
     // If we have current run, add comment to PR.
     if (runId) {
-      const comment = createCommentWithoutTarget({ event, runId, result, artifactName: config.artifactName });
+      const comment = createCommentWithoutTarget({
+        event,
+        runId,
+        result,
+        artifactName: config.artifactName,
+        customReportPage: config.customReportPage,
+      });
       await client.postComment(event.number, comment);
     }
     return;
@@ -190,6 +196,7 @@ export const run = async ({
     result,
     artifactName: config.artifactName,
     regBranch: config.branch,
+    customReportPage: config.customReportPage,
   });
 
   await client.postComment(event.number, comment);
