@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import cpx from 'cpx';
+import cpy from 'cpy';
 import { sync as globSync } from 'glob';
 import makeDir from 'make-dir';
 import Zip from 'adm-zip';
@@ -13,6 +13,8 @@ import { compare, CompareOutput } from './compare';
 import { createCommentWithTarget, createCommentWithoutTarget } from './comment';
 import * as constants from './constants';
 import { workspace } from './path';
+import { pushImages } from './push';
+import { targetDir } from './helper';
 
 type DownloadClient = {
   downloadArtifact: (id: number) => Promise<{ data: unknown }>;
@@ -48,11 +50,11 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
   }
 };
 
-const copyImages = (imagePath: string) => {
+const copyActualImages = async (imagePath: string) => {
   log.info(`Start copyImage from ${imagePath}`);
 
   try {
-    cpx.copySync(
+    await cpy(
       path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`),
       path.join(workspace(), constants.ACTUAL_DIR_NAME),
     );
@@ -62,7 +64,7 @@ const copyImages = (imagePath: string) => {
 };
 
 type UploadClient = {
-  uploadArtifact: (files: string[]) => Promise<void>;
+  uploadArtifact: (files: string[], artifactName: string) => Promise<void>;
 };
 
 // Compare images and upload result.
@@ -75,7 +77,7 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
   log.info('Start upload artifact');
 
   try {
-    await client.uploadArtifact(files);
+    await client.uploadArtifact(files, config.artifactName);
   } catch (e) {
     log.error(e);
     throw new Error('Failed to upload artifact');
@@ -93,7 +95,7 @@ const init = async (config: Config) => {
   log.info(`Succeeded to cerate directory.`);
 
   // Copy actual images
-  copyImages(config.imageDirectoryPath);
+  await copyActualImages(config.imageDirectoryPath);
 
   log.info(`Succeeded to initialization.`);
 };
@@ -102,9 +104,27 @@ type CommentClient = {
   postComment: (issueNumber: number, comment: string) => Promise<void>;
 };
 
-type Client = CommentClient & DownloadClient & UploadClient & RunClient;
+type SummaryClient = {
+  summary: (raw: string) => Promise<void>;
+};
 
-export const run = async (event: Event, runId: number, sha: string, client: Client, config: Config) => {
+type Client = CommentClient & DownloadClient & UploadClient & RunClient & SummaryClient;
+
+export const run = async ({
+  event,
+  runId,
+  sha,
+  client,
+  date,
+  config,
+}: {
+  event: Event;
+  runId: number;
+  sha: string;
+  client: Client;
+  date: string;
+  config: Config;
+}) => {
   // Setup directory for artifact and copy images.
   await init(config);
 
@@ -118,7 +138,12 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
 
   log.info(`start to find run and artifact.`);
   // Find current run and target run and artifact.
-  const runAndArtifact = await findRunAndArtifact({ event, client, targetHash: config.targetHash });
+  const runAndArtifact = await findRunAndArtifact({
+    event,
+    client,
+    targetHash: config.targetHash,
+    artifactName: config.artifactName,
+  });
 
   // If target artifact is not found, upload images.
   if (!runAndArtifact || !runAndArtifact.run || !runAndArtifact.artifact) {
@@ -127,7 +152,13 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
 
     // If we have current run, add comment to PR.
     if (runId) {
-      const comment = createCommentWithoutTarget({ event, runId, result, customReportPage: config.customReportPage });
+      const comment = createCommentWithoutTarget({
+        event,
+        runId,
+        result,
+        artifactName: config.artifactName,
+        customReportPage: config.customReportPage,
+      });
       await client.postComment(event.number, comment);
     }
     return;
@@ -140,7 +171,37 @@ export const run = async (event: Event, runId: number, sha: string, client: Clie
 
   const result = await compareAndUpload(client, config);
 
-  const comment = createCommentWithTarget({ event, runId, sha, targetRun, result, customReportPage: config.customReportPage });
+  log.info(result);
+
+  // If changed, upload images to specified branch.
+  if (result.deletedItems.length !== 0 || result.failedItems.length !== 0 || result.newItems.length !== 0) {
+    await pushImages({
+      githubToken: config.githubToken,
+      runId,
+      result,
+      branch: config.branch,
+      targetDir: targetDir({ runId, artifactName: config.artifactName, date }),
+      env: process.env,
+      // commitName: undefined,
+      // commitEmail: undefined,
+    });
+  }
+
+  const comment = createCommentWithTarget({
+    event,
+    runId,
+    sha,
+    targetRun,
+    date,
+    result,
+    artifactName: config.artifactName,
+    regBranch: config.branch,
+    customReportPage: config.customReportPage,
+  });
 
   await client.postComment(event.number, comment);
+
+  log.info('post summary comment');
+
+  await client.summary(comment);
 };

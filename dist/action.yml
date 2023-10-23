@@ -26,12 +26,19 @@ inputs:
   target-hash:
     description: "The commit hash to be compared."
     required: false
+  artifact-name:
+    description: 'Workflow artifact name. `reg` by default.'
+    required: false
+  branch:
+    description: 'A branch name which manages images. `reg_actions` by default.'
+    required: false
   custom-report-page:
     description: "The custom report page link."
     required: false
   report-file-path:
     description: "Path of the generated report html file. This file can be deployed in other Actions steps, but is not included in the artifact. If omitted, no html report is generated."
-    required: false
+    required: false    
 runs:
-  using: "node16"
+  using: "node20"
   main: "lib/index.js"
+

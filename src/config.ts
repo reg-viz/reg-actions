@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import { statSync } from 'fs';
+import { ARTIFACT_NAME } from './constants';
 import { dirname } from 'path';
 
 export interface Config {
@@ -10,6 +11,8 @@ export interface Config {
   thresholdRate: number;
   thresholdPixel: number;
   targetHash: string | null;
+  artifactName: string;
+  branch: string;
   customReportPage: string | null;
   reportFilePath: string | null;
 }
@@ -78,13 +81,13 @@ const validateCustomReportPage = (link: string | null) => {
 };
 
 const validateReportFilePath = (path: string | undefined) => {
-  if(path === undefined || path === '') {
+  if (path === undefined || path === '') {
     return;
   }
   try {
     const s = statSync(dirname(path));
     if (s.isDirectory()) return;
-      else throw null;
+    else throw null;
   } catch (_) {
     throw new Error(`'report-file-path' is not in a valid directory. Please specify path to report file.`);
   }
@@ -102,8 +105,10 @@ export const getConfig = (): Config => {
   validateThresholdRate(thresholdRate);
   const targetHash = core.getInput('target-hash') || null;
   validateTargetHash(targetHash);
+  const artifactName = core.getInput('artifact-name') || ARTIFACT_NAME;
+  const branch = core.getInput('branch') || 'reg_actions';
   const customReportPage = core.getInput('custom-report-page') || null;
-  validateCustomReportPage(customReportPage)
+  validateCustomReportPage(customReportPage);
   const reportFilePath = core.getInput('report-file-path');
   validateReportFilePath(reportFilePath);
 
@@ -115,7 +120,9 @@ export const getConfig = (): Config => {
     thresholdRate,
     thresholdPixel,
     targetHash,
+    artifactName,
+    branch,
     customReportPage,
-    reportFilePath
+    reportFilePath,
   };
 };

@@ -3,13 +3,14 @@ import { components } from '@octokit/openapi-types';
 import { log } from './logger';
 import { findTargetHash } from './git';
 import { Event } from './event';
-import { ARTIFACT_NAME } from './constants';
+// import { ARTIFACT_NAME } from './constants';
 
 export type Run = components['schemas']['workflow-run'];
 
 export type FindRunAndArtifactInput = {
   event: Event;
   client: RunClient;
+  artifactName: string;
   targetHash?: string | null;
 };
 
@@ -29,6 +30,7 @@ export const findRunAndArtifact = async ({
   event,
   client,
   targetHash: inputTargetHash,
+  artifactName,
 }: FindRunAndArtifactInput): Promise<{
   run: Run | null;
   artifact: Artifact | null;
@@ -54,7 +56,7 @@ export const findRunAndArtifact = async ({
       for (const run of runs.data.workflow_runs.filter(run => run.head_sha.startsWith(targetHashShort))) {
         const res = await client.fetchArtifacts(run.id);
         const { artifacts } = res.data;
-        const found = artifacts.find(a => a.name === ARTIFACT_NAME);
+        const found = artifacts.find(a => a.name === artifactName);
         if (found) {
           return { run, artifact: found };
         }
