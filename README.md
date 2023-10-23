@@ -145,7 +145,7 @@ Default is "reg_actions".
 
 - If the `artifact` is deleted, the report will also be deleted, see [`Artifact and log retention policy`](https://docs.github.com/ja/actions/learn-github-actions/usage-limits-billing-and-administration#artifact-and-log-retention-policy) for the retention period of the `artifact`.
 
-## troubleshooting
+## Troubleshooting
 
 - `Error: HttpError: Resource not accessible by integration`.
 
