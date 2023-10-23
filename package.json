@@ -21,6 +21,7 @@
   "license": "MIT",
   "pnpm": {
     "overrides": {
+      "fsevents": "1.2.13.",
       "ansi-regex": "^6.0.1",
       "glob-parent": "^6.0.2",
       "trim-newlines": "^4.0.2",
