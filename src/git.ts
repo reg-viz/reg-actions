@@ -90,3 +90,7 @@ export const commit = async (message: string, options: ExecOptions = {}): Promis
 export const push = async (branch: string, options: ExecOptions = {}): Promise<ExecResult> => {
   return capture('git', ['push', 'origin', branch], options);
 };
+
+export const rebase = async (branch: string, options: ExecOptions = {}): Promise<ExecResult> => {
+  return capture('git', ['rebase', `origin/${branch}`], options);
+};

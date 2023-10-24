@@ -28,12 +28,24 @@ import * as path from 'path';
 import cpy from 'cpy';
 
 import { mkdirP } from '@actions/io';
-import { add, checkout, clone, commit, configureEmail, configureName, fetchOrigin, hasBranch, push } from './git';
+import {
+  add,
+  checkout,
+  clone,
+  commit,
+  configureEmail,
+  configureName,
+  fetchOrigin,
+  hasBranch,
+  push,
+  rebase,
+} from './git';
 import { log } from './logger';
 import { CompareOutput } from './compare';
 import { workspace } from './path';
 import * as constants from './constants';
 import { rejects } from 'assert';
+import { backOff } from 'exponential-backoff';
 
 export type PushImagesInput = {
   githubToken: string;
@@ -199,8 +211,15 @@ export const pushImages = async (input: PushImagesInput) => {
 
   log.info(`Pushing`);
 
-  const res = await push(config.branch, execOptions);
-
-  log.info(res.stdout);
-  log.info(`Deployment Successful`);
+  (async () => {
+    return backOff(
+      async () => {
+        await rebase(config.branch, execOptions);
+        const res = await push(config.branch, execOptions);
+        log.info(res.stdout);
+        log.info(`Deployment Successful`);
+      },
+      { numOfAttempts: 5 },
+    );
+  })();
 };
