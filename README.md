@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: bokuweb/reg-actions@v2
+      - uses: reg-viz/reg-actions@v2
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           image-directory-path: "./images"
