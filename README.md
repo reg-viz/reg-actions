@@ -158,6 +158,14 @@ Default is "reg".
 The branch name for uploading images. This action will upload the image to the specified branch and use its URL in the comments.
 Default is "reg_actions".
 
+#### `disable-branch` (Optional)
+
+- Type: Boolean
+- Default: `false`
+
+The option to disable push to a branch. When set to false, the `branch` option is ignored, and images will not be displayed in the comments.
+
+
 ## Limitation
 
 - If the `artifact` is deleted, the report will also be deleted, see [`Artifact and log retention policy`](https://docs.github.com/ja/actions/learn-github-actions/usage-limits-billing-and-administration#artifact-and-log-retention-policy) for the retention period of the `artifact`.
