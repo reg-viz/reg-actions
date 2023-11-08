@@ -174,17 +174,19 @@ export const run = async ({
   log.info(result);
 
   // If changed, upload images to specified branch.
-  if (result.deletedItems.length !== 0 || result.failedItems.length !== 0 || result.newItems.length !== 0) {
-    await pushImages({
-      githubToken: config.githubToken,
-      runId,
-      result,
-      branch: config.branch,
-      targetDir: targetDir({ runId, artifactName: config.artifactName, date }),
-      env: process.env,
-      // commitName: undefined,
-      // commitEmail: undefined,
-    });
+  if (!config.disableBranch) {
+    if (result.deletedItems.length !== 0 || result.failedItems.length !== 0 || result.newItems.length !== 0) {
+      await pushImages({
+        githubToken: config.githubToken,
+        runId,
+        result,
+        branch: config.branch,
+        targetDir: targetDir({ runId, artifactName: config.artifactName, date }),
+        env: process.env,
+        // commitName: undefined,
+        // commitEmail: undefined,
+      });
+    }
   }
 
   const comment = createCommentWithTarget({
@@ -197,6 +199,7 @@ export const run = async ({
     artifactName: config.artifactName,
     regBranch: config.branch,
     customReportPage: config.customReportPage,
+    disableBranch: config.disableBranch,
   });
 
   await client.postComment(event.number, comment);

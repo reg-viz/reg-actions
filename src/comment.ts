@@ -14,6 +14,7 @@ export type CreateCommentWithTargetInput = {
   result: CompareOutput;
   date: string;
   customReportPage: string | null;
+  disableBranch: boolean;
 };
 
 export type CreateCommentWithoutTargetInput = {
@@ -141,6 +142,7 @@ export const createCommentWithTarget = ({
   result,
   date,
   customReportPage,
+  disableBranch,
 }: CreateCommentWithTargetInput): string => {
   const [owner, repoName] = event.repository.full_name.split('/');
   const targetHash = targetRun.head_sha;
@@ -149,7 +151,8 @@ export const createCommentWithTarget = ({
   const baseUrl = createBaseUrl({ owner, repoName, branch: regBranch, runId, artifactName, date });
 
   const report =
-    result.failedItems.length === 0 && result.newItems.length === 0 && result.deletedItems.length === 0
+    (result.failedItems.length === 0 && result.newItems.length === 0 && result.deletedItems.length === 0) ||
+    disableBranch
       ? ''
       : `   
 <details>
