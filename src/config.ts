@@ -13,6 +13,7 @@ export interface Config {
   targetHash: string | null;
   artifactName: string;
   branch: string;
+  disableBranch: boolean;
   customReportPage: string | null;
   reportFilePath: string | null;
 }
@@ -115,13 +116,14 @@ export const getConfig = (): Config => {
   return {
     githubToken,
     imageDirectoryPath,
-    enableAntialias: getBoolInput(core.getInput('enableAntialias')),
+    enableAntialias: getBoolInput(core.getInput('enable-antialias')),
     matchingThreshold,
     thresholdRate,
     thresholdPixel,
     targetHash,
     artifactName,
     branch,
+    disableBranch: getBoolInput(core.getInput('disable-branch')),
     customReportPage,
     reportFilePath,
   };
