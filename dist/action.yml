@@ -12,7 +12,7 @@ inputs:
     description: "Path to images directory.The images stored in this directory will be compared with the expected images from the last upload."
     required: true
   enable-antialias:
-    description: "Enable antialias.If omitted false."
+    description: "Enable antialias. If omitted false."
     required: false
   matching-threshold:
     description: "Matching threshold, ranges from 0 to 1. Smaller values make the comparison more sensitive. 0 by default."
@@ -31,6 +31,9 @@ inputs:
     required: false
   branch:
     description: 'A branch name which manages images. `reg_actions` by default.'
+    required: false
+  disable-branch:
+    description: 'The option to disable push to a branch. When set to false, the `branch` option is ignored, and images will not be displayed in the comments.'
     required: false
   custom-report-page:
     description: "The custom report page link."
