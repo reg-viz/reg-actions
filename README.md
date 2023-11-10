@@ -72,7 +72,7 @@ jobs:
 
 ### Action inputs
 
-Input definitions are written in [action.yml](./action.yml).
+Input definitions are written in [action.yml](https://github.com/reg-viz/reg-actions/blob/main/dist/action.yml).
 
 #### `github-token` (Required)
 
