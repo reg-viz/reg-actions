@@ -214,7 +214,9 @@ export const pushImages = async (input: PushImagesInput) => {
   (async () => {
     return backOff(
       async () => {
-        await rebase(config.branch, execOptions);
+        if (branchExist) {
+          await rebase(config.branch, execOptions);
+        }
         const res = await push(config.branch, execOptions);
         log.info(res.stdout);
         log.info(`Deployment Successful`);
