@@ -15,6 +15,7 @@ export type CreateCommentWithTargetInput = {
   date: string;
   customReportPage: string | null;
   disableBranch: boolean;
+  commentReportFormat: 'raw' | 'summarized';
 };
 
 export type CreateCommentWithoutTargetInput = {
@@ -57,7 +58,15 @@ const createBaseUrl = ({
   return `https://github.com/${owner}/${repoName}/blob/${branch}/${date}_${runId}_${artifactName}/`;
 };
 
-const differences = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string }): string => {
+const differences = ({
+  result,
+  baseUrl,
+  commentReportFormat,
+}: {
+  result: CompareOutput;
+  baseUrl: string;
+  commentReportFormat: 'raw' | 'summarized';
+}): string => {
   if (result.failedItems.length === 0) return '';
   const comment = `   
      
@@ -70,13 +79,21 @@ ${result.failedItems
     const actual = baseUrl + 'actual/' + filename + '?raw=true';
     const expected = baseUrl + 'expected/' + filename + '?raw=true';
     const diff = baseUrl + 'diff/' + filename + '?raw=true';
-
-    return `### \`${base}\`
-   
+    const table = `
 | actual|![Actual](${actual}) |
 |--|--|
 |expected|![Expected](${expected})|
-|difference|![Difference](${diff})|`;
+|difference|![Difference](${diff})|
+`;
+
+    if (commentReportFormat === 'summarized') {
+      return `<details><summary>${base}</summary>
+${table}
+</details>`;
+    } else {
+      return `### \`${base}\`
+${table}`;
+    }
   })
   .join('\n')}
   `;
@@ -84,7 +101,15 @@ ${result.failedItems
   return comment;
 };
 
-const newItems = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string }): string => {
+const newItems = ({
+  result,
+  baseUrl,
+  commentReportFormat,
+}: {
+  result: CompareOutput;
+  baseUrl: string;
+  commentReportFormat: 'raw' | 'summarized';
+}): string => {
   if (result.newItems.length === 0) return '';
   const comment = `   
      
@@ -95,12 +120,19 @@ ${result.newItems
     const base = basename(item);
     const filename = encodeURIComponent(base);
     const img = baseUrl + 'actual/' + filename + '?raw=true';
-    return `### \`${base}\`
-       
+    const table = `
 |  |
 |--|
 |![NewItem](${img})|
-       `;
+`;
+    if (commentReportFormat === 'summarized') {
+      return `<details><summary>${base}</summary>
+${table}
+</details>`;
+    } else {
+      return `### \`${base}\`
+${table}`;
+    }
   })
   .join('\n')}
   `;
@@ -108,7 +140,15 @@ ${result.newItems
   return comment;
 };
 
-const deletedItems = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string }): string => {
+const deletedItems = ({
+  result,
+  baseUrl,
+  commentReportFormat,
+}: {
+  result: CompareOutput;
+  baseUrl: string;
+  commentReportFormat: 'raw' | 'summarized';
+}): string => {
   if (result.deletedItems.length === 0) return '';
   const comment = `   
    
@@ -119,12 +159,19 @@ ${result.deletedItems
     const base = basename(item);
     const filename = encodeURIComponent(base);
     const img = baseUrl + 'expected/' + filename + '?raw=true';
-    return `### \`${base}\`
-       
+    const table = `
 |  |
 |--|
 |![DeleteItem](${img})|
-       `;
+`;
+    if (commentReportFormat === 'summarized') {
+      return `<details><summary>${base}</summary>
+${table}
+</details>`;
+    } else {
+      return `### \`${base}\`
+${table}`;
+    }
   })
   .join('\n')}
   `;
@@ -143,6 +190,7 @@ export const createCommentWithTarget = ({
   date,
   customReportPage,
   disableBranch,
+  commentReportFormat,
 }: CreateCommentWithTargetInput): string => {
   const [owner, repoName] = event.repository.full_name.split('/');
   const targetHash = targetRun.head_sha;
@@ -157,9 +205,9 @@ export const createCommentWithTarget = ({
       : `   
 <details>
 <summary>📝 Report</summary>
-${differences({ result, baseUrl })}
-${newItems({ result, baseUrl })}
-${deletedItems({ result, baseUrl })}
+${differences({ result, baseUrl, commentReportFormat })}
+${newItems({ result, baseUrl, commentReportFormat })}
+${deletedItems({ result, baseUrl, commentReportFormat })}
 </details>`;
 
   const reportUrl = customReportPage
