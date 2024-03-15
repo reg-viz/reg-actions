@@ -200,6 +200,7 @@ export const run = async ({
     regBranch: config.branch,
     customReportPage: config.customReportPage,
     disableBranch: config.disableBranch,
+    commentReportFormat: config.commentReportFormat,
   });
 
   await client.postComment(event.number, comment);

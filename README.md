@@ -165,6 +165,12 @@ Default is "reg_actions".
 
 The option to disable push to a branch. When set to false, the `branch` option is ignored, and images will not be displayed in the comments.
 
+#### `comment-report-format` (Optional)
+
+- Type: String
+- Default: `"raw"`
+
+The option how to render changed file in comment. This action will change PR and workflow summary report format. Available options are `raw` and `summarized`. `raw` will render report comment with expanded results. `summarized` will render report comment using `<details>` tag to summarize by changed files.
 
 ## Limitation
 
