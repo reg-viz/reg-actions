@@ -42,6 +42,11 @@ const getBoolInput = (name: string): boolean => {
   if (!input) {
     return false;
   }
+
+  if (typeof input === 'boolean') {
+    return input;
+  }
+
   if (input !== 'true' && input !== 'false') {
     throw new Error(`'${name}' input must be boolean value 'true' or 'false' but got '${input}'`);
   }
