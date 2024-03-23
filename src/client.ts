@@ -1,5 +1,5 @@
 import * as github from '@actions/github';
-import * as artifact from '@actions/artifact';
+import { DefaultArtifactClient } from '@actions/artifact';
 import { backOff } from 'exponential-backoff';
 import { summary } from '@actions/core';
 
@@ -9,7 +9,7 @@ import { workspace } from './path';
 export type Octokit = ReturnType<typeof github.getOctokit>;
 
 export const createClient = (repository: Repository, octokit: Octokit) => {
-  const artifactClient = artifact.create();
+  const artifactClient = new DefaultArtifactClient();
 
   return {
     fetchRuns: async (page: number) => {
