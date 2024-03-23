@@ -5,6 +5,7 @@ import { Config } from './config';
 import * as constants from './constants';
 import { workspace } from './path';
 import path from 'path/posix';
+import cpy from 'cpy';
 
 const _compare = require('reg-cli');
 
@@ -16,13 +17,13 @@ export type CompareOutput = {
 };
 
 export const compare = async (config: Config): Promise<CompareOutput> =>
-  new Promise<CompareOutput>(resolve => {
+  new Promise<CompareOutput>(async resolve => {
     const emitter = _compare({
       actualDir: path.join(workspace(), constants.ACTUAL_DIR_NAME),
       expectedDir: path.join(workspace(), constants.EXPECTED_DIR_NAME),
       diffDir: path.join(workspace(), constants.DIFF_DIR_NAME),
       json: path.join(workspace(), constants.JSON_NAME),
-      report: config.reportFilePath,
+      report: path.join(workspace(), './report.html'),
       update: false,
       ignoreChange: true,
       urlPrefix: '',
@@ -32,7 +33,11 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       enableAntialias: config.enableAntialias,
     });
 
-    emitter.on('complete', async result => {
+    if (config.reportFilePath) {
+      await cpy(workspace(), config.reportFilePath);
+    }
+
+    emitter.on('complete', result => {
       log.debug('compare result', result);
       log.info('Comparison Complete');
       log.info(chalk.red('   Changed items: ' + result.failedItems.length));
