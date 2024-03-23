@@ -88,7 +88,7 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
 };
 
 const init = async (config: Config) => {
-  log.info(`start initialization.`);
+  log.info(`start initialization with config.`, config);
   // Create workspace
   await makeDir(workspace());
 
@@ -125,7 +125,6 @@ export const run = async ({
   date: string;
   config: Config;
 }) => {
-  log.info({ config });
   // Setup directory for artifact and copy images.
   await init(config);
 

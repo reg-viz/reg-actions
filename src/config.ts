@@ -42,11 +42,6 @@ const getBoolInput = (name: string): boolean => {
   if (!input) {
     return false;
   }
-
-  if (typeof input === 'boolean') {
-    return input;
-  }
-
   if (input !== 'true' && input !== 'false') {
     throw new Error(`'${name}' input must be boolean value 'true' or 'false' but got '${input}'`);
   }
@@ -126,19 +121,18 @@ export const getConfig = (): Config => {
   validateReportFilePath(reportFilePath);
   const commentReportFormat = core.getInput('comment-report-format') || 'raw';
   validateCommentReportFormat(commentReportFormat);
-  console.log('disableBRanch', getBoolInput(core.getInput('disable-branch')), core.getInput('disable-branch'));
-  console.log('enableAntialias', getBoolInput(core.getInput('enable-antialias')), core.getInput('enable-antialias'));
+
   return {
     githubToken,
     imageDirectoryPath,
-    enableAntialias: getBoolInput(core.getInput('enable-antialias')),
+    enableAntialias: getBoolInput('enable-antialias'),
     matchingThreshold,
     thresholdRate,
     thresholdPixel,
     targetHash,
     artifactName,
     branch,
-    disableBranch: getBoolInput(core.getInput('disable-branch')),
+    disableBranch: getBoolInput('disable-branch'),
     customReportPage,
     reportFilePath,
     commentReportFormat,
