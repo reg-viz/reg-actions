@@ -88,7 +88,7 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
 };
 
 const init = async (config: Config) => {
-  log.info(`start initialization.`);
+  log.info(`start initialization with config.`, config);
   // Create workspace
   await makeDir(workspace());
 
@@ -200,6 +200,7 @@ export const run = async ({
     regBranch: config.branch,
     customReportPage: config.customReportPage,
     disableBranch: config.disableBranch,
+    commentReportFormat: config.commentReportFormat,
   });
 
   await client.postComment(event.number, comment);

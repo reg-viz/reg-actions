@@ -16,6 +16,7 @@ export interface Config {
   disableBranch: boolean;
   customReportPage: string | null;
   reportFilePath: string | null;
+  commentReportFormat: 'raw' | 'summarized';
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -94,6 +95,12 @@ const validateReportFilePath = (path: string | undefined) => {
   }
 };
 
+function validateCommentReportFormat(format: string): asserts format is 'raw' | 'summarized' {
+  if (format !== 'raw' && format !== 'summarized') {
+    throw new Error(`'comment-report-format' input must be 'raw' or 'summarized' but got '${format}'`);
+  }
+}
+
 export const getConfig = (): Config => {
   const githubToken = core.getInput('github-token');
   const imageDirectoryPath = core.getInput('image-directory-path');
@@ -112,19 +119,22 @@ export const getConfig = (): Config => {
   validateCustomReportPage(customReportPage);
   const reportFilePath = core.getInput('report-file-path');
   validateReportFilePath(reportFilePath);
+  const commentReportFormat = core.getInput('comment-report-format') || 'raw';
+  validateCommentReportFormat(commentReportFormat);
 
   return {
     githubToken,
     imageDirectoryPath,
-    enableAntialias: getBoolInput(core.getInput('enable-antialias')),
+    enableAntialias: getBoolInput('enable-antialias'),
     matchingThreshold,
     thresholdRate,
     thresholdPixel,
     targetHash,
     artifactName,
     branch,
-    disableBranch: getBoolInput(core.getInput('disable-branch')),
+    disableBranch: getBoolInput('disable-branch'),
     customReportPage,
     reportFilePath,
+    commentReportFormat,
   };
 };

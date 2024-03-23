@@ -40,7 +40,10 @@ inputs:
     required: false
   report-file-path:
     description: "Path of the generated report html file. This file can be deployed in other Actions steps, but is not included in the artifact. If omitted, no html report is generated."
-    required: false    
+    required: false
+  comment-report-format:
+    description: "The option how to render changed file in comment. `raw` by default."
+    required: false
 runs:
   using: "node20"
   main: "lib/index.js"
