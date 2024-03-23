@@ -88,7 +88,7 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
 };
 
 const init = async (config: Config) => {
-  log.info(`start initialization.`);
+  log.info(`start initialization with config.`, config);
   // Create workspace
   await makeDir(workspace());
 
