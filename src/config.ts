@@ -121,7 +121,7 @@ export const getConfig = (): Config => {
   validateReportFilePath(reportFilePath);
   const commentReportFormat = core.getInput('comment-report-format') || 'raw';
   validateCommentReportFormat(commentReportFormat);
-
+  console.log('disableBRanch', getBoolInput(core.getInput('disable-branch')));
   return {
     githubToken,
     imageDirectoryPath,

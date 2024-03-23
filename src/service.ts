@@ -125,6 +125,7 @@ export const run = async ({
   date: string;
   config: Config;
 }) => {
+  log.info({ config });
   // Setup directory for artifact and copy images.
   await init(config);
 
