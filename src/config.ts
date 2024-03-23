@@ -122,6 +122,7 @@ export const getConfig = (): Config => {
   const commentReportFormat = core.getInput('comment-report-format') || 'raw';
   validateCommentReportFormat(commentReportFormat);
   console.log('disableBRanch', getBoolInput(core.getInput('disable-branch')), core.getInput('disable-branch'));
+  console.log('enableAntialias', getBoolInput(core.getInput('enable-antialias')), core.getInput('enable-antialias'));
   return {
     githubToken,
     imageDirectoryPath,
