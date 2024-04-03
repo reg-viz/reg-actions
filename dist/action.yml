@@ -44,6 +44,9 @@ inputs:
   comment-report-format:
     description: "The option how to render changed file in comment. `raw` by default."
     required: false
+  compare-directory-paths:
+    description: "Directory paths to be compared only in a specific Directory"
+    required: false
 runs:
   using: "node20"
   main: "lib/index.js"

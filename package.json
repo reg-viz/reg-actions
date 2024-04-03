@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "package:cli": "ncc build node_modules/reg-cli/dist/diff.js -o dist/lib && mv dist/lib/index.js dist/lib/diff.js",
-    "package:resources": "cp node_modules/reg-cli/report dist -r && cp node_modules/reg-cli/template dist -r",
+    "package:resources": "cp -r node_modules/reg-cli/report dist && cp -r node_modules/reg-cli/template dist",
     "package": "npm run build && npm run package:cli && npm run package:resources && ncc build --source-map --license licenses.txt -o dist/lib"
   },
   "repository": {

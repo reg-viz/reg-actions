@@ -21,7 +21,7 @@ type DownloadClient = {
 };
 
 // Download expected images from target artifact.
-const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: number) => {
+const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: number, compareDirectoryPaths: string[]) => {
   log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
   try {
     const zip = await client.downloadArtifact(latestArtifactId);
@@ -29,6 +29,7 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
       new Zip(Buffer.from(zip.data as any))
         .getEntries()
         .filter(f => !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME))
+        .filter(f => compareDirectoryPaths.length === 0 || compareDirectoryPaths.some(p => f.entryName.startsWith(p)))
         .map(async file => {
           const f = path.join(
             workspace(),
@@ -71,6 +72,11 @@ type UploadClient = {
 const compareAndUpload = async (client: UploadClient, config: Config): Promise<CompareOutput> => {
   const result = await compare(config);
   log.debug('compare result', result);
+
+  if (config.compareDirectoryPaths.length !== 0) {
+    log.info('Skip upload artifact');
+    return result;
+  }
 
   const files = globSync(path.join(workspace(), '**/*'));
 
@@ -167,7 +173,7 @@ export const run = async ({
   const { run: targetRun, artifact } = runAndArtifact;
 
   // Download and copy expected images to workspace.
-  await downloadExpectedImages(client, artifact.id);
+  await downloadExpectedImages(client, artifact.id, config.compareDirectoryPaths);
 
   const result = await compareAndUpload(client, config);
 

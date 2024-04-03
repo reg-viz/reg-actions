@@ -17,6 +17,7 @@ export interface Config {
   customReportPage: string | null;
   reportFilePath: string | null;
   commentReportFormat: 'raw' | 'summarized';
+  compareDirectoryPaths: string[];
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -121,6 +122,7 @@ export const getConfig = (): Config => {
   validateReportFilePath(reportFilePath);
   const commentReportFormat = core.getInput('comment-report-format') || 'raw';
   validateCommentReportFormat(commentReportFormat);
+  const compareDirectoryPaths = core.getMultilineInput('compare-directory-paths');
 
   return {
     githubToken,
@@ -136,5 +138,6 @@ export const getConfig = (): Config => {
     customReportPage,
     reportFilePath,
     commentReportFormat,
+    compareDirectoryPaths
   };
 };
