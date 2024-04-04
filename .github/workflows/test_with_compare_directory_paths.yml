@@ -16,5 +16,4 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           image-directory-path: "./images"
-          disable-branch: true
-          compare-directory-paths: ['__screenshots__']
+          compare-directory-paths: ''
