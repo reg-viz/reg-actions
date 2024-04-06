@@ -34,7 +34,13 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
     });
 
     if (config.reportFilePath) {
-      await cpy(path.join(workspace(), './report.html'), config.reportFilePath);
+      log.info(`reportFilePath ${config.reportFilePath} detected`);
+      try {
+        await cpy(workspace() + '/**/*', config.reportFilePath);
+        log.info(`Succeeded to copy reg data to ${config.reportFilePath}.`);
+      } catch (e) {
+        log.error(`Failed to copy reg data to ${config.reportFilePath} reason: ${e}`);
+      }
     }
 
     emitter.on('complete', result => {
