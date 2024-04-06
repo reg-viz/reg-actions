@@ -34,7 +34,7 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
     });
 
     if (config.reportFilePath) {
-      await cpy(workspace(), config.reportFilePath);
+      await cpy(path.join(workspace(), './report.html'), config.reportFilePath);
     }
 
     emitter.on('complete', result => {
