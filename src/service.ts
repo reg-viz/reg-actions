@@ -93,11 +93,11 @@ const init = async (config: Config) => {
   // Cleanup workspace
   await fs.promises.rm(workspace(), {
     recursive: true,
-    force: true
+    force: true,
   });
 
   log.info(`Succeeded to cleanup workspace.`);
-  
+
   // Create workspace
   await makeDir(workspace());
 
@@ -212,9 +212,13 @@ export const run = async ({
     commentReportFormat: config.commentReportFormat,
   });
 
-  await client.postComment(event.number, comment);
+  try {
+    await client.postComment(event.number, comment);
 
-  log.info('post summary comment');
+    log.info('post summary comment');
 
-  await client.summary(comment);
+    await client.summary(comment);
+  } catch (e) {
+    log.error(e);
+  }
 };
