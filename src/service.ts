@@ -89,6 +89,15 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
 
 const init = async (config: Config) => {
   log.info(`start initialization with config.`, config);
+
+  // Cleanup workspace
+  await fs.promises.rm(workspace(), {
+    recursive: true,
+    force: true
+  });
+
+  log.info(`Succeeded to cleanup workspace.`);
+  
   // Create workspace
   await makeDir(workspace());
 
