@@ -243,6 +243,17 @@ ${successOrFailMessage}
 ${report}
 `;
 
+  // comment body size limitation is 64KiB
+  // So we set 60KiB with margin
+  if (new Blob([body]).size > 60 * 1024) {
+    const lines = body.split('\n');
+    while (new Blob([lines.join('\n')]).size > 60 * 1024) {
+      lines.pop();
+    }
+    lines.push('\n');
+    lines.push('Some report is omitted because comment body size limitation exceeded.');
+    return lines.join('\n');
+  }
   return body;
 };
 
