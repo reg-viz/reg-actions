@@ -251,7 +251,7 @@ ${report}
       lines.pop();
     }
     lines.push('\n');
-    lines.push('Some report is omitted because comment body size limitation exceeded.');
+    lines.push('⚠️ report is omitted because comment body size limitation exceeded. Please check report in artifact.');
     return lines.join('\n');
   }
   return body;
