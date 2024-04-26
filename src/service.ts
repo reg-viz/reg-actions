@@ -30,7 +30,7 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
         .getEntries()
         .filter(f => {
           log.info('entryName:', f.entryName);
-          !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME);
+          return !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME);
         })
         .map(async file => {
           const f = path.join(
