@@ -28,14 +28,17 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
     await Promise.all(
       new Zip(Buffer.from(zip.data as any))
         .getEntries()
-        .filter(f => !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME))
+        .filter(f => {
+          log.info('entryName:', f.entryName);
+          return !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME);
+        })
         .map(async file => {
           const f = path.join(
             workspace(),
             file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME),
           );
           await makeDir(path.dirname(f));
-          log.info('download to', f)
+          log.info('download to', f);
           await fs.promises.writeFile(f, file.getData());
         }),
     ).catch(e => {
