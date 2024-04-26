@@ -35,6 +35,7 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
             file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME),
           );
           await makeDir(path.dirname(f));
+          log.info('download to', f)
           await fs.promises.writeFile(f, file.getData());
         }),
     ).catch(e => {
@@ -70,7 +71,7 @@ type UploadClient = {
 // Compare images and upload result.
 const compareAndUpload = async (client: UploadClient, config: Config): Promise<CompareOutput> => {
   const result = await compare(config);
-  log.debug('compare result', result);
+  log.info('compare result', result);
 
   const files = globSync(path.join(workspace(), '**/*'));
 
