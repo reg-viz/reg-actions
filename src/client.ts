@@ -35,10 +35,21 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       });
       return res;
     },
-    downloadArtifact: async (artifactId: number) => {
-      const { downloadPath } = await backOff(() => artifactClient.downloadArtifact(artifactId, {}), {
-        numOfAttempts: 5,
-      });
+    downloadArtifact: async (token: string, artifactId: number, runId: number) => {
+      const { downloadPath } = await backOff(
+        () =>
+          artifactClient.downloadArtifact(artifactId, {
+            findBy: {
+              token,
+              workflowRunId: runId,
+              repositoryName: repository.repo,
+              repositoryOwner: repository.owner,
+            },
+          }),
+        {
+          numOfAttempts: 5,
+        },
+      );
       log.info('downloadPath:', downloadPath);
       if (!downloadPath) throw new Error('Failed to download artifact.');
       const data = await readFile(downloadPath);

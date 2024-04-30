@@ -17,14 +17,19 @@ import { pushImages } from './push';
 import { targetDir } from './helper';
 
 type DownloadClient = {
-  downloadArtifact: (id: number) => Promise<{ data: Buffer }>;
+  downloadArtifact: (token: string, artifactId: number, runId: number) => Promise<{ data: Buffer }>;
 };
 
 // Download expected images from target artifact.
-const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: number) => {
+const downloadExpectedImages = async (
+  client: DownloadClient,
+  latestArtifactId: number,
+  runId: number,
+  config: Config,
+) => {
   log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
   try {
-    const { data: buf } = await client.downloadArtifact(latestArtifactId);
+    const { data: buf } = await client.downloadArtifact(config.githubToken, latestArtifactId, runId);
     log.info('download size: ', buf.byteLength);
     await Promise.all(
       new Zip(buf)
@@ -181,7 +186,7 @@ export const run = async ({
   const { run: targetRun, artifact } = runAndArtifact;
 
   // Download and copy expected images to workspace.
-  await downloadExpectedImages(client, artifact.id);
+  await downloadExpectedImages(client, artifact.id, targetRun.id, config);
 
   const result = await compareAndUpload(client, config);
 
