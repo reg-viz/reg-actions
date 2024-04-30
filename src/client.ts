@@ -36,7 +36,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       });
       return res;
     },
-    downloadArtifact: async (token: string, artifactId: number, runId: number, artifactName: string) => {
+    downloadArtifact: async (token: string, artifactId: number, runId: number) => {
       const { downloadPath } = await backOff(
         () =>
           artifactClient.downloadArtifact(artifactId, {

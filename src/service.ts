@@ -16,7 +16,7 @@ import { pushImages } from './push';
 import { targetDir } from './helper';
 
 type DownloadClient = {
-  downloadArtifact: (token: string, artifactId: number, runId: number, artifactName: string) => Promise<void>;
+  downloadArtifact: (token: string, artifactId: number, runId: number) => Promise<void>;
 };
 
 // Download expected images from target artifact.
@@ -28,7 +28,7 @@ const downloadExpectedImages = async (
 ) => {
   log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
   try {
-    await client.downloadArtifact(config.githubToken, latestArtifactId, runId, config.artifactName);
+    await client.downloadArtifact(config.githubToken, latestArtifactId, runId);
     const files = await glob(`${constants.DOWNLOAD_PATH}/**/*`);
     await Promise.all(
       files
