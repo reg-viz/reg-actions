@@ -33,6 +33,7 @@ const downloadExpectedImages = async (
     log.info('download files:', files);
     await Promise.all(
       files
+        .map(f => f.replace(`${constants.DOWNLOAD_PATH}/`, ''))
         .filter(f => {
           log.info('fileName:', f);
           return f.startsWith(constants.ACTUAL_DIR_NAME);
