@@ -1,6 +1,6 @@
 # reg-cli-report-ui
 
-[![GitHub Actions Status](https://github.com/reg-viz/reg-cli-report-ui/workflows/Continuous%20Integration/badge.svg)](https://github.com/reg-viz/reg-cli-report-ui/actions)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/reg-viz/reg-cli-report-ui/ci.yml?branch=main&style=flat-square&link=https%3A%2F%2Fgithub.com%2Freg-viz%2Freg-cli-report-ui%2Factions%2Fworkflows%2Fci.yml)
 
 > :gem: New face of reg-cli report UI.
 
@@ -16,10 +16,10 @@ This repository is the Report UI of [reg-viz/reg-cli][reg-cli]
 
 The following list is scripts used during development.
 
-### `yarn start`
+### `yarn dev`
 
 ```bash
-$ yarn start
+$ yarn dev
 ```
 
 Launch the Report UI with the mock data.
