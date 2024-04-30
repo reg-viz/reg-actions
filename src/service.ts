@@ -29,21 +29,9 @@ const downloadExpectedImages = async (
   log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
   try {
     await client.downloadArtifact(config.githubToken, latestArtifactId, runId);
-    const files = await glob(`${constants.DOWNLOAD_PATH}/**/*`);
-    log.info('download files:', files);
-    await Promise.all(
-      files
-        .map(f => f.replace(`${constants.DOWNLOAD_PATH}/`, ''))
-        .filter(f => {
-          log.info('fileName:', f);
-          return f.startsWith(constants.ACTUAL_DIR_NAME) && /(png|jpg|jpeg|tiff|bmp|gif)$/.test(f);
-        })
-        .map(async file => {
-          const f = path.join(workspace(), file.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
-          await makeDir(path.dirname(f));
-          log.info('download to', f);
-          return fs.copyFile(file, f);
-        }),
+    await cpy(
+      path.join(constants.DOWNLOAD_PATH, '**', constants.ACTUAL_DIR_NAME, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`),
+      path.join(workspace(), constants.EXPECTED_DIR_NAME),
     );
   } catch (e: any) {
     if (e.message === 'Artifact has expired') {
