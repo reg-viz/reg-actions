@@ -40,7 +40,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       const { downloadPath } = await backOff(
         () =>
           artifactClient.downloadArtifact(artifactId, {
-            path: join(workspace(), '__reg_download/reg.zip'),
+            path: join(workspace(), '__reg_download'),
             findBy: {
               token,
               workflowRunId: runId,
@@ -54,7 +54,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       );
       log.info('downloadPath:', downloadPath);
       if (!downloadPath) throw new Error('Failed to download artifact.');
-      const data = await readFile(downloadPath);
+      const data = await readFile(join(downloadPath, 'reg.zip'));
       return { data };
     },
     postComment: async (issueNumber: number, comment: string) => {
