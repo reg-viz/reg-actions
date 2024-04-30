@@ -8,6 +8,7 @@ import { Repository } from './repository';
 import { workspace } from './path';
 import { log } from './logger';
 import { join } from 'path';
+import { glob } from 'fast-glob';
 
 export type Octokit = ReturnType<typeof github.getOctokit>;
 
@@ -54,6 +55,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       );
       log.info('downloadPath:', downloadPath);
       if (!downloadPath) throw new Error('Failed to download artifact.');
+      console.log(glob.sync(join(downloadPath, '**/*')))
       const data = await readFile(join(downloadPath, `${artifactName}.zip`));
       return { data };
     },
