@@ -68,11 +68,11 @@ const copyActualImages = async (imagePath: string) => {
 };
 
 type UploadClient = {
-  uploadArtifact: (files: string[], artifactName: string) => Promise<void>;
+  uploadArtifact: (files: string[], artifactName: string) => Promise<{ id?: number }>;
 };
 
 // Compare images and upload result.
-const compareAndUpload = async (client: UploadClient, config: Config): Promise<CompareOutput> => {
+const compareAndUpload = async (client: UploadClient, config: Config): Promise<CompareOutput & { id?: number }> => {
   const result = await compare(config);
   log.info('compare result', result);
 
@@ -81,14 +81,14 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
   log.info('Start upload artifact');
 
   try {
-    await client.uploadArtifact(files, config.artifactName);
+    const res = await client.uploadArtifact(files, config.artifactName);
+    log.info('Succeeded to upload artifact');
+
+    return { id: res.id, ...result };
   } catch (e) {
     log.error(e);
     throw new Error('Failed to upload artifact');
   }
-  log.info('Succeeded to upload artifact');
-
-  return result;
 };
 
 const init = async (config: Config) => {
@@ -210,6 +210,7 @@ export const run = async ({
     date,
     result,
     artifactName: config.artifactName,
+    artifactId: result.id,
     regBranch: config.branch,
     customReportPage: config.customReportPage,
     disableBranch: config.disableBranch,

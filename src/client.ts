@@ -28,10 +28,10 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       return backOff(() => octokit.rest.actions.listWorkflowRunArtifacts(input), { numOfAttempts: 5 });
     },
     uploadArtifact: async (files: string[], artifactName: string) => {
-      const _ = await backOff(() => artifactClient.uploadArtifact(artifactName, files, workspace()), {
+      const res = await backOff(() => artifactClient.uploadArtifact(artifactName, files, workspace()), {
         numOfAttempts: 5,
       });
-      return;
+      return res;
     },
     downloadArtifact: async (artifactId: number) => {
       return backOff(

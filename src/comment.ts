@@ -16,6 +16,7 @@ export type CreateCommentWithTargetInput = {
   customReportPage: string | null;
   disableBranch: boolean;
   commentReportFormat: 'raw' | 'summarized';
+  artifactId?: number;
 };
 
 export type CreateCommentWithoutTargetInput = {
@@ -184,6 +185,7 @@ export const createCommentWithTarget = ({
   runId,
   regBranch,
   artifactName,
+  artifactId,
   sha: currentHash,
   targetRun,
   result,
@@ -217,14 +219,14 @@ Check out the report [here](${customReportPage}).`
   const successOrFailMessage = isSuccess(result)
     ? `${badge(result)}
 
-## ArtifactName: \`${artifactName}\`
+ ## ArtifactName: [\`${artifactName}\`](https://github.com/${owner}/${repoName}/actions/runs/${runId}/artifacts/${artifactId})
   
 ✨✨ That's perfect, there is no visual difference! ✨✨
 ${reportUrl}
     `
     : `${badge(result)}
 
-## ArtifactName: \`${artifactName}\`
+ ## ArtifactName: [\`${artifactName}\`](https://github.com/${owner}/${repoName}/actions/runs/${runId}/artifacts/${artifactId})
 
 ${reportUrl}
     `;
