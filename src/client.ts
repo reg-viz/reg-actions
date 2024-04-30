@@ -2,13 +2,12 @@ import * as github from '@actions/github';
 import { DefaultArtifactClient } from '@actions/artifact';
 import { backOff } from 'exponential-backoff';
 import { summary } from '@actions/core';
-import { readFile } from 'fs/promises';
 
 import { Repository } from './repository';
 import { workspace } from './path';
 import { log } from './logger';
 import { join } from 'path';
-import { glob } from 'fast-glob';
+import { DOWNLOAD_PATH } from './constants';
 
 export type Octokit = ReturnType<typeof github.getOctokit>;
 
@@ -41,7 +40,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       const { downloadPath } = await backOff(
         () =>
           artifactClient.downloadArtifact(artifactId, {
-            path: join(workspace(), '__reg_download'),
+            path: join(workspace(), DOWNLOAD_PATH),
             findBy: {
               token,
               workflowRunId: runId,
@@ -54,10 +53,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
         },
       );
       log.info('downloadPath:', downloadPath);
-      if (!downloadPath) throw new Error('Failed to download artifact.');
-      console.log(glob.sync(join(downloadPath, '**/*')))
-      const data = await readFile(join(downloadPath, `${artifactName}.zip`));
-      return { data };
+      return;
     },
     postComment: async (issueNumber: number, comment: string) => {
       const _ = await backOff(

@@ -1,9 +1,8 @@
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import cpy from 'cpy';
-import { sync as globSync } from 'glob';
+import { glob } from 'glob';
 import makeDir from 'make-dir';
-import Zip from 'adm-zip';
 
 import { log } from './logger';
 import { Config } from './config';
@@ -34,33 +33,21 @@ const downloadExpectedImages = async (
 ) => {
   log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
   try {
-    const { data: buf } = await client.downloadArtifact(
-      config.githubToken,
-      latestArtifactId,
-      runId,
-      config.artifactName,
-    );
-    log.info('download size: ', buf.byteLength);
+    await client.downloadArtifact(config.githubToken, latestArtifactId, runId, config.artifactName);
+    const files = await glob(`${constants.DOWNLOAD_PATH}/**/*`);
     await Promise.all(
-      new Zip(buf)
-        .getEntries()
+      files
         .filter(f => {
-          log.info('entryName:', f.entryName);
-          return !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME);
+          log.info('fileName:', f);
+          return f.startsWith(constants.ACTUAL_DIR_NAME);
         })
         .map(async file => {
-          const f = path.join(
-            workspace(),
-            file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME),
-          );
+          const f = path.join(workspace(), file.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
           await makeDir(path.dirname(f));
           log.info('download to', f);
-          await fs.promises.writeFile(f, file.getData());
+          await fs.copyFile(file, f);
         }),
-    ).catch(e => {
-      log.error('Failed to extract images.', e);
-      throw e;
-    });
+    );
   } catch (e: any) {
     if (e.message === 'Artifact has expired') {
       log.error('Failed to download expected images. Because expected artifact has already expired.');
@@ -92,7 +79,7 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
   const result = await compare(config);
   log.info('compare result', result);
 
-  const files = globSync(path.join(workspace(), '**/*'));
+  const files = await glob.glob(path.join(workspace(), '**/*'));
 
   log.info('Start upload artifact');
 
