@@ -51,10 +51,10 @@
     "glob": "^10.3.12",
     "loglevel": "^1.9.1",
     "make-dir": "^4.0.0",
-    "reg-cli": "^0.18.1"
+    "reg-cli": "^0.18.5"
   },
   "devDependencies": {
-    "@octokit/openapi-types": "^22.1.0",
+    "@octokit/openapi-types": "^22.2.0",
     "@types/adm-zip": "^0.5.5",
     "@types/axios": "^0.14.0",
     "@types/loglevel": "^1.6.3",
