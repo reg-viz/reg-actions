@@ -5,9 +5,6 @@ import { summary } from '@actions/core';
 
 import { Repository } from './repository';
 import { workspace } from './path';
-import { log } from './logger';
-import { join } from 'path';
-import { DOWNLOAD_PATH } from './constants';
 
 export type Octokit = ReturnType<typeof github.getOctokit>;
 
@@ -36,24 +33,16 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       });
       return res;
     },
-    downloadArtifact: async (token: string, artifactId: number, runId: number) => {
-      const { downloadPath } = await backOff(
+    downloadArtifact: async (artifactId: number) => {
+      return backOff(
         () =>
-          artifactClient.downloadArtifact(artifactId, {
-            path: DOWNLOAD_PATH,
-            findBy: {
-              token,
-              workflowRunId: runId,
-              repositoryName: repository.repo,
-              repositoryOwner: repository.owner,
-            },
+          octokit.rest.actions.downloadArtifact({
+            ...repository,
+            artifact_id: artifactId,
+            archive_format: 'zip',
           }),
-        {
-          numOfAttempts: 5,
-        },
+        { numOfAttempts: 5 },
       );
-      log.info('downloadPath:', downloadPath);
-      return;
     },
     postComment: async (issueNumber: number, comment: string) => {
       const _ = await backOff(
