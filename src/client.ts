@@ -36,25 +36,23 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       return res;
     },
     downloadArtifact: async (token: string, artifactId: number, runId: number) => {
-      const { downloadPath } = await backOff(
-        () =>
-          artifactClient.downloadArtifact(artifactId, {
-            path: './',
-            findBy: {
-              token,
-              workflowRunId: runId,
-              repositoryName: repository.repo,
-              repositoryOwner: repository.owner,
-            },
-          }),
-        {
-          numOfAttempts: 5,
-        },
-      );
-      log.info('downloadPath:', downloadPath);
-      if (!downloadPath) throw new Error('Failed to download artifact.');
-      const data = await readFile(downloadPath);
-      return { data };
+      try {
+        const { downloadPath } = await artifactClient.downloadArtifact(artifactId, {
+          path: './',
+          findBy: {
+            token,
+            workflowRunId: runId,
+            repositoryName: repository.repo,
+            repositoryOwner: repository.owner,
+          },
+        });
+        log.info('downloadPath:', downloadPath);
+        if (!downloadPath) throw new Error('Failed to download artifact.');
+        const data = await readFile(downloadPath);
+        return { data };
+      } catch (e) {
+        console.error(e);
+      }
     },
     postComment: async (issueNumber: number, comment: string) => {
       const _ = await backOff(
