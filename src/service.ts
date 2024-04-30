@@ -1,8 +1,9 @@
-import * as fs from 'fs/promises';
+import * as fs from 'fs';
 import * as path from 'path';
 import cpy from 'cpy';
-import { glob } from 'glob';
+import { sync as globSync } from 'glob';
 import makeDir from 'make-dir';
+import Zip from 'adm-zip';
 
 import { log } from './logger';
 import { Config } from './config';
@@ -16,33 +17,34 @@ import { pushImages } from './push';
 import { targetDir } from './helper';
 
 type DownloadClient = {
-  downloadArtifact: (token: string, artifactId: number, runId: number, artifactName: string) => Promise<void>;
+  downloadArtifact: (id: number) => Promise<{ data: unknown }>;
 };
 
 // Download expected images from target artifact.
-const downloadExpectedImages = async (
-  client: DownloadClient,
-  latestArtifactId: number,
-  runId: number,
-  config: Config,
-) => {
+const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: number) => {
   log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
   try {
-    await client.downloadArtifact(config.githubToken, latestArtifactId, runId, config.artifactName);
-
-    const files = await glob(`${constants.DOWNLOAD_PATH}/**/${constants.ACTUAL_DIR_NAME}/**/*`);
+    const zip = await client.downloadArtifact(latestArtifactId);
     await Promise.all(
-      files.map(async file => {
-        if (!/(png|jpg|jpeg|tiff|bmp|gif)$/.test(file)) return;
-        const f = path.join(
-          workspace(),
-          file.replace(path.join(constants.DOWNLOAD_PATH, constants.ACTUAL_DIR_NAME), constants.EXPECTED_DIR_NAME),
-        );
-        await makeDir(path.dirname(f));
-        log.info('download to', f);
-        await fs.copyFile(file, f);
-      }),
-    );
+      new Zip(Buffer.from(zip.data as any))
+        .getEntries()
+        .filter(f => {
+          log.info('entryName:', f.entryName);
+          return !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME);
+        })
+        .map(async file => {
+          const f = path.join(
+            workspace(),
+            file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME),
+          );
+          await makeDir(path.dirname(f));
+          log.info('download to', f);
+          await fs.promises.writeFile(f, file.getData());
+        }),
+    ).catch(e => {
+      log.error('Failed to extract images.', e);
+      throw e;
+    });
   } catch (e: any) {
     if (e.message === 'Artifact has expired') {
       log.error('Failed to download expected images. Because expected artifact has already expired.');
@@ -74,7 +76,7 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
   const result = await compare(config);
   log.info('compare result', result);
 
-  const files = await glob.glob(path.join(workspace(), '**/*'));
+  const files = globSync(path.join(workspace(), '**/*'));
 
   log.info('Start upload artifact');
 
@@ -93,7 +95,7 @@ const init = async (config: Config) => {
   log.info(`start initialization with config.`, config);
 
   // Cleanup workspace
-  await fs.rm(workspace(), {
+  await fs.promises.rm(workspace(), {
     recursive: true,
     force: true,
   });
@@ -178,7 +180,7 @@ export const run = async ({
   const { run: targetRun, artifact } = runAndArtifact;
 
   // Download and copy expected images to workspace.
-  await downloadExpectedImages(client, artifact.id, targetRun.id, config);
+  await downloadExpectedImages(client, artifact.id);
 
   const result = await compareAndUpload(client, config);
 
