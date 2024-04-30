@@ -16,12 +16,7 @@ import { pushImages } from './push';
 import { targetDir } from './helper';
 
 type DownloadClient = {
-  downloadArtifact: (
-    token: string,
-    artifactId: number,
-    runId: number,
-    artifactName: string,
-  ) => Promise<{ data: Buffer }>;
+  downloadArtifact: (token: string, artifactId: number, runId: number, artifactName: string) => Promise<void>;
 };
 
 // Download expected images from target artifact.
@@ -98,7 +93,7 @@ const init = async (config: Config) => {
   log.info(`start initialization with config.`, config);
 
   // Cleanup workspace
-  await fs.promises.rm(workspace(), {
+  await fs.rm(workspace(), {
     recursive: true,
     force: true,
   });
