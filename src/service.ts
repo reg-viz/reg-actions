@@ -29,14 +29,14 @@ const downloadExpectedImages = async (
   log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
   try {
     await client.downloadArtifact(config.githubToken, latestArtifactId, runId);
-    const files = await glob(`${constants.DOWNLOAD_PATH}/**/.{png,jpg,jpeg,tiff,bmp,gif}`);
+    const files = await glob(`${constants.DOWNLOAD_PATH}/**/*`);
     log.info('download files:', files);
     await Promise.all(
       files
         .map(f => f.replace(`${constants.DOWNLOAD_PATH}/`, ''))
         .filter(f => {
           log.info('fileName:', f);
-          return f.startsWith(constants.ACTUAL_DIR_NAME);
+          return f.startsWith(constants.ACTUAL_DIR_NAME) && /(png|jpg|jpeg|tiff|bmp|gif)$/.test(f);
         })
         .map(async file => {
           const f = path.join(workspace(), file.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
