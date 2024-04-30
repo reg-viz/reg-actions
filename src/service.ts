@@ -30,24 +30,18 @@ const downloadExpectedImages = async (
   try {
     await client.downloadArtifact(config.githubToken, latestArtifactId, runId, config.artifactName);
 
-    console.log(await cpy(
-      `${constants.DOWNLOAD_PATH}/**/${constants.ACTUAL_DIR_NAME}/**/*.{png,jpg,jpeg,tiff,bmp,gif}`,
-      path.join(workspace(), constants.EXPECTED_DIR_NAME),
-    ));
-
-    const files = await glob(`${constants.DOWNLOAD_PATH}/**/*`);
+    const files = await glob(`${constants.DOWNLOAD_PATH}/**/${constants.ACTUAL_DIR_NAME}/**/*`);
     await Promise.all(
-      files
-        .filter(f => {
-          log.info('fileName:', f);
-          return f.startsWith(constants.ACTUAL_DIR_NAME);
-        })
-        .map(async file => {
-          const f = path.join(workspace(), file.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
-          await makeDir(path.dirname(f));
-          log.info('download to', f);
-          await fs.copyFile(file, f);
-        }),
+      files.map(async file => {
+        if (!/(png|jpg|jpeg|tiff|bmp|gif)$/.test(file)) return;
+        const f = path.join(
+          workspace(),
+          file.replace(path.join(constants.DOWNLOAD_PATH, constants.ACTUAL_DIR_NAME), constants.EXPECTED_DIR_NAME),
+        );
+        await makeDir(path.dirname(f));
+        log.info('download to', f);
+        await fs.copyFile(file, f);
+      }),
     );
   } catch (e: any) {
     if (e.message === 'Artifact has expired') {
