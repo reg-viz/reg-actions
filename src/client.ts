@@ -2,9 +2,11 @@ import * as github from '@actions/github';
 import { DefaultArtifactClient } from '@actions/artifact';
 import { backOff } from 'exponential-backoff';
 import { summary } from '@actions/core';
+import { readFile } from 'fs/promises';
 
 import { Repository } from './repository';
 import { workspace } from './path';
+import { log } from './logger';
 
 export type Octokit = ReturnType<typeof github.getOctokit>;
 
@@ -34,15 +36,13 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       return res;
     },
     downloadArtifact: async (artifactId: number) => {
-      return backOff(
-        () =>
-          octokit.rest.actions.downloadArtifact({
-            ...repository,
-            artifact_id: artifactId,
-            archive_format: 'zip',
-          }),
-        { numOfAttempts: 5 },
-      );
+      const { downloadPath } = await backOff(() => artifactClient.downloadArtifact(artifactId, {}), {
+        numOfAttempts: 5,
+      });
+      log.info('downloadPath:', downloadPath);
+      if (!downloadPath) throw new Error('Failed to download artifact.');
+      const data = await readFile(downloadPath);
+      return { data };
     },
     postComment: async (issueNumber: number, comment: string) => {
       const _ = await backOff(

@@ -17,16 +17,17 @@ import { pushImages } from './push';
 import { targetDir } from './helper';
 
 type DownloadClient = {
-  downloadArtifact: (id: number) => Promise<{ data: unknown }>;
+  downloadArtifact: (id: number) => Promise<{ data: Buffer }>;
 };
 
 // Download expected images from target artifact.
 const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: number) => {
   log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
   try {
-    const zip = await client.downloadArtifact(latestArtifactId);
+    const { data: buf } = await client.downloadArtifact(latestArtifactId);
+    log.info('download size: ', buf.byteLength);
     await Promise.all(
-      new Zip(Buffer.from(zip.data as any))
+      new Zip(buf)
         .getEntries()
         .filter(f => {
           log.info('entryName:', f.entryName);
