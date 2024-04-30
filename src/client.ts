@@ -38,7 +38,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
     downloadArtifact: async (token: string, artifactId: number, runId: number) => {
       try {
         const { downloadPath } = await artifactClient.downloadArtifact(artifactId, {
-          path: './',
+          path: './download',
           findBy: {
             token,
             workflowRunId: runId,
