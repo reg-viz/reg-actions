@@ -30,10 +30,10 @@ const downloadExpectedImages = async (
   try {
     await client.downloadArtifact(config.githubToken, latestArtifactId, runId, config.artifactName);
 
-    await cpy(
+    console.log(await cpy(
       `${constants.DOWNLOAD_PATH}/**/${constants.ACTUAL_DIR_NAME}/**/*.{png,jpg,jpeg,tiff,bmp,gif}`,
       path.join(workspace(), constants.EXPECTED_DIR_NAME),
-    );
+    ));
 
     const files = await glob(`${constants.DOWNLOAD_PATH}/**/*`);
     await Promise.all(
