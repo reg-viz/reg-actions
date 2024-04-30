@@ -40,7 +40,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       const { downloadPath } = await backOff(
         () =>
           artifactClient.downloadArtifact(artifactId, {
-            path: join(workspace(), DOWNLOAD_PATH),
+            path: DOWNLOAD_PATH,
             findBy: {
               token,
               workflowRunId: runId,

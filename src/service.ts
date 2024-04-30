@@ -30,6 +30,7 @@ const downloadExpectedImages = async (
   try {
     await client.downloadArtifact(config.githubToken, latestArtifactId, runId);
     const files = await glob(`${constants.DOWNLOAD_PATH}/**/*`);
+    log.info('download files:', files);
     await Promise.all(
       files
         .filter(f => {
@@ -40,7 +41,7 @@ const downloadExpectedImages = async (
           const f = path.join(workspace(), file.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
           await makeDir(path.dirname(f));
           log.info('download to', f);
-          await fs.copyFile(file, f);
+          return fs.copyFile(file, f);
         }),
     );
   } catch (e: any) {
