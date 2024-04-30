@@ -7,6 +7,7 @@ import { readFile } from 'fs/promises';
 import { Repository } from './repository';
 import { workspace } from './path';
 import { log } from './logger';
+import { join } from 'path';
 
 export type Octokit = ReturnType<typeof github.getOctokit>;
 
@@ -39,7 +40,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       const { downloadPath } = await backOff(
         () =>
           artifactClient.downloadArtifact(artifactId, {
-            path: '__download',
+            path: join(workspace(), '__reg_download'),
             findBy: {
               token,
               workflowRunId: runId,
