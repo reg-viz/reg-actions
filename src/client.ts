@@ -44,6 +44,45 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
         { numOfAttempts: 5 },
       );
     },
+    listComments: async (issueNumber: number): Promise<{ node_id: string; body?: string | undefined }[]> => {
+      return backOff(
+        () =>
+          octokit.paginate(
+            octokit.rest.issues.listComments,
+            {
+              ...repository,
+              issue_number: issueNumber,
+              per_page: 100,
+            },
+            r => r.data,
+          ),
+        { numOfAttempts: 5 },
+      );
+    },
+    minimizeOutdatedComment: async (nodeId: string) => {
+      const _ = await backOff(
+        () =>
+          octokit.graphql(
+            `
+mutation($input: MinimizeCommentInput!) {
+  minimizeComment(input: $input) {
+    minimizedComment {
+      isMinimized
+    }
+  }
+}
+`,
+            {
+              input: {
+                subjectId: nodeId,
+                classifier: 'OUTDATED',
+              },
+            },
+          ),
+        { numOfAttempts: 5 },
+      );
+      return;
+    },
     postComment: async (issueNumber: number, comment: string) => {
       const _ = await backOff(
         () => octokit.rest.issues.createComment({ ...repository, issue_number: issueNumber, body: comment }),

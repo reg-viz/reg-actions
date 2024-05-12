@@ -10,7 +10,7 @@ import { Config } from './config';
 import { Event } from './event';
 import { findRunAndArtifact, RunClient } from './run';
 import { compare, CompareOutput } from './compare';
-import { createCommentWithTarget, createCommentWithoutTarget } from './comment';
+import { createCommentWithTarget, createCommentWithoutTarget, isRegActionComment } from './comment';
 import * as constants from './constants';
 import { workspace } from './path';
 import { pushImages } from './push';
@@ -115,6 +115,17 @@ const init = async (config: Config) => {
 
 type CommentClient = {
   postComment: (issueNumber: number, comment: string) => Promise<void>;
+  listComments: (issueNumber: number) => Promise<{ node_id: string; body?: string | undefined }[]>;
+  minimizeOutdatedComment: (nodeId: string) => Promise<void>;
+};
+
+const minimizePreviousComments = async (client: CommentClient, issueNumber: number, artifactName: string) => {
+  const comments = await client.listComments(issueNumber);
+  for (const comment of comments) {
+    if (comment.body && isRegActionComment({ artifactName, body: comment.body })) {
+      await client.minimizeOutdatedComment(comment.node_id);
+    }
+  }
 };
 
 type SummaryClient = {
@@ -172,6 +183,9 @@ export const run = async ({
         artifactName: config.artifactName,
         customReportPage: config.customReportPage,
       });
+      if (config.outdatedCommentAction === 'minimize') {
+        await minimizePreviousComments(client, event.number, config.artifactName);
+      }
       await client.postComment(event.number, comment);
     }
     return;
@@ -218,6 +232,9 @@ export const run = async ({
   });
 
   try {
+    if (config.outdatedCommentAction === 'minimize') {
+      await minimizePreviousComments(client, event.number, config.artifactName);
+    }
     await client.postComment(event.number, comment);
 
     log.info('post summary comment');
