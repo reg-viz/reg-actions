@@ -283,3 +283,9 @@ ${report}
 
   return body;
 };
+
+export const isRegActionComment = ({ artifactName, body }: { artifactName: string; body: string }): boolean => {
+  return (
+    body.includes(`## ArtifactName: \`${artifactName}\``) || body.includes(`## ArtifactName: [\`${artifactName}\`]`)
+  );
+};

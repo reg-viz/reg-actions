@@ -17,6 +17,7 @@ export interface Config {
   customReportPage: string | null;
   reportFilePath: string | null;
   commentReportFormat: 'raw' | 'summarized';
+  outdatedCommentAction: 'none' | 'minimize';
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -101,6 +102,12 @@ function validateCommentReportFormat(format: string): asserts format is 'raw' | 
   }
 }
 
+function validateOutdatedCommentAction(action: string): asserts action is 'none' | 'minimize' {
+  if (action !== 'none' && action !== 'minimize') {
+    throw new Error(`'outdated-comment-action' input must be 'none' or 'minimized' but got '${action}'`);
+  }
+}
+
 export const getConfig = (): Config => {
   const githubToken = core.getInput('github-token');
   const imageDirectoryPath = core.getInput('image-directory-path');
@@ -121,6 +128,8 @@ export const getConfig = (): Config => {
   validateReportFilePath(reportFilePath);
   const commentReportFormat = core.getInput('comment-report-format') || 'raw';
   validateCommentReportFormat(commentReportFormat);
+  const outdatedCommentAction = core.getInput('outdated-comment-action') || 'none';
+  validateOutdatedCommentAction(outdatedCommentAction);
 
   return {
     githubToken,
@@ -136,5 +145,6 @@ export const getConfig = (): Config => {
     customReportPage,
     reportFilePath,
     commentReportFormat,
+    outdatedCommentAction,
   };
 };
