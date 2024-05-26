@@ -130,7 +130,7 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
 };
 
 export const pushImages = async (input: PushImagesInput) => {
-  log.info('Staring Push images')
+  log.info('Staring Push images');
   const { env } = input;
   const config = genConfig(input);
 
@@ -203,7 +203,6 @@ export const pushImages = async (input: PushImagesInput) => {
     log.info(`Retention days = ${input.retentionDays}`);
     const retention = input.retentionDays * 24 * 60 * 60 * 1000;
     const files = await fs.readdir(REPO_TEMP);
-    log.info(files);
     for (const fileOrDir of files) {
       const p = path.join(REPO_TEMP, fileOrDir);
       if ((await fs.stat(p)).isDirectory()) {

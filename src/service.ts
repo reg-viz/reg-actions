@@ -201,21 +201,21 @@ export const run = async ({
   log.info('Result', result);
 
   // If changed, upload images to specified branch.
-  // if (!config.disableBranch) {
-  // if (result.deletedItems.length !== 0 || result.failedItems.length !== 0 || result.newItems.length !== 0) {
-  await pushImages({
-    githubToken: config.githubToken,
-    runId,
-    result,
-    branch: config.branch,
-    targetDir: targetDir({ runId, artifactName: config.artifactName, date }),
-    env: process.env,
-    // commitName: undefined,
-    // commitEmail: undefined,
-    retentionDays: config.retentionDays,
-  });
-  // }
-  // }
+  if (!config.disableBranch) {
+    if (result.deletedItems.length !== 0 || result.failedItems.length !== 0 || result.newItems.length !== 0) {
+      await pushImages({
+        githubToken: config.githubToken,
+        runId,
+        result,
+        branch: config.branch,
+        targetDir: targetDir({ runId, artifactName: config.artifactName, date }),
+        env: process.env,
+        // commitName: undefined,
+        // commitEmail: undefined,
+        retentionDays: config.retentionDays,
+      });
+    }
+  }
 
   const comment = createCommentWithTarget({
     event,
