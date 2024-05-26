@@ -203,17 +203,17 @@ export const run = async ({
   // If changed, upload images to specified branch.
   if (!config.disableBranch) {
     // if (result.deletedItems.length !== 0 || result.failedItems.length !== 0 || result.newItems.length !== 0) {
-      await pushImages({
-        githubToken: config.githubToken,
-        runId,
-        result,
-        branch: config.branch,
-        targetDir: targetDir({ runId, artifactName: config.artifactName, date }),
-        env: process.env,
-        // commitName: undefined,
-        // commitEmail: undefined,
-        retentionDays: config.retentionDays,
-      });
+    await pushImages({
+      githubToken: config.githubToken,
+      runId,
+      result,
+      branch: config.branch,
+      targetDir: targetDir({ runId, artifactName: config.artifactName, date }),
+      env: process.env,
+      // commitName: undefined,
+      // commitEmail: undefined,
+      retentionDays: config.retentionDays,
+    });
     // }
   }
 

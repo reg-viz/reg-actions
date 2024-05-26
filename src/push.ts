@@ -130,6 +130,7 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
 };
 
 export const pushImages = async (input: PushImagesInput) => {
+  log.info('Staring Push images')
   const { env } = input;
   const config = genConfig(input);
 
