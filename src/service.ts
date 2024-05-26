@@ -198,7 +198,7 @@ export const run = async ({
 
   const result = await compareAndUpload(client, config);
 
-  log.info(result);
+  log.info('Result', result);
 
   // If changed, upload images to specified branch.
   if (!config.disableBranch) {
@@ -212,6 +212,7 @@ export const run = async ({
         env: process.env,
         // commitName: undefined,
         // commitEmail: undefined,
+        retentionDays: config.retentionDays,
       });
     }
   }
