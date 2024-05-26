@@ -47,6 +47,9 @@ inputs:
   outdated-comment-action:
     description: "The option to handle outdated comments. `none` by default."
     required: false
+  retention-days:
+    description: "This option allows you to specify the duration for which images are stored in the branch. If not specified, the default is 30 days."
+    required: false
 runs:
   using: "node20"
   main: "lib/index.js"
