@@ -179,6 +179,13 @@ The option how to render changed file in comment. This action will change PR and
 
 The option to handle outdated comments in the PR. Available options are `none` and `minimize`. `none` do nothing. `minimize` will minimize outdated action comments.
 
+### `retention-days` (Optional)
+
+- Type: number
+- Default: `30`
+
+This option allows you to specify the duration for which images are stored in the branch. If not specified, the default is 30 days.
+
 ## Limitation
 
 - If the `artifact` is deleted, the report will also be deleted, see [`Artifact and log retention policy`](https://docs.github.com/ja/actions/learn-github-actions/usage-limits-billing-and-administration#artifact-and-log-retention-policy) for the retention period of the `artifact`.

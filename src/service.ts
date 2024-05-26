@@ -212,6 +212,7 @@ export const run = async ({
         env: process.env,
         // commitName: undefined,
         // commitEmail: undefined,
+        retentionDays: config.retentionDays,
       });
     }
   }

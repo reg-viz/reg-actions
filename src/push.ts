@@ -44,7 +44,6 @@ import { log } from './logger';
 import { CompareOutput } from './compare';
 import { workspace } from './path';
 import * as constants from './constants';
-import { rejects } from 'assert';
 import { backOff } from 'exponential-backoff';
 
 export type PushImagesInput = {
@@ -54,6 +53,7 @@ export type PushImagesInput = {
   branch: string;
   targetDir: string;
   env: EnvironmentVariables;
+  retentionDays: number;
   // commitName?: string;
   // commitEmail?: string;
 };
@@ -195,6 +195,30 @@ export const pushImages = async (input: PushImagesInput) => {
     for await (const entry of filesToDelete) {
       await fs.unlink(entry);
     }
+  }
+
+  /* delete expired directories */
+  try {
+    log.info(`retention days = ${input.retentionDays}`);
+    const retention = input.retentionDays * 24 * 60 * 60 * 1000;
+    const files = await fs.readdir(REPO_TEMP);
+    log.info(files);
+    for (const fileOrDir of files) {
+      const p = path.join(REPO_TEMP, fileOrDir);
+      if ((await fs.stat(p)).isDirectory()) {
+        const day = fileOrDir.split('_')[0];
+        if (day) {
+          const now = new Date().getTime();
+          const target = new Date(day).getTime();
+          if (now - target > retention) {
+            log.info(`delete dir ${fileOrDir}`);
+            await fs.rmdir(p, { recursive: true });
+          }
+        }
+      }
+    }
+  } catch (e) {
+    log.error('Failed to delete directories', e);
   }
 
   const destDir = input.targetDir;
