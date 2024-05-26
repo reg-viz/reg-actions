@@ -199,7 +199,7 @@ export const pushImages = async (input: PushImagesInput) => {
 
   /* delete expired directories */
   try {
-    log.info(`retention days = ${input.retentionDays}`);
+    log.info(`Retention days = ${input.retentionDays}`);
     const retention = input.retentionDays * 24 * 60 * 60 * 1000;
     const files = await fs.readdir(REPO_TEMP);
     log.info(files);
