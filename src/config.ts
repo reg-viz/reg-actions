@@ -117,7 +117,7 @@ export const getConfig = (): Config => {
   const matchingThreshold = getNumberInput('matching-threshold') ?? 0;
   const thresholdRate = getNumberInput('threshold-rate') ?? 0;
   const thresholdPixel = getNumberInput('threshold-pixel') ?? 0;
-  const retentionDays = getNumberInput('threshold-pixel') ?? 30;
+  const retentionDays = getNumberInput('retention-days') ?? 30;
   validateMatchingThreshold(matchingThreshold);
   validateThresholdRate(thresholdRate);
   const targetHash = core.getInput('target-hash') || null;
