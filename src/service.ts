@@ -27,26 +27,17 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
     const zip = await client.downloadArtifact(latestArtifactId);
     const buf = Buffer.from(zip.data as any);
     log.info(`Downloaded zip size = ${buf.byteLength}`);
-    await Promise.all(
-      new Zip(buf)
-        .getEntries()
-        .filter(f => {
-          log.info('entryName:', f.entryName);
-          return !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME);
-        })
-        .map(async file => {
-          const f = path.join(
-            workspace(),
-            file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME),
-          );
-          await makeDir(path.dirname(f));
-          log.info('download to', f);
-          await fs.promises.writeFile(f, file.getData());
-        }),
-    ).catch(e => {
-      log.error('Failed to extract images.', e);
-      throw e;
-    });
+    const entries = new Zip(buf).getEntries();
+    log.info(`entry size = ${entries.length}`);
+    for (const entry of entries) {
+      if (entry.isDirectory || !entry.entryName.startsWith(constants.ACTUAL_DIR_NAME)) continue;
+      // https://github.com/reg-viz/reg-actions/security/code-scanning/2
+      if (entry.entryName.includes('..')) continue;
+      const f = path.join(workspace(), entry.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
+      await makeDir(path.dirname(f));
+      log.info('download to', f);
+      await fs.promises.writeFile(f, entry.getData());
+    }
   } catch (e: any) {
     if (e.message === 'Artifact has expired') {
       log.error('Failed to download expected images. Because expected artifact has already expired.');
