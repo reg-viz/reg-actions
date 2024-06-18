@@ -1,10 +1,8 @@
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import cpy from 'cpy';
-import { sync as globSync } from 'glob';
 import makeDir from 'make-dir';
-import Zip from 'adm-zip';
-
+import { glob } from 'glob';
 import { log } from './logger';
 import { Config } from './config';
 import { Event } from './event';
@@ -17,27 +15,31 @@ import { pushImages } from './push';
 import { targetDir } from './helper';
 
 type DownloadClient = {
-  downloadArtifact: (id: number) => Promise<{ data: unknown }>;
+  downloadArtifact: (token: string, artifactId: number, runId: number, artifactName: string) => Promise<void>;
 };
 
 // Download expected images from target artifact.
-const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: number) => {
+const downloadExpectedImages = async (
+  client: DownloadClient,
+  latestArtifactId: number,
+  runId: number,
+  config: Config,
+) => {
   log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
   try {
-    const zip = await client.downloadArtifact(latestArtifactId);
-    const buf = Buffer.from(zip.data as any);
-    log.info(`Downloaded zip size = ${buf.byteLength}`);
-    const entries = new Zip(buf).getEntries();
-    log.info(`entry size = ${entries.length}`);
-    for (const entry of entries) {
-      if (entry.isDirectory || !entry.entryName.startsWith(constants.ACTUAL_DIR_NAME)) continue;
-      // https://github.com/reg-viz/reg-actions/security/code-scanning/2
-      if (entry.entryName.includes('..')) continue;
-      const f = path.join(workspace(), entry.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
+    await client.downloadArtifact(config.githubToken, latestArtifactId, runId, config.artifactName);
+    const files = await glob(`${constants.DOWNLOAD_PATH}/**/${constants.ACTUAL_DIR_NAME}/**/*`);
+    log.info(`file size ${files.length}`);
+    files.map(async file => {
+      if (!/(png|jpg|jpeg|tiff|bmp|gif)$/.test(file)) return;
+      const f = path.join(
+        workspace(),
+        file.replace(path.join(constants.DOWNLOAD_PATH, constants.ACTUAL_DIR_NAME), constants.EXPECTED_DIR_NAME),
+      );
       await makeDir(path.dirname(f));
       log.info('download to', f);
-      await fs.promises.writeFile(f, entry.getData());
-    }
+      await fs.copyFile(file, f);
+    });
   } catch (e: any) {
     if (e.message === 'Artifact has expired') {
       log.error('Failed to download expected images. Because expected artifact has already expired.');
@@ -69,7 +71,7 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
   const result = await compare(config);
   log.info('compare result', result);
 
-  const files = globSync(path.join(workspace(), '**/*'));
+  const files = await glob.glob(path.join(workspace(), '**/*'));
 
   log.info('Start upload artifact');
 
@@ -88,7 +90,7 @@ const init = async (config: Config) => {
   log.info(`start initialization with config.`, config);
 
   // Cleanup workspace
-  await fs.promises.rm(workspace(), {
+  await fs.rm(workspace(), {
     recursive: true,
     force: true,
   });
@@ -187,7 +189,7 @@ export const run = async ({
   const { run: targetRun, artifact } = runAndArtifact;
 
   // Download and copy expected images to workspace.
-  await downloadExpectedImages(client, artifact.id);
+  await downloadExpectedImages(client, artifact.id, targetRun.id, config);
 
   const result = await compareAndUpload(client, config);
 
