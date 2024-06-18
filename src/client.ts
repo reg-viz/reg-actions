@@ -2,7 +2,7 @@ import * as github from '@actions/github';
 import { DefaultArtifactClient } from '@actions/artifact';
 import { backOff } from 'exponential-backoff';
 import { summary } from '@actions/core';
-import { DOWNLOAD_PATH } from './constants';
+
 import { Repository } from './repository';
 import { workspace } from './path';
 
@@ -33,21 +33,16 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       });
       return res;
     },
-    downloadArtifact: async (token: string, artifactId: number, runId: number) => {
-      await backOff(
+    downloadArtifact: async (artifactId: number) => {
+      return backOff(
         () =>
-          artifactClient.downloadArtifact(artifactId, {
-            path: DOWNLOAD_PATH,
-            findBy: {
-              token,
-              workflowRunId: runId,
-              repositoryName: repository.repo,
-              repositoryOwner: repository.owner,
-            },
+          octokit.rest.actions.downloadArtifact({
+            ...repository,
+            artifact_id: artifactId,
+            archive_format: 'zip',
           }),
         { numOfAttempts: 5 },
       );
-      return;
     },
     listComments: async (issueNumber: number): Promise<{ node_id: string; body?: string | undefined }[]> => {
       return backOff(

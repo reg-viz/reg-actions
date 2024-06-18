@@ -5,4 +5,3 @@ export const JSON_NAME = '0';
 
 export const ARTIFACT_NAME = 'reg';
 export const WORKSPACE_DIR_NAME = '__reg__';
-export const DOWNLOAD_PATH = '__reg_download';
