@@ -9,7 +9,7 @@ export interface Config {
   enableAntialias: boolean;
   matchingThreshold: number;
   thresholdRate: number;
-  thresholdPixel: number;
+  thresholdPixel: number | null;
   targetHash: string | null;
   artifactName: string;
   branch: string;
@@ -116,7 +116,7 @@ export const getConfig = (): Config => {
   validateImageDirPath(imageDirectoryPath);
   const matchingThreshold = getNumberInput('matching-threshold') ?? 0;
   const thresholdRate = getNumberInput('threshold-rate') ?? 0;
-  const thresholdPixel = getNumberInput('threshold-pixel') ?? 0;
+  const thresholdPixel = getNumberInput('threshold-pixel');
   const retentionDays = getNumberInput('retention-days') ?? 30;
   validateMatchingThreshold(matchingThreshold);
   validateThresholdRate(thresholdRate);
