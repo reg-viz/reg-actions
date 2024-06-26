@@ -11,6 +11,9 @@ inputs:
   image-directory-path:
     description: "Path to images directory.The images stored in this directory will be compared with the expected images from the last upload."
     required: true
+  expected-images-directory-path:
+    description: "Path to expected images directory. The images stored in this directory will be compared with the actual images from image-directory-path."
+    required: false
   enable-antialias:
     description: "Enable antialias. If omitted false."
     required: false
