@@ -5,6 +5,7 @@ import { dirname } from 'path';
 
 export interface Config {
   imageDirectoryPath: string;
+  expectedImagesDirectoryPath: string | null;
   githubToken: string;
   enableAntialias: boolean;
   matchingThreshold: number;
@@ -27,7 +28,10 @@ const validateGitHubToken = (githubToken: string | undefined) => {
   }
 };
 
-const validateImageDirPath = (path: string | undefined) => {
+const validateImageDirPath = (path: string | undefined, allowEmpty: boolean = false) => {
+  if (allowEmpty && !path) {
+    return;
+  }
   if (!path) {
     throw new Error(`'image-directory-path' is not set. Please specify path to image directory.`);
   }
@@ -114,6 +118,8 @@ export const getConfig = (): Config => {
   const imageDirectoryPath = core.getInput('image-directory-path');
   validateGitHubToken(githubToken);
   validateImageDirPath(imageDirectoryPath);
+  const expectedImagesDirectoryPath = core.getInput('expected-images-directory-path') ?? null;
+  validateImageDirPath(imageDirectoryPath, true);
   const matchingThreshold = getNumberInput('matching-threshold') ?? 0;
   const thresholdRate = getNumberInput('threshold-rate') ?? 0;
   const thresholdPixel = getNumberInput('threshold-pixel');
@@ -136,6 +142,7 @@ export const getConfig = (): Config => {
   return {
     githubToken,
     imageDirectoryPath,
+    expectedImagesDirectoryPath,
     enableAntialias: getBoolInput('enable-antialias'),
     matchingThreshold,
     thresholdRate,

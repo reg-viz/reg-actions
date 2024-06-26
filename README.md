@@ -87,7 +87,17 @@ It is used to upload test report and add comment to pull request.
 - Type: String
 - Default: N/A
 
-Path to images directory.The images stored in this directory will be compared with the expected images from the last upload.
+Path to images directory. The images stored in this directory will be compared with the expected images from the last upload.
+
+#### `expected-images-directory-path` (Optional)
+
+- Type: String
+- Default: N/A
+
+Path to expected images directory. These images will be compared with images stored in `image-directory-path`. 
+
+If this option is specified, images from artifact upload are ignored.
+Instead, the images are copied directly from the specified directory.
 
 #### `enable-antialias` (Optional)
 

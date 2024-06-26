@@ -47,14 +47,11 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
   }
 };
 
-const copyActualImages = async (imagePath: string) => {
+const copyImages = async (imagePath: string, dirName: string) => {
   log.info(`Start copyImage from ${imagePath}`);
 
   try {
-    await cpy(
-      path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`),
-      path.join(workspace(), constants.ACTUAL_DIR_NAME),
-    );
+    await cpy(path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), path.join(workspace(), dirName));
   } catch (e) {
     log.error(`Failed to copy images ${e}`);
   }
@@ -101,7 +98,7 @@ const init = async (config: Config) => {
   log.info(`Succeeded to cerate directory.`);
 
   // Copy actual images
-  await copyActualImages(config.imageDirectoryPath);
+  await copyImages(config.imageDirectoryPath, constants.ACTUAL_DIR_NAME);
 
   log.info(`Succeeded to initialization.`);
 };
@@ -153,41 +150,48 @@ export const run = async ({
     return;
   }
 
-  log.info(`start to find run and artifact.`);
-  // Find current run and target run and artifact.
-  const runAndArtifact = await findRunAndArtifact({
-    event,
-    client,
-    targetHash: config.targetHash,
-    artifactName: config.artifactName,
-  });
+  let targetHash: string | null = null;
 
-  // If target artifact is not found, upload images.
-  if (!runAndArtifact || !runAndArtifact.run || !runAndArtifact.artifact) {
-    log.warn('Failed to find current or target runs');
-    const result = await compareAndUpload(client, config);
+  if (config.expectedImagesDirectoryPath) {
+    await copyImages(config.expectedImagesDirectoryPath, constants.EXPECTED_DIR_NAME);
+  } else {
+    log.info(`start to find run and artifact.`);
+    // Find current run and target run and artifact.
+    const runAndArtifact = await findRunAndArtifact({
+      event,
+      client,
+      targetHash: config.targetHash,
+      artifactName: config.artifactName,
+    });
 
-    // If we have current run, add comment to PR.
-    if (runId) {
-      const comment = createCommentWithoutTarget({
-        event,
-        runId,
-        result,
-        artifactName: config.artifactName,
-        customReportPage: config.customReportPage,
-      });
-      if (config.outdatedCommentAction === 'minimize') {
-        await minimizePreviousComments(client, event.number, config.artifactName);
+    // If target artifact is not found, upload images.
+    if (!runAndArtifact || !runAndArtifact.run || !runAndArtifact.artifact) {
+      log.warn('Failed to find current or target runs');
+      const result = await compareAndUpload(client, config);
+
+      // If we have current run, add comment to PR.
+      if (runId) {
+        const comment = createCommentWithoutTarget({
+          event,
+          runId,
+          result,
+          artifactName: config.artifactName,
+          customReportPage: config.customReportPage,
+        });
+        if (config.outdatedCommentAction === 'minimize') {
+          await minimizePreviousComments(client, event.number, config.artifactName);
+        }
+        await client.postComment(event.number, comment);
       }
-      await client.postComment(event.number, comment);
+      return;
     }
-    return;
+
+    const { run: targetRun, artifact } = runAndArtifact;
+    targetHash = targetRun.head_sha;
+
+    // Download and copy expected images to workspace.
+    await downloadExpectedImages(client, artifact?.id);
   }
-
-  const { run: targetRun, artifact } = runAndArtifact;
-
-  // Download and copy expected images to workspace.
-  await downloadExpectedImages(client, artifact.id);
 
   const result = await compareAndUpload(client, config);
 
@@ -214,7 +218,7 @@ export const run = async ({
     event,
     runId,
     sha,
-    targetRun,
+    targetHash,
     date,
     result,
     artifactName: config.artifactName,
