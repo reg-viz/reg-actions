@@ -8,7 +8,7 @@ import Zip from 'adm-zip';
 import { log } from './logger';
 import { Config } from './config';
 import { Event } from './event';
-import { findRunAndArtifact, RunClient } from './run';
+import { findRunAndArtifact, Run, RunClient } from './run';
 import { compare, CompareOutput } from './compare';
 import { createCommentWithTarget, createCommentWithoutTarget, isRegActionComment } from './comment';
 import * as constants from './constants';
@@ -150,7 +150,7 @@ export const run = async ({
     return;
   }
 
-  let targetHash: string | null = null;
+  let targetRun: Run | null = null;
 
   if (config.expectedImagesDirectoryPath) {
     await copyImages(config.expectedImagesDirectoryPath, constants.EXPECTED_DIR_NAME);
@@ -187,7 +187,6 @@ export const run = async ({
     }
 
     const { run: targetRun, artifact } = runAndArtifact;
-    targetHash = targetRun.head_sha;
 
     // Download and copy expected images to workspace.
     await downloadExpectedImages(client, artifact?.id);
@@ -218,7 +217,7 @@ export const run = async ({
     event,
     runId,
     sha,
-    targetHash,
+    targetRun,
     date,
     result,
     artifactName: config.artifactName,

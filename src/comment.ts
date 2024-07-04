@@ -10,7 +10,7 @@ export type CreateCommentWithTargetInput = {
   sha: string;
   regBranch: string;
   artifactName: string;
-  targetHash: string | null;
+  targetRun: Run | null;
   result: CompareOutput;
   date: string;
   customReportPage: string | null;
@@ -187,7 +187,7 @@ export const createCommentWithTarget = ({
   artifactName,
   artifactId,
   sha: currentHash,
-  targetHash: inputTargetHash,
+  targetRun,
   result,
   date,
   customReportPage,
@@ -195,7 +195,7 @@ export const createCommentWithTarget = ({
   commentReportFormat,
 }: CreateCommentWithTargetInput): string => {
   const [owner, repoName] = event.repository.full_name.split('/');
-  const targetHash = inputTargetHash ?? currentHash;
+  const targetHash = targetRun?.head_sha ?? currentHash;
   const currentHashShort = currentHash.slice(0, 7);
   const targetHashShort = targetHash.slice(0, 7);
   const baseUrl = createBaseUrl({ owner, repoName, branch: regBranch, runId, artifactName, date });
