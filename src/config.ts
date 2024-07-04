@@ -119,7 +119,9 @@ export const getConfig = (): Config => {
   validateGitHubToken(githubToken);
   validateImageDirPath(imageDirectoryPath);
   const expectedImagesDirectoryPath = core.getInput('expected-images-directory-path') ?? null;
-  validateImageDirPath(expectedImagesDirectoryPath, true);
+  if (expectedImagesDirectoryPath !== null) {
+    validateImageDirPath(expectedImagesDirectoryPath);
+  }
   const matchingThreshold = getNumberInput('matching-threshold') ?? 0;
   const thresholdRate = getNumberInput('threshold-rate') ?? 0;
   const thresholdPixel = getNumberInput('threshold-pixel');
