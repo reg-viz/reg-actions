@@ -28,10 +28,7 @@ const validateGitHubToken = (githubToken: string | undefined) => {
   }
 };
 
-const validateImageDirPath = (path: string | undefined, allowEmpty: boolean = false) => {
-  if (allowEmpty && !path) {
-    return;
-  }
+const validateImageDirPath = (path: string | undefined) => {
   if (!path) {
     throw new Error(`'image-directory-path' is not set. Please specify path to image directory.`);
   }
