@@ -8,9 +8,9 @@ import Zip from 'adm-zip';
 import { log } from './logger';
 import { Config } from './config';
 import { Event } from './event';
-import { findRunAndArtifact, RunClient } from './run';
+import { findRunAndArtifact, Run, RunClient } from './run';
 import { compare, CompareOutput } from './compare';
-import { createCommentWithTarget, createCommentWithoutTarget } from './comment';
+import { createCommentWithTarget, createCommentWithoutTarget, isRegActionComment } from './comment';
 import * as constants from './constants';
 import { workspace } from './path';
 import { pushImages } from './push';
@@ -25,22 +25,19 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
   log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
   try {
     const zip = await client.downloadArtifact(latestArtifactId);
-    await Promise.all(
-      new Zip(Buffer.from(zip.data as any))
-        .getEntries()
-        .filter(f => !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME))
-        .map(async file => {
-          const f = path.join(
-            workspace(),
-            file.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME),
-          );
-          await makeDir(path.dirname(f));
-          await fs.promises.writeFile(f, file.getData());
-        }),
-    ).catch(e => {
-      log.error('Failed to extract images.', e);
-      throw e;
-    });
+    const buf = Buffer.from(zip.data as any);
+    log.info(`Downloaded zip size = ${buf.byteLength}`);
+    const entries = new Zip(buf).getEntries();
+    log.info(`entry size = ${entries.length}`);
+    for (const entry of entries) {
+      if (entry.isDirectory || !entry.entryName.startsWith(constants.ACTUAL_DIR_NAME)) continue;
+      // https://github.com/reg-viz/reg-actions/security/code-scanning/2
+      if (entry.entryName.includes('..')) continue;
+      const f = path.join(workspace(), entry.entryName.replace(constants.ACTUAL_DIR_NAME, constants.EXPECTED_DIR_NAME));
+      await makeDir(path.dirname(f));
+      log.info('download to', f);
+      await fs.promises.writeFile(f, entry.getData());
+    }
   } catch (e: any) {
     if (e.message === 'Artifact has expired') {
       log.error('Failed to download expected images. Because expected artifact has already expired.');
@@ -50,58 +47,75 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
   }
 };
 
-const copyActualImages = async (imagePath: string) => {
+const copyImages = async (imagePath: string, dirName: string) => {
   log.info(`Start copyImage from ${imagePath}`);
 
   try {
-    await cpy(
-      path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`),
-      path.join(workspace(), constants.ACTUAL_DIR_NAME),
-    );
+    await cpy(path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`), path.join(workspace(), dirName));
   } catch (e) {
     log.error(`Failed to copy images ${e}`);
   }
 };
 
 type UploadClient = {
-  uploadArtifact: (files: string[], artifactName: string) => Promise<void>;
+  uploadArtifact: (files: string[], artifactName: string) => Promise<{ id?: number }>;
 };
 
 // Compare images and upload result.
-const compareAndUpload = async (client: UploadClient, config: Config): Promise<CompareOutput> => {
+const compareAndUpload = async (client: UploadClient, config: Config): Promise<CompareOutput & { id?: number }> => {
   const result = await compare(config);
-  log.debug('compare result', result);
+  log.info('compare result', result);
 
   const files = globSync(path.join(workspace(), '**/*'));
 
   log.info('Start upload artifact');
 
   try {
-    await client.uploadArtifact(files, config.artifactName);
+    const res = await client.uploadArtifact(files, config.artifactName);
+    log.info('Succeeded to upload artifact');
+
+    return { id: res.id, ...result };
   } catch (e) {
     log.error(e);
     throw new Error('Failed to upload artifact');
   }
-  log.info('Succeeded to upload artifact');
-
-  return result;
 };
 
 const init = async (config: Config) => {
-  log.info(`start initialization.`);
+  log.info(`start initialization with config.`, config);
+
+  // Cleanup workspace
+  await fs.promises.rm(workspace(), {
+    recursive: true,
+    force: true,
+  });
+
+  log.info(`Succeeded to cleanup workspace.`);
+
   // Create workspace
   await makeDir(workspace());
 
   log.info(`Succeeded to cerate directory.`);
 
   // Copy actual images
-  await copyActualImages(config.imageDirectoryPath);
+  await copyImages(config.imageDirectoryPath, constants.ACTUAL_DIR_NAME);
 
   log.info(`Succeeded to initialization.`);
 };
 
 type CommentClient = {
   postComment: (issueNumber: number, comment: string) => Promise<void>;
+  listComments: (issueNumber: number) => Promise<{ node_id: string; body?: string | undefined }[]>;
+  minimizeOutdatedComment: (nodeId: string) => Promise<void>;
+};
+
+const minimizePreviousComments = async (client: CommentClient, issueNumber: number, artifactName: string) => {
+  const comments = await client.listComments(issueNumber);
+  for (const comment of comments) {
+    if (comment.body && isRegActionComment({ artifactName, body: comment.body })) {
+      await client.minimizeOutdatedComment(comment.node_id);
+    }
+  }
 };
 
 type SummaryClient = {
@@ -136,42 +150,51 @@ export const run = async ({
     return;
   }
 
-  log.info(`start to find run and artifact.`);
-  // Find current run and target run and artifact.
-  const runAndArtifact = await findRunAndArtifact({
-    event,
-    client,
-    targetHash: config.targetHash,
-    artifactName: config.artifactName,
-  });
+  let targetRun: Run | null = null;
 
-  // If target artifact is not found, upload images.
-  if (!runAndArtifact || !runAndArtifact.run || !runAndArtifact.artifact) {
-    log.warn('Failed to find current or target runs');
-    const result = await compareAndUpload(client, config);
+  if (config.expectedImagesDirectoryPath) {
+    await copyImages(config.expectedImagesDirectoryPath, constants.EXPECTED_DIR_NAME);
+  } else {
+    log.info(`start to find run and artifact.`);
+    // Find current run and target run and artifact.
+    const runAndArtifact = await findRunAndArtifact({
+      event,
+      client,
+      targetHash: config.targetHash,
+      artifactName: config.artifactName,
+    });
 
-    // If we have current run, add comment to PR.
-    if (runId) {
-      const comment = createCommentWithoutTarget({
-        event,
-        runId,
-        result,
-        artifactName: config.artifactName,
-        customReportPage: config.customReportPage,
-      });
-      await client.postComment(event.number, comment);
+    // If target artifact is not found, upload images.
+    if (!runAndArtifact || !runAndArtifact.run || !runAndArtifact.artifact) {
+      log.warn('Failed to find current or target runs');
+      const result = await compareAndUpload(client, config);
+
+      // If we have current run, add comment to PR.
+      if (runId) {
+        const comment = createCommentWithoutTarget({
+          event,
+          runId,
+          result,
+          artifactName: config.artifactName,
+          customReportPage: config.customReportPage,
+        });
+        if (config.outdatedCommentAction === 'minimize') {
+          await minimizePreviousComments(client, event.number, config.artifactName);
+        }
+        await client.postComment(event.number, comment);
+      }
+      return;
     }
-    return;
+
+    const { run: targetRun, artifact } = runAndArtifact;
+
+    // Download and copy expected images to workspace.
+    await downloadExpectedImages(client, artifact?.id);
   }
-
-  const { run: targetRun, artifact } = runAndArtifact;
-
-  // Download and copy expected images to workspace.
-  await downloadExpectedImages(client, artifact.id);
 
   const result = await compareAndUpload(client, config);
 
-  log.info(result);
+  log.info('Result', result);
 
   // If changed, upload images to specified branch.
   if (!config.disableBranch) {
@@ -185,6 +208,7 @@ export const run = async ({
         env: process.env,
         // commitName: undefined,
         // commitEmail: undefined,
+        retentionDays: config.retentionDays,
       });
     }
   }
@@ -197,14 +221,23 @@ export const run = async ({
     date,
     result,
     artifactName: config.artifactName,
+    artifactId: result.id,
     regBranch: config.branch,
     customReportPage: config.customReportPage,
     disableBranch: config.disableBranch,
+    commentReportFormat: config.commentReportFormat,
   });
 
-  await client.postComment(event.number, comment);
+  try {
+    if (config.outdatedCommentAction === 'minimize') {
+      await minimizePreviousComments(client, event.number, config.artifactName);
+    }
+    await client.postComment(event.number, comment);
 
-  log.info('post summary comment');
+    log.info('post summary comment');
 
-  await client.summary(comment);
+    await client.summary(comment);
+  } catch (e) {
+    log.error(e);
+  }
 };
