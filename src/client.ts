@@ -1,5 +1,5 @@
 import * as github from '@actions/github';
-import { DefaultArtifactClient } from '@actions/artifact';
+import * as artifact from '@actions/artifact';
 import { backOff } from 'exponential-backoff';
 import { summary } from '@actions/core';
 
@@ -9,7 +9,7 @@ import { workspace } from './path';
 export type Octokit = ReturnType<typeof github.getOctokit>;
 
 export const createClient = (repository: Repository, octokit: Octokit) => {
-  const artifactClient = new DefaultArtifactClient();
+  const artifactClient = artifact.create();
 
   return {
     fetchRuns: async (page: number) => {
@@ -28,10 +28,10 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
       return backOff(() => octokit.rest.actions.listWorkflowRunArtifacts(input), { numOfAttempts: 5 });
     },
     uploadArtifact: async (files: string[], artifactName: string) => {
-      const res = await backOff(() => artifactClient.uploadArtifact(artifactName, files, workspace()), {
+      const _ = await backOff(() => artifactClient.uploadArtifact(artifactName, files, workspace()), {
         numOfAttempts: 5,
       });
-      return res;
+      return;
     },
     downloadArtifact: async (artifactId: number) => {
       return backOff(
@@ -43,45 +43,6 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
           }),
         { numOfAttempts: 5 },
       );
-    },
-    listComments: async (issueNumber: number): Promise<{ node_id: string; body?: string | undefined }[]> => {
-      return backOff(
-        () =>
-          octokit.paginate(
-            octokit.rest.issues.listComments,
-            {
-              ...repository,
-              issue_number: issueNumber,
-              per_page: 100,
-            },
-            r => r.data,
-          ),
-        { numOfAttempts: 5 },
-      );
-    },
-    minimizeOutdatedComment: async (nodeId: string) => {
-      const _ = await backOff(
-        () =>
-          octokit.graphql(
-            `
-mutation($input: MinimizeCommentInput!) {
-  minimizeComment(input: $input) {
-    minimizedComment {
-      isMinimized
-    }
-  }
-}
-`,
-            {
-              input: {
-                subjectId: nodeId,
-                classifier: 'OUTDATED',
-              },
-            },
-          ),
-        { numOfAttempts: 5 },
-      );
-      return;
     },
     postComment: async (issueNumber: number, comment: string) => {
       const _ = await backOff(
