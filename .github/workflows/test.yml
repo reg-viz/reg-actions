@@ -16,5 +16,3 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           image-directory-path: "./images"
-          disable-branch: true
-          report-file-path: './'

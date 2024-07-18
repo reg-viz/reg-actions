@@ -10,13 +10,11 @@ export type CreateCommentWithTargetInput = {
   sha: string;
   regBranch: string;
   artifactName: string;
-  targetRun: Run | null;
+  targetRun: Run;
   result: CompareOutput;
   date: string;
   customReportPage: string | null;
   disableBranch: boolean;
-  commentReportFormat: 'raw' | 'summarized';
-  artifactId?: number;
 };
 
 export type CreateCommentWithoutTargetInput = {
@@ -59,15 +57,7 @@ const createBaseUrl = ({
   return `https://github.com/${owner}/${repoName}/blob/${branch}/${date}_${runId}_${artifactName}/`;
 };
 
-const differences = ({
-  result,
-  baseUrl,
-  commentReportFormat,
-}: {
-  result: CompareOutput;
-  baseUrl: string;
-  commentReportFormat: 'raw' | 'summarized';
-}): string => {
+const differences = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string }): string => {
   if (result.failedItems.length === 0) return '';
   const comment = `   
      
@@ -80,21 +70,13 @@ ${result.failedItems
     const actual = baseUrl + 'actual/' + filename + '?raw=true';
     const expected = baseUrl + 'expected/' + filename + '?raw=true';
     const diff = baseUrl + 'diff/' + filename + '?raw=true';
-    const table = `
+
+    return `### \`${base}\`
+   
 | actual|![Actual](${actual}) |
 |--|--|
 |expected|![Expected](${expected})|
-|difference|![Difference](${diff})|
-`;
-
-    if (commentReportFormat === 'summarized') {
-      return `<details><summary>${base}</summary>
-${table}
-</details>`;
-    } else {
-      return `### \`${base}\`
-${table}`;
-    }
+|difference|![Difference](${diff})|`;
   })
   .join('\n')}
   `;
@@ -102,15 +84,7 @@ ${table}`;
   return comment;
 };
 
-const newItems = ({
-  result,
-  baseUrl,
-  commentReportFormat,
-}: {
-  result: CompareOutput;
-  baseUrl: string;
-  commentReportFormat: 'raw' | 'summarized';
-}): string => {
+const newItems = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string }): string => {
   if (result.newItems.length === 0) return '';
   const comment = `   
      
@@ -121,19 +95,12 @@ ${result.newItems
     const base = basename(item);
     const filename = encodeURIComponent(base);
     const img = baseUrl + 'actual/' + filename + '?raw=true';
-    const table = `
+    return `### \`${base}\`
+       
 |  |
 |--|
 |![NewItem](${img})|
-`;
-    if (commentReportFormat === 'summarized') {
-      return `<details><summary>${base}</summary>
-${table}
-</details>`;
-    } else {
-      return `### \`${base}\`
-${table}`;
-    }
+       `;
   })
   .join('\n')}
   `;
@@ -141,15 +108,7 @@ ${table}`;
   return comment;
 };
 
-const deletedItems = ({
-  result,
-  baseUrl,
-  commentReportFormat,
-}: {
-  result: CompareOutput;
-  baseUrl: string;
-  commentReportFormat: 'raw' | 'summarized';
-}): string => {
+const deletedItems = ({ result, baseUrl }: { result: CompareOutput; baseUrl: string }): string => {
   if (result.deletedItems.length === 0) return '';
   const comment = `   
    
@@ -160,19 +119,12 @@ ${result.deletedItems
     const base = basename(item);
     const filename = encodeURIComponent(base);
     const img = baseUrl + 'expected/' + filename + '?raw=true';
-    const table = `
+    return `### \`${base}\`
+       
 |  |
 |--|
 |![DeleteItem](${img})|
-`;
-    if (commentReportFormat === 'summarized') {
-      return `<details><summary>${base}</summary>
-${table}
-</details>`;
-    } else {
-      return `### \`${base}\`
-${table}`;
-    }
+       `;
   })
   .join('\n')}
   `;
@@ -185,17 +137,15 @@ export const createCommentWithTarget = ({
   runId,
   regBranch,
   artifactName,
-  artifactId,
   sha: currentHash,
   targetRun,
   result,
   date,
   customReportPage,
   disableBranch,
-  commentReportFormat,
 }: CreateCommentWithTargetInput): string => {
   const [owner, repoName] = event.repository.full_name.split('/');
-  const targetHash = targetRun?.head_sha ?? currentHash;
+  const targetHash = targetRun.head_sha;
   const currentHashShort = currentHash.slice(0, 7);
   const targetHashShort = targetHash.slice(0, 7);
   const baseUrl = createBaseUrl({ owner, repoName, branch: regBranch, runId, artifactName, date });
@@ -207,9 +157,9 @@ export const createCommentWithTarget = ({
       : `   
 <details>
 <summary>📝 Report</summary>
-${differences({ result, baseUrl, commentReportFormat })}
-${newItems({ result, baseUrl, commentReportFormat })}
-${deletedItems({ result, baseUrl, commentReportFormat })}
+${differences({ result, baseUrl })}
+${newItems({ result, baseUrl })}
+${deletedItems({ result, baseUrl })}
 </details>`;
 
   const reportUrl = customReportPage
@@ -219,16 +169,16 @@ Check out the report [here](${customReportPage}).`
   const successOrFailMessage = isSuccess(result)
     ? `${badge(result)}
 
- ## ArtifactName: [\`${artifactName}\`](https://github.com/${owner}/${repoName}/actions/runs/${runId}/artifacts/${artifactId})
+## ArtifactName: \`${artifactName}\`
   
 ✨✨ That's perfect, there is no visual difference! ✨✨
-${reportUrl}
+Check out the report [here](${reportUrl}).
     `
     : `${badge(result)}
 
- ## ArtifactName: [\`${artifactName}\`](https://github.com/${owner}/${repoName}/actions/runs/${runId}/artifacts/${artifactId})
+## ArtifactName: \`${artifactName}\`
 
-${reportUrl}
+Check out the report [here](${reportUrl}).
     `;
 
   const body = `This report was generated by comparing [${currentHashShort}](https://github.com/${owner}/${repoName}/commit/${currentHash}) with [${targetHashShort}](https://github.com/${owner}/${repoName}/commit/${targetHash}).
@@ -245,17 +195,6 @@ ${successOrFailMessage}
 ${report}
 `;
 
-  // comment body size limitation is 64KiB
-  // So we set 60KiB with margin
-  if (new Blob([body]).size > 60 * 1024) {
-    const lines = body.split('\n');
-    while (new Blob([lines.join('\n')]).size > 60 * 1024) {
-      lines.pop();
-    }
-    lines.push('\n');
-    lines.push('⚠️ report is omitted because comment body size limitation exceeded. Please check report in artifact.');
-    return lines.join('\n');
-  }
   return body;
 };
 
@@ -282,10 +221,4 @@ ${report}
   `;
 
   return body;
-};
-
-export const isRegActionComment = ({ artifactName, body }: { artifactName: string; body: string }): boolean => {
-  return (
-    body.includes(`## ArtifactName: \`${artifactName}\``) || body.includes(`## ArtifactName: [\`${artifactName}\`]`)
-  );
 };

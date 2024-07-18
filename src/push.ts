@@ -44,6 +44,7 @@ import { log } from './logger';
 import { CompareOutput } from './compare';
 import { workspace } from './path';
 import * as constants from './constants';
+import { rejects } from 'assert';
 import { backOff } from 'exponential-backoff';
 
 export type PushImagesInput = {
@@ -53,7 +54,6 @@ export type PushImagesInput = {
   branch: string;
   targetDir: string;
   env: EnvironmentVariables;
-  retentionDays: number;
   // commitName?: string;
   // commitEmail?: string;
 };
@@ -130,7 +130,6 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
 };
 
 export const pushImages = async (input: PushImagesInput) => {
-  log.info('Staring Push images');
   const { env } = input;
   const config = genConfig(input);
 
@@ -198,29 +197,6 @@ export const pushImages = async (input: PushImagesInput) => {
     }
   }
 
-  /* delete expired directories */
-  try {
-    log.info(`Retention days = ${input.retentionDays}`);
-    const retention = input.retentionDays * 24 * 60 * 60 * 1000;
-    const files = await fs.readdir(REPO_TEMP);
-    for (const fileOrDir of files) {
-      const p = path.join(REPO_TEMP, fileOrDir);
-      if ((await fs.stat(p)).isDirectory()) {
-        const day = fileOrDir.split('_')[0];
-        if (day) {
-          const now = new Date().getTime();
-          const target = new Date(day).getTime();
-          if (now - target > retention) {
-            log.info(`delete dir ${fileOrDir}`);
-            await fs.rmdir(p, { recursive: true });
-          }
-        }
-      }
-    }
-  } catch (e) {
-    log.error('Failed to delete directories', e);
-  }
-
   const destDir = input.targetDir;
 
   // Make sure the destination sourceDir exists
@@ -238,9 +214,7 @@ export const pushImages = async (input: PushImagesInput) => {
   (async () => {
     return backOff(
       async () => {
-        if (branchExist) {
-          await rebase(config.branch, execOptions);
-        }
+        await rebase(config.branch, execOptions);
         const res = await push(config.branch, execOptions);
         log.info(res.stdout);
         log.info(`Deployment Successful`);

@@ -72,7 +72,7 @@ jobs:
 
 ### Action inputs
 
-Input definitions are written in [action.yml](https://github.com/reg-viz/reg-actions/blob/main/dist/action.yml).
+Input definitions are written in [action.yml](./action.yml).
 
 #### `github-token` (Required)
 
@@ -87,17 +87,7 @@ It is used to upload test report and add comment to pull request.
 - Type: String
 - Default: N/A
 
-Path to images directory. The images stored in this directory will be compared with the expected images from the last upload.
-
-#### `expected-images-directory-path` (Optional)
-
-- Type: String
-- Default: N/A
-
-Path to expected images directory. These images will be compared with images stored in `image-directory-path`. 
-
-If this option is specified, images from artifact upload are ignored.
-Instead, the images are copied directly from the specified directory.
+Path to images directory.The images stored in this directory will be compared with the expected images from the last upload.
 
 #### `enable-antialias` (Optional)
 
@@ -175,26 +165,6 @@ Default is "reg_actions".
 
 The option to disable push to a branch. When set to false, the `branch` option is ignored, and images will not be displayed in the comments.
 
-#### `comment-report-format` (Optional)
-
-- Type: String
-- Default: `"raw"`
-
-The option how to render changed file in comment. This action will change PR and workflow summary report format. Available options are `raw` and `summarized`. `raw` will render report comment with expanded results. `summarized` will render report comment using `<details>` tag to summarize by changed files.
-
-#### `outdated-comment-action` (Optional)
-
-- Type: String
-- Default: `"none"`
-
-The option to handle outdated comments in the PR. Available options are `none` and `minimize`. `none` do nothing. `minimize` will minimize outdated action comments.
-
-### `retention-days` (Optional)
-
-- Type: number
-- Default: `30`
-
-This option allows you to specify the duration for which images are stored in the branch. If not specified, the default is 30 days.
 
 ## Limitation
 
