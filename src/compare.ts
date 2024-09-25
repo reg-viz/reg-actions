@@ -33,16 +33,6 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       enableAntialias: config.enableAntialias,
     });
 
-    if (config.reportFilePath) {
-      log.info(`reportFilePath ${config.reportFilePath} detected`);
-      try {
-        await cpy(workspace() + '/**/*', config.reportFilePath);
-        log.info(`Succeeded to copy reg data to ${config.reportFilePath}.`);
-      } catch (e) {
-        log.error(`Failed to copy reg data to ${config.reportFilePath} reason: ${e}`);
-      }
-    }
-
     emitter.on('complete', result => {
       log.debug('compare result', result);
       log.info('Comparison Complete');
@@ -52,4 +42,15 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       log.info(chalk.green('   Passed items: ' + result.passedItems.length));
       resolve(result);
     });
+  }).then(async (result) => {
+    if (config.reportFilePath) {
+      log.info(`reportFilePath ${config.reportFilePath} detected`);
+      try {
+        await cpy(workspace() + '/**/*', config.reportFilePath);
+        log.info(`Succeeded to copy reg data to ${config.reportFilePath}.`);
+      } catch (e) {
+        log.error(`Failed to copy reg data to ${config.reportFilePath} reason: ${e}`);
+      }
+    }
+    return result
   });
