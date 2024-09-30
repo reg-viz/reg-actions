@@ -53,7 +53,7 @@
     "glob": "^8.0.3",
     "loglevel": "^1.8.0",
     "make-dir": "^3.1.0",
-    "reg-cli": "0.0.0-experimental-wasm5"
+    "reg-cli": "0.0.0-experimental-wasm6"
   },
   "devDependencies": {
     "@octokit/openapi-types": "^19.0.0",
