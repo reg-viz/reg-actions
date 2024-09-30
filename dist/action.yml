@@ -43,5 +43,5 @@ inputs:
     required: false    
 runs:
   using: "node20"
-  main: "lib/index.js"
+  main: "lib/index.cjs"
 
