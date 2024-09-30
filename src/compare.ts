@@ -23,8 +23,8 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       diffDir: path.join(workspace(), constants.DIFF_DIR_NAME),
       json: path.join(workspace(), constants.JSON_NAME),
       report: config.reportFilePath ?? undefined,
-      update: false,
-      // ignoreChange: true,
+      // update: false, TODO:
+      // ignoreChange: true, TODO:
       urlPrefix: '',
       thresholdPixel: config.thresholdPixel,
       thresholdRate: config.thresholdRate,
