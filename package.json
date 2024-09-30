@@ -4,11 +4,12 @@
   "private": true,
   "description": "github actions for reg",
   "main": "lib/main.js",
+  "type": "module",
   "scripts": {
     "build": "tsc",
-    "package:cli": "ncc build node_modules/reg-cli/dist/diff.js -o dist/lib && mv dist/lib/index.js dist/lib/diff.js",
-    "package:resources": "cp node_modules/reg-cli/report dist -r && cp node_modules/reg-cli/template dist -r",
-    "package": "npm run build && npm run package:cli && npm run package:resources && ncc build --source-map --license licenses.txt -o dist/lib"
+    "package:entry": "ncc build node_modules/reg-cli/dist/entry.mjs -o dist/lib && mv dist/lib/index.mjs dist/lib/entry.mjs",
+    "package:worker": "ncc build node_modules/reg-cli/dist/worker.mjs -o dist/lib && mv dist/lib/index.mjs dist/lib/worker.mjs",
+    "package": "npm run build && npm run package:entry && npm run package:worker && ncc build --source-map --license licenses.txt -o dist/lib"
   },
   "repository": {
     "type": "git",
