@@ -8,6 +8,7 @@
   "scripts": {
     "package:entry": "esbuild node_modules/reg-cli/dist/entry.cjs --bundle --platform=node --format=cjs --outfile=dist/lib/entry.cjs",
     "package:worker": "esbuild node_modules/reg-cli/dist/worker.cjs --bundle --platform=node --format=cjs --outfile=dist/lib/worker.cjs",
+    "package:wwasm": "cp node_modules/reg-cli/dist/reg.wasm dist/lib/reg.wasm",
     "package:main": "esbuild src/main.ts --bundle --platform=node --format=cjs --outfile=dist/lib/index.cjs",
     "package": "npm run package:entry && npm run package:worker && npm run package:main"
   },
