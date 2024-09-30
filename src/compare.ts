@@ -25,7 +25,7 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       report: config.reportFilePath ?? undefined,
       // update: false, TODO:
       // ignoreChange: true, TODO:
-      urlPrefix: '',
+      // urlPrefix: '', TODO:
       thresholdPixel: config.thresholdPixel,
       thresholdRate: config.thresholdRate,
       matchingThreshold: config.matchingThreshold,
