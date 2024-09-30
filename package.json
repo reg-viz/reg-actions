@@ -9,7 +9,7 @@
     "build": "tsc",
     "package:entry": "ncc build node_modules/reg-cli/dist/entry.mjs -o dist/lib && mv dist/lib/index.mjs dist/lib/entry.mjs",
     "package:worker": "ncc build node_modules/reg-cli/dist/worker.mjs -o dist/lib && mv dist/lib/index.mjs dist/lib/worker.mjs",
-    "package": "npm run build && npm run package:entry && npm run package:worker && ncc build --source-map --license licenses.txt -o dist/lib"
+    "package": "npm run build && npm run package:entry && npm run package:worker && ncc build lib/main.js --source-map --license licenses.txt -o dist/lib && mv dist/lib/index.js dist/lib/index.mjs"
   },
   "repository": {
     "type": "git",
