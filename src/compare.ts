@@ -1,12 +1,12 @@
 import chalk from 'chalk';
+import * as path from 'path';
 
 import { log } from './logger';
 import { Config } from './config';
 import * as constants from './constants';
 import { workspace } from './path';
-import path from 'path/posix';
 
-const _compare = require('reg-cli');
+import { compare as _compare } from 'reg-cli';
 
 export type CompareOutput = {
   passedItems: string[];
@@ -22,9 +22,9 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       expectedDir: path.join(workspace(), constants.EXPECTED_DIR_NAME),
       diffDir: path.join(workspace(), constants.DIFF_DIR_NAME),
       json: path.join(workspace(), constants.JSON_NAME),
-      report: config.reportFilePath,
-      update: false,
-      ignoreChange: true,
+      report: config.reportFilePath || "./report.html",
+      // update: false, TODO:
+      // ignoreChange: true, TODO:
       urlPrefix: '',
       thresholdPixel: config.thresholdPixel,
       thresholdRate: config.thresholdRate,
