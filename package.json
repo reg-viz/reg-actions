@@ -51,7 +51,7 @@
     "glob": "^8.0.3",
     "loglevel": "^1.8.0",
     "make-dir": "^3.1.0",
-    "reg-cli": "^0.17.7"
+    "reg-cli": "0.0.0-experimental-wasm0"
   },
   "devDependencies": {
     "@octokit/openapi-types": "^19.0.0",
@@ -59,7 +59,7 @@
     "@types/axios": "^0.14.0",
     "@types/loglevel": "^1.6.3",
     "@types/make-dir": "^2.1.0",
-    "@types/node": "^18.11.5",
+    "@types/node": "^18.18.6",
     "@vercel/ncc": "^0.34.0",
     "typescript": "^4.8.4"
   }
