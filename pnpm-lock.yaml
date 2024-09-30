@@ -68,8 +68,8 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0
       reg-cli:
-        specifier: 0.0.0-experimental-wasm4
-        version: 0.0.0-experimental-wasm4
+        specifier: 0.0.0-experimental-wasm5
+        version: 0.0.0-experimental-wasm5
     devDependencies:
       '@octokit/openapi-types':
         specifier: ^19.0.0
@@ -589,8 +589,8 @@ packages:
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
-  reg-cli@0.0.0-experimental-wasm4:
-    resolution: {integrity: sha512-CuapOvO8MhXf77T99iBFCaGLIFw1E6QZHaoPqI/mElXoXocRzHRqHj1JzpI5SStc1R0iHmsYa8x/8DPvVVG2Og==}
+  reg-cli@0.0.0-experimental-wasm5:
+    resolution: {integrity: sha512-4GXMkCiMJmNjo4nlghuYb2CuEc5kOsQLFnoI0EXb69Lhad1eOEeaJGM76mneMKH2BSp0UBi8rJ1WPn3KH1Y4NQ==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -1112,7 +1112,7 @@ snapshots:
 
   queue-microtask@1.2.3: {}
 
-  reg-cli@0.0.0-experimental-wasm4:
+  reg-cli@0.0.0-experimental-wasm5:
     dependencies:
       '@tybys/wasm-util': 0.9.0
 
