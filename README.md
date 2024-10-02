@@ -163,7 +163,7 @@ Default is "reg_actions".
 - Type: Boolean
 - Default: `false`
 
-The option to disable push to a branch. When set to false, the `branch` option is ignored, and images will not be displayed in the comments.
+The option to disable push to a branch. When set to true, the `branch` option is ignored, and images will not be displayed in the comments.
 
 #### `comment-report-format` (Optional)
 
