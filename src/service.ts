@@ -98,7 +98,7 @@ const init = async (config: Config) => {
   // Create workspace
   await makeDir(workspace());
 
-  log.info(`Succeeded to cerate directory.`);
+  log.info(`Succeeded to create directory.`);
 
   // Copy actual images
   await copyActualImages(config.imageDirectoryPath);
