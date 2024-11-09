@@ -25,8 +25,10 @@ const downloadExpectedImages = async (client: DownloadClient, latestArtifactId: 
   log.info(`Start to download expected images, artifact id = ${latestArtifactId}`);
   try {
     const zip = await client.downloadArtifact(latestArtifactId);
+    const buf = Buffer.from(zip.data as any);
+    log.info(`Downloaded artifact byteLength is ${buf.byteLength}`);
     await Promise.all(
-      new Zip(Buffer.from(zip.data as any))
+      new Zip(buf)
         .getEntries()
         .filter(f => !f.isDirectory && f.entryName.startsWith(constants.ACTUAL_DIR_NAME))
         .map(async file => {
