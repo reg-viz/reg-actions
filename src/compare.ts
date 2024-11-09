@@ -17,6 +17,7 @@ export type CompareOutput = {
 
 export const compare = async (config: Config): Promise<CompareOutput> =>
   new Promise<CompareOutput>(resolve => {
+    console.time('compare')
     const emitter = _compare({
       actualDir: path.join(workspace(), constants.ACTUAL_DIR_NAME),
       expectedDir: path.join(workspace(), constants.EXPECTED_DIR_NAME),
@@ -33,6 +34,7 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
     });
 
     emitter.on('complete', async result => {
+      console.timeEnd('compare')
       log.debug('compare result', result);
       log.info('Comparison Complete');
       log.info(chalk.red('   Changed items: ' + result.failedItems.length));
