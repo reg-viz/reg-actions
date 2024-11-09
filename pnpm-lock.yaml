@@ -37,6 +37,9 @@ importers:
       '@actions/tool-cache':
         specifier: ^2.0.1
         version: 2.0.1
+      '@bokuweb/reg-cli-wasm':
+        specifier: 0.0.0-experimental0
+        version: 0.0.0-experimental0
       '@types/glob':
         specifier: ^8.0.0
         version: 8.1.0
@@ -67,9 +70,6 @@ importers:
       make-dir:
         specifier: ^3.1.0
         version: 3.1.0
-      reg-cli:
-        specifier: 0.0.0-experimental-wasm13
-        version: 0.0.0-experimental-wasm13
     devDependencies:
       '@octokit/openapi-types':
         specifier: ^19.0.0
@@ -121,6 +121,11 @@ packages:
 
   '@actions/tool-cache@2.0.1':
     resolution: {integrity: sha512-iPU+mNwrbA8jodY8eyo/0S/QqCKDajiR8OxWTnSk/SnYg0sj8Hp4QcUEVC1YFpHWXtrfbQrE13Jz4k4HXJQKcA==}
+
+  '@bokuweb/reg-cli-wasm@0.0.0-experimental0':
+    resolution: {integrity: sha512-c/BBias+QoyRdGwqhxs6U1eZAC3Y8KqoluaOxyPXmvdI1Scz9TgaXg/5lCh62Kqz2a52cNkSKahNwloiHbJyJA==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   '@esbuild/aix-ppc64@0.24.0':
     resolution: {integrity: sha512-WtKdFM7ls47zkKHFVzMz8opM7LkcsIp9amDUBIAWirg70RM71WRSjdILPsY5Uv1D42ZpUfaPILDlfactHgsRkw==}
@@ -589,11 +594,6 @@ packages:
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
-  reg-cli@0.0.0-experimental-wasm13:
-    resolution: {integrity: sha512-wBMnVQrrNwIIDkkltP7KUGbyEz+d0T7aFooIsuOQdeCG95DCwqPtp1BGHmJa/cL3fRvrLGZ+JsIld1ltstWscg==}
-    engines: {node: '>=18'}
-    hasBin: true
-
   reusify@1.0.4:
     resolution: {integrity: sha512-U9nH88a3fc/ekCF1l0/UP1IosiuIjyTh7hBvXVMHYgVcfGvt897Xguj2UOLDeI5BG2m7/uwyaLVT6fbtCwTyzw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
@@ -695,6 +695,10 @@ snapshots:
       '@actions/io': 1.1.3
       semver: 6.3.1
       uuid: 3.4.0
+
+  '@bokuweb/reg-cli-wasm@0.0.0-experimental0':
+    dependencies:
+      '@tybys/wasm-util': 0.9.0
 
   '@esbuild/aix-ppc64@0.24.0':
     optional: true
@@ -1111,10 +1115,6 @@ snapshots:
   proxy-from-env@1.1.0: {}
 
   queue-microtask@1.2.3: {}
-
-  reg-cli@0.0.0-experimental-wasm13:
-    dependencies:
-      '@tybys/wasm-util': 0.9.0
 
   reusify@1.0.4: {}
 

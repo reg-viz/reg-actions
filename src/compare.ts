@@ -6,7 +6,7 @@ import { Config } from './config';
 import * as constants from './constants';
 import { workspace } from './path';
 
-import { compare as _compare } from 'reg-cli';
+import { compare as _compare } from '@bokuweb/reg-cli-wasm';
 
 export type CompareOutput = {
   passedItems: string[];
