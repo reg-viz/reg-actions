@@ -161,7 +161,11 @@ export const run = async ({
         artifactName: config.artifactName,
         customReportPage: config.customReportPage,
       });
-      await client.postComment(event.number, comment);
+      try {
+        await client.postComment(event.number, comment);
+      } catch(e) {
+        log.warn(`Failed to postComment, reason ${e}`);
+      }
     }
     return;
   }
