@@ -55,7 +55,7 @@ const copyActualImages = async (imagePath: string) => {
 
   try {
     await cpy(
-      path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`),
+      path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif,webp}`),
       path.join(workspace(), constants.ACTUAL_DIR_NAME),
     );
   } catch (e) {
