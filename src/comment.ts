@@ -195,7 +195,8 @@ ${successOrFailMessage}
 ${report}
 `;
 
-  return body;
+  // maximum is 65536 characters
+  return body.slice(0, 65536);
 };
 
 export const createCommentWithoutTarget = ({
@@ -220,5 +221,6 @@ ${report}
 | new     | ${result.newItems.length}     |
   `;
 
-  return body;
+  // maximum is 65536 characters
+  return body.slice(0, 65536);
 };
