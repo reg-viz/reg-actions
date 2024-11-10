@@ -38,8 +38,8 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1
       '@bokuweb/reg-cli-wasm':
-        specifier: 0.0.0-experimental0
-        version: 0.0.0-experimental0
+        specifier: 0.0.0-experimental1
+        version: 0.0.0-experimental1
       '@types/glob':
         specifier: ^8.1.0
         version: 8.1.0
@@ -191,8 +191,8 @@ packages:
     resolution: {integrity: sha512-iYyACpW3iW8Fw+ZybQK+drQre+ns/tKpXbNESfrhNnPLIklLbXr7MYJ6gPEd0iETGLOK+SxMjVvKb/ffmk+FEw==}
     engines: {node: '>=6.9.0'}
 
-  '@bokuweb/reg-cli-wasm@0.0.0-experimental0':
-    resolution: {integrity: sha512-c/BBias+QoyRdGwqhxs6U1eZAC3Y8KqoluaOxyPXmvdI1Scz9TgaXg/5lCh62Kqz2a52cNkSKahNwloiHbJyJA==}
+  '@bokuweb/reg-cli-wasm@0.0.0-experimental1':
+    resolution: {integrity: sha512-a/dR9rmOUXOcOmN+rD47+Y8iaxkhWnMhOmgXE+hJbTxCpanOH31dNJ+FuXsrtJkAYf2w/4YS9cWIJ49xeycKtg==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -1417,9 +1417,6 @@ packages:
   ts-poet@4.15.0:
     resolution: {integrity: sha512-sLLR8yQBvHzi9d4R1F4pd+AzQxBfzOSSjfxiJxQhkUoH5bL7RsAC6wgvtVUQdGqiCsyS9rT6/8X2FI7ipdir5g==}
 
-  tslib@2.7.0:
-    resolution: {integrity: sha512-gLXCKdN1/j47AiHiOkJN69hJmcbGTHI0ImLmbYLHykhgeN0jVGola9yVjFgzCUklsZQMW55o+dW7IXv3RCXDzA==}
-
   tslib@2.8.0:
     resolution: {integrity: sha512-jWVzBLplnCmoaTr13V9dYbiQ99wvZRd0vNWaDRg+aVYRcjDF3nDksxFDE/+fkXnKhpnUUkmx5pK/v8mCtLVqZA==}
 
@@ -1709,7 +1706,7 @@ snapshots:
       js-tokens: 4.0.0
       picocolors: 1.1.1
 
-  '@bokuweb/reg-cli-wasm@0.0.0-experimental0':
+  '@bokuweb/reg-cli-wasm@0.0.0-experimental1':
     dependencies:
       '@tybys/wasm-util': 0.9.0
 
@@ -1984,7 +1981,7 @@ snapshots:
 
   '@tybys/wasm-util@0.9.0':
     dependencies:
-      tslib: 2.7.0
+      tslib: 2.8.0
 
   '@types/adm-zip@0.5.5':
     dependencies:
@@ -2901,8 +2898,6 @@ snapshots:
     dependencies:
       lodash: 4.17.21
       prettier: 2.8.8
-
-  tslib@2.7.0: {}
 
   tslib@2.8.0: {}
 
