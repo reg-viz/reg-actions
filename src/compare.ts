@@ -46,12 +46,14 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
     });
   }).then(async (result) => {
     if (config.reportFilePath) {
+      const dir = path.dirname(config.reportFilePath);
       log.info(`reportFilePath ${config.reportFilePath} detected`);
+      log.info(`start copy reg data to ${dir}`);
       try {
-        await cpy(workspace() + '/**/*', config.reportFilePath);
-        log.info(`Succeeded to copy reg data to ${config.reportFilePath}.`);
+        await cpy(workspace() + '/**/*', dir);
+        log.info(`Succeeded to copy reg data to ${dir}.`);
       } catch (e) {
-        log.error(`Failed to copy reg data to ${config.reportFilePath} reason: ${e}`);
+        log.error(`Failed to copy reg data to ${dir} reason: ${e}`);
       }
     }
     return result
