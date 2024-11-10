@@ -140,7 +140,7 @@ The custom report page link.
 - Type: String
 - Default: N/A
 
-Path of the generated report html file. This file can be deployed in other Actions steps, but is not included in the artifact. If omitted, no html report is generated.  
+Path of the generated report html file. This file can be deployed in other Actions steps, but is not included in the artifact. If omitted, treated as `./report.html`.
 
 #### `artifact-name` (Optional)
 
