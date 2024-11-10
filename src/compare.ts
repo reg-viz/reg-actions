@@ -31,6 +31,7 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       thresholdRate: config.thresholdRate,
       matchingThreshold: config.matchingThreshold,
       enableAntialias: config.enableAntialias,
+      concurrency: 2,
     });
 
     emitter.on('complete', async result => {
