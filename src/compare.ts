@@ -5,6 +5,7 @@ import { log } from './logger';
 import { Config } from './config';
 import * as constants from './constants';
 import { workspace } from './path';
+import cpy from 'cpy';
 
 import { compare as _compare } from '@bokuweb/reg-cli-wasm';
 
@@ -17,7 +18,6 @@ export type CompareOutput = {
 
 export const compare = async (config: Config): Promise<CompareOutput> =>
   new Promise<CompareOutput>(resolve => {
-    console.time('compare')
     const emitter = _compare({
       actualDir: path.join(workspace(), constants.ACTUAL_DIR_NAME),
       expectedDir: path.join(workspace(), constants.EXPECTED_DIR_NAME),
@@ -34,7 +34,7 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       concurrency: 2,
     });
 
-    emitter.on('complete', async result => {
+    emitter.on('complete', result => {
       console.timeEnd('compare')
       log.debug('compare result', result);
       log.info('Comparison Complete');
@@ -44,4 +44,15 @@ export const compare = async (config: Config): Promise<CompareOutput> =>
       log.info(chalk.green('   Passed items: ' + result.passedItems.length));
       resolve(result);
     });
+  }).then(async (result) => {
+    if (config.reportFilePath) {
+      log.info(`reportFilePath ${config.reportFilePath} detected`);
+      try {
+        await cpy(workspace() + '/**/*', config.reportFilePath);
+        log.info(`Succeeded to copy reg data to ${config.reportFilePath}.`);
+      } catch (e) {
+        log.error(`Failed to copy reg data to ${config.reportFilePath} reason: ${e}`);
+      }
+    }
+    return result
   });
