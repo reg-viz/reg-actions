@@ -126,7 +126,7 @@ export const getConfig = (): Config => {
   const branch = core.getInput('branch') || 'reg_actions';
   const customReportPage = core.getInput('custom-report-page') || null;
   validateCustomReportPage(customReportPage);
-  const reportFilePath = core.getInput('report-file-path');
+  const reportFilePath = core.getInput('report-file-path') || './report.html';
   validateReportFilePath(reportFilePath);
   const commentReportFormat = core.getInput('comment-report-format') || 'raw';
   validateCommentReportFormat(commentReportFormat);
