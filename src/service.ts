@@ -182,7 +182,7 @@ export const run = async ({
           await minimizePreviousComments(client, event.number, config.artifactName);
         }
         await client.postComment(event.number, comment);
-      } catch(e) {
+      } catch (e) {
         log.warn(`Failed to postComment, reason ${e}`);
       }
     }
@@ -190,6 +190,8 @@ export const run = async ({
   }
 
   const { run: targetRun, artifact } = runAndArtifact;
+
+  log.info(`targetRun id is ${targetRun.id} workflow id = ${targetRun.workflow_id}`);
 
   // Download and copy expected images to workspace.
   await downloadExpectedImages(client, artifact.id);
