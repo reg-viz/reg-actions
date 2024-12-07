@@ -52,7 +52,7 @@ const copyActualImages = async (imagePath: string) => {
 
   try {
     await cpy(
-      path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif}`),
+      path.join(imagePath, `**/*.{png,jpg,jpeg,tiff,bmp,gif,webp}`),
       path.join(workspace(), constants.ACTUAL_DIR_NAME),
     );
   } catch (e) {
@@ -176,15 +176,22 @@ export const run = async ({
         artifactName: config.artifactName,
         customReportPage: config.customReportPage,
       });
-      if (config.outdatedCommentAction === 'minimize') {
-        await minimizePreviousComments(client, event.number, config.artifactName);
+
+      try {
+        if (config.outdatedCommentAction === 'minimize') {
+          await minimizePreviousComments(client, event.number, config.artifactName);
+        }
+        await client.postComment(event.number, comment);
+      } catch (e) {
+        log.warn(`Failed to postComment, reason ${e}`);
       }
-      await client.postComment(event.number, comment);
     }
     return;
   }
 
   const { run: targetRun, artifact } = runAndArtifact;
+
+  log.info(`targetRun id is ${targetRun.id} workflow id = ${targetRun.workflow_id}`);
 
   // Download and copy expected images to workspace.
   await downloadExpectedImages(client, artifact.id);

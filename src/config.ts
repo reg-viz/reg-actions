@@ -1,7 +1,7 @@
 import * as core from '@actions/core';
 import { statSync } from 'fs';
 import { ARTIFACT_NAME } from './constants';
-import { dirname } from 'path';
+import { join } from 'path';
 
 export interface Config {
   imageDirectoryPath: string;
@@ -88,13 +88,6 @@ const validateReportFilePath = (path: string | undefined) => {
   if (path === undefined || path === '') {
     return;
   }
-  try {
-    const s = statSync(dirname(path));
-    if (s.isDirectory()) return;
-    else throw null;
-  } catch (_) {
-    throw new Error(`'report-file-path' is not in a valid directory. Please specify path to report file.`);
-  }
 };
 
 function validateCommentReportFormat(format: string): asserts format is 'raw' | 'summarized' {
@@ -126,7 +119,15 @@ export const getConfig = (): Config => {
   const branch = core.getInput('branch') || 'reg_actions';
   const customReportPage = core.getInput('custom-report-page') || null;
   validateCustomReportPage(customReportPage);
-  const reportFilePath = core.getInput('report-file-path');
+  let reportFilePath = core.getInput('report-file-path');
+  if (!reportFilePath) {
+    reportFilePath = './report.html';
+  }
+  try {
+    if (statSync(reportFilePath).isDirectory()) {
+      reportFilePath = join(reportFilePath, './report.html');
+    }
+  } catch {}
   validateReportFilePath(reportFilePath);
   const commentReportFormat = core.getInput('comment-report-format') || 'raw';
   validateCommentReportFormat(commentReportFormat);

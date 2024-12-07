@@ -281,7 +281,8 @@ ${report}
 | new     | ${result.newItems.length}     |
   `;
 
-  return body;
+  // maximum is 65536 characters
+  return body.slice(0, 65536);
 };
 
 export const isRegActionComment = ({ artifactName, body }: { artifactName: string; body: string }): boolean => {

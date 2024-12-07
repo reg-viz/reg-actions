@@ -4,11 +4,13 @@
   "private": true,
   "description": "github actions for reg",
   "main": "lib/main.js",
+  "type": "module",
   "scripts": {
-    "build": "tsc",
-    "package:cli": "ncc build node_modules/reg-cli/dist/diff.js -o dist/lib && mv dist/lib/index.js dist/lib/diff.js",
-    "package:resources": "cp node_modules/reg-cli/report dist -r && cp node_modules/reg-cli/template dist -r",
-    "package": "npm run build && npm run package:cli && npm run package:resources && ncc build --source-map --license licenses.txt -o dist/lib"
+    "package:entry": "esbuild node_modules/@bokuweb/reg-cli-wasm/dist/entry.cjs --bundle --platform=node --format=cjs --outfile=dist/lib/entry.cjs",
+    "package:worker": "esbuild node_modules/@bokuweb/reg-cli-wasm/dist/worker.cjs --bundle --platform=node --format=cjs --outfile=dist/lib/worker.cjs",
+    "package:wasm": "cp node_modules/@bokuweb/reg-cli-wasm/dist/shared/reg.wasm dist/lib/reg.wasm",
+    "package:main": "esbuild src/main.ts --bundle --platform=node --format=cjs --outfile=dist/lib/index.cjs",
+    "package": "npm run package:entry && npm run package:worker && npm run package:main && npm run package:wasm"
   },
   "repository": {
     "type": "git",
@@ -41,6 +43,7 @@
     "@actions/github": "^6.0.0",
     "@actions/io": "^1.1.3",
     "@actions/tool-cache": "^2.0.1",
+    "@bokuweb/reg-cli-wasm": "0.0.0-experimental1",
     "@types/glob": "^8.1.0",
     "adm-zip": "^0.5.16",
     "axios": "^1.7.7",
@@ -59,6 +62,7 @@
     "@types/axios": "^0.14.0",
     "@types/loglevel": "^1.6.3",
     "@types/make-dir": "^2.1.0",
+    "esbuild": "^0.24.0",
     "@types/node": "^22.7.7",
     "@vercel/ncc": "^0.38.2",
     "typescript": "^5.6.3"
