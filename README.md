@@ -7,7 +7,7 @@
 ---
 
 > [!WARNING]  
-> v1/v2 are deprecated. Please use v3.
+> v1 are deprecated. Please use v2.
 
 [![GitHub Actions Status](https://github.com/bokuweb/reg-actions/workflows/CI/badge.svg)](https://github.com/bokuweb/reg-actions/actions)
 
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: reg-viz/reg-actions@v3
+      - uses: reg-viz/reg-actions@v2
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           image-directory-path: "./images"
