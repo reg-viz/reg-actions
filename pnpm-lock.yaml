@@ -38,8 +38,8 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1
       '@bokuweb/reg-cli-wasm':
-        specifier: 0.0.0-experimental1
-        version: 0.0.0-experimental1
+        specifier: 0.0.0-experimental3
+        version: 0.0.0-experimental3
       '@types/glob':
         specifier: ^8.1.0
         version: 8.1.0
@@ -191,8 +191,8 @@ packages:
     resolution: {integrity: sha512-iYyACpW3iW8Fw+ZybQK+drQre+ns/tKpXbNESfrhNnPLIklLbXr7MYJ6gPEd0iETGLOK+SxMjVvKb/ffmk+FEw==}
     engines: {node: '>=6.9.0'}
 
-  '@bokuweb/reg-cli-wasm@0.0.0-experimental1':
-    resolution: {integrity: sha512-a/dR9rmOUXOcOmN+rD47+Y8iaxkhWnMhOmgXE+hJbTxCpanOH31dNJ+FuXsrtJkAYf2w/4YS9cWIJ49xeycKtg==}
+  '@bokuweb/reg-cli-wasm@0.0.0-experimental3':
+    resolution: {integrity: sha512-/e/GKLs44DVYLEUNBcueBF85335PRBroCAdnSHhBAynWABGB4n+i85etmZEQtkn6/f4hV7yj5W9Zr5H4udUwrw==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -1706,7 +1706,7 @@ snapshots:
       js-tokens: 4.0.0
       picocolors: 1.1.1
 
-  '@bokuweb/reg-cli-wasm@0.0.0-experimental1':
+  '@bokuweb/reg-cli-wasm@0.0.0-experimental3':
     dependencies:
       '@tybys/wasm-util': 0.9.0
 
