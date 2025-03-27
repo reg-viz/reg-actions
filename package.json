@@ -62,7 +62,7 @@
     "@types/axios": "^0.14.0",
     "@types/loglevel": "^1.6.3",
     "@types/make-dir": "^2.1.0",
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.25.0",
     "@types/node": "^22.7.7",
     "@vercel/ncc": "^0.38.2",
     "typescript": "^5.6.3"
