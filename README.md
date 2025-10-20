@@ -7,7 +7,7 @@
 ---
 
 > [!WARNING]  
-> v1 is deprecated. Please use v2. (v3 is experimental)
+> v1 and v2 are deprecated. Please use v3.
 
 [![GitHub Actions Status](https://github.com/bokuweb/reg-actions/workflows/CI/badge.svg)](https://github.com/bokuweb/reg-actions/actions)
 
