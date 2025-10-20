@@ -43,7 +43,7 @@
     "@actions/github": "^6.0.0",
     "@actions/io": "^1.1.3",
     "@actions/tool-cache": "^2.0.1",
-    "@bokuweb/reg-cli-wasm": "0.0.0-experimental3",
+    "@bokuweb/reg-cli-wasm": "0.0.0-experimental6",
     "@types/glob": "^8.1.0",
     "adm-zip": "^0.5.16",
     "axios": "^1.12.0",
