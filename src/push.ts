@@ -116,7 +116,14 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
   }
 
   if (result.failedItems.length > 0) {
-    const failedGlobs = result.failedItems.map(item => `${path.join(workspace(), constants.DIFF_DIR_NAME)}/${item}`);
+    log.info(`Copying failed files`);
+    const itemToWebp = (p: string) => {
+      const parsed = path.parse(p);
+      return path.join(parsed.dir, `${parsed.name}.webp`);
+    };
+    const failedGlobs = result.failedItems.map(
+      item => `${path.join(workspace(), constants.DIFF_DIR_NAME)}/${itemToWebp(item)}`,
+    );
     await cpy(failedGlobs, `${temp}/${dest}/diff/`);
 
     const expectedGlobs = result.failedItems.map(
