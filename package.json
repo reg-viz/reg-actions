@@ -37,34 +37,34 @@
     }
   },
   "dependencies": {
-    "@actions/artifact": "^2.1.11",
+    "@actions/artifact": "^4.0.0",
     "@actions/core": "^1.11.1",
     "@actions/exec": "^1.1.1",
-    "@actions/github": "^6.0.0",
+    "@actions/github": "^6.0.1",
     "@actions/io": "^1.1.3",
-    "@actions/tool-cache": "^2.0.1",
+    "@actions/tool-cache": "^2.0.2",
     "@bokuweb/reg-cli-wasm": "0.0.0-experimental6",
     "@types/glob": "^8.1.0",
     "adm-zip": "^0.5.16",
-    "axios": "^1.8.2",
-    "chalk": "^5.3.0",
+    "axios": "^1.12.2",
+    "chalk": "^5.6.2",
     "cpy": "^11.1.0",
-    "exponential-backoff": "^3.1.1",
-    "fast-glob": "^3.3.2",
-    "glob": "^10.4.1",
+    "exponential-backoff": "^3.1.3",
+    "fast-glob": "^3.3.3",
+    "glob": "^10.4.5",
     "loglevel": "^1.9.2",
-    "make-dir": "^4.0.0",
-    "reg-cli": "^0.18.8"
+    "make-dir": "^4.0.0"
   },
   "devDependencies": {
     "@octokit/openapi-types": "^22.2.0",
-    "@types/adm-zip": "^0.5.5",
-    "@types/axios": "^0.14.0",
+    "@types/adm-zip": "^0.5.7",
+    "@types/axios": "^0.14.4",
     "@types/loglevel": "^1.6.3",
     "@types/make-dir": "^2.1.0",
-    "esbuild": "^0.25.0",
-    "@types/node": "^22.7.7",
-    "@vercel/ncc": "^0.38.2",
-    "typescript": "^5.6.3"
-  }
+    "@types/node": "^22.18.12",
+    "@vercel/ncc": "^0.38.4",
+    "esbuild": "^0.25.11",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
 }
