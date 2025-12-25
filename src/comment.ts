@@ -1,4 +1,4 @@
-import { basename } from 'path';
+import { basename, parse } from 'path';
 
 import { Event } from './event';
 import { Run } from './run';
@@ -79,7 +79,8 @@ ${result.failedItems
     const filename = encodeURIComponent(base);
     const actual = baseUrl + 'actual/' + filename + '?raw=true';
     const expected = baseUrl + 'expected/' + filename + '?raw=true';
-    const diff = baseUrl + 'diff/' + filename + '?raw=true';
+    const diffName = encodeURIComponent(`${parse(base).name}.webp`);
+    const diff = baseUrl + 'diff/' + diffName + '?raw=true';
     const table = `
 | actual|![Actual](${actual}) |
 |--|--|
