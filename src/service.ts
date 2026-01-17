@@ -10,7 +10,7 @@ import { Config } from './config';
 import { Event } from './event';
 import { findRunAndArtifact, RunClient } from './run';
 import { compare, CompareOutput } from './compare';
-import { createCommentWithTarget, createCommentWithoutTarget, isRegActionComment } from './comment';
+import { createCommentWithTarget, createCommentWithoutTarget, createResolvedComment, isRegActionComment } from './comment';
 import * as constants from './constants';
 import { workspace } from './path';
 import { pushImages } from './push';
@@ -108,7 +108,8 @@ const init = async (config: Config) => {
 
 type CommentClient = {
   postComment: (issueNumber: number, comment: string) => Promise<void>;
-  listComments: (issueNumber: number) => Promise<{ node_id: string; body?: string | undefined }[]>;
+  updateComment: (commentId: number, body: string) => Promise<void>;
+  listComments: (issueNumber: number) => Promise<{ id: number; node_id: string; body?: string | undefined }[]>;
   minimizeOutdatedComment: (nodeId: string) => Promise<void>;
 };
 
@@ -119,6 +120,24 @@ const minimizePreviousComments = async (client: CommentClient, issueNumber: numb
       await client.minimizeOutdatedComment(comment.node_id);
     }
   }
+};
+
+const findExistingComment = async (
+  client: CommentClient,
+  issueNumber: number,
+  artifactName: string,
+): Promise<{ id: number; node_id: string } | null> => {
+  const comments = await client.listComments(issueNumber);
+  for (const comment of comments) {
+    if (comment.body && isRegActionComment({ artifactName, body: comment.body })) {
+      return { id: comment.id, node_id: comment.node_id };
+    }
+  }
+  return null;
+};
+
+const hasChanges = (result: CompareOutput): boolean => {
+  return result.deletedItems.length > 0 || result.failedItems.length > 0 || result.newItems.length > 0;
 };
 
 type SummaryClient = {
@@ -233,14 +252,36 @@ export const run = async ({
   });
 
   try {
-    if (config.outdatedCommentAction === 'minimize') {
-      await minimizePreviousComments(client, event.number, config.artifactName);
+    if (config.outdatedCommentAction === 'update') {
+      const existingComment = await findExistingComment(client, event.number, config.artifactName);
+      
+      if (hasChanges(result)) {
+        if (existingComment) {
+          log.info('Updating existing comment with changes');
+          await client.updateComment(existingComment.id, comment);
+        } else {
+          log.info('Creating new comment with changes');
+          await client.postComment(event.number, comment);
+        }
+        await client.summary(comment);
+      } else if (existingComment) {
+        log.info('Updating existing comment to show resolved');
+        const resolvedComment = createResolvedComment({ artifactName: config.artifactName });
+        await client.updateComment(existingComment.id, resolvedComment);
+        await client.summary(resolvedComment);
+      } else {
+        log.info('No changes and no existing comment, skipping');
+      }
+    } else {
+      if (config.outdatedCommentAction === 'minimize') {
+        await minimizePreviousComments(client, event.number, config.artifactName);
+      }
+      await client.postComment(event.number, comment);
+
+      log.info('post summary comment');
+
+      await client.summary(comment);
     }
-    await client.postComment(event.number, comment);
-
-    log.info('post summary comment');
-
-    await client.summary(comment);
   } catch (e) {
     log.error(e);
   }

@@ -44,7 +44,7 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
         { numOfAttempts: 5 },
       );
     },
-    listComments: async (issueNumber: number): Promise<{ node_id: string; body?: string | undefined }[]> => {
+    listComments: async (issueNumber: number): Promise<{ id: number; node_id: string; body?: string | undefined }[]> => {
       return backOff(
         () =>
           octokit.paginate(
@@ -56,6 +56,12 @@ export const createClient = (repository: Repository, octokit: Octokit) => {
             },
             r => r.data,
           ),
+        { numOfAttempts: 5 },
+      );
+    },
+    updateComment: async (commentId: number, body: string) => {
+      await backOff(
+        () => octokit.rest.issues.updateComment({ ...repository, comment_id: commentId, body }),
         { numOfAttempts: 5 },
       );
     },
