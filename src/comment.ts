@@ -291,3 +291,12 @@ export const isRegActionComment = ({ artifactName, body }: { artifactName: strin
     body.includes(`## ArtifactName: \`${artifactName}\``) || body.includes(`## ArtifactName: [\`${artifactName}\`]`)
   );
 };
+
+export const createResolvedComment = ({ artifactName }: { artifactName: string }): string => {
+  return `![resolved](https://img.shields.io/badge/%E2%9C%94%20reg-resolved-green)
+
+## ArtifactName: \`${artifactName}\`
+
+✨ All visual differences have been resolved! ✨
+`;
+};

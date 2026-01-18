@@ -17,7 +17,7 @@ export interface Config {
   customReportPage: string | null;
   reportFilePath: string | null;
   commentReportFormat: 'raw' | 'summarized';
-  outdatedCommentAction: 'none' | 'minimize';
+  outdatedCommentAction: 'none' | 'minimize' | 'update';
   retentionDays: number;
 }
 
@@ -96,9 +96,9 @@ function validateCommentReportFormat(format: string): asserts format is 'raw' | 
   }
 }
 
-function validateOutdatedCommentAction(action: string): asserts action is 'none' | 'minimize' {
-  if (action !== 'none' && action !== 'minimize') {
-    throw new Error(`'outdated-comment-action' input must be 'none' or 'minimized' but got '${action}'`);
+function validateOutdatedCommentAction(action: string): asserts action is 'none' | 'minimize' | 'update' {
+  if (action !== 'none' && action !== 'minimize' && action !== 'update') {
+    throw new Error(`'outdated-comment-action' input must be 'none', 'minimize', or 'update' but got '${action}'`);
   }
 }
 
