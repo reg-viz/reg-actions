@@ -47,6 +47,9 @@ inputs:
   outdated-comment-action:
     description: "The option to handle outdated comments. `none` by default."
     required: false
+  comment-mode:
+    description: "When to post PR comments. Options: 'always' (default), 'changes' (only when visual diffs detected), 'never' (silent mode)."
+    required: false
   retention-days:
     description: "This option allows you to specify the duration for which images are stored in the branch. If not specified, the default is 30 days."
     required: false

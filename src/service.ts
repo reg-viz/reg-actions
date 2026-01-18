@@ -121,6 +121,10 @@ const minimizePreviousComments = async (client: CommentClient, issueNumber: numb
   }
 };
 
+const hasChanges = (result: CompareOutput): boolean => {
+  return result.deletedItems.length > 0 || result.failedItems.length > 0 || result.newItems.length > 0;
+};
+
 type SummaryClient = {
   summary: (raw: string) => Promise<void>;
 };
@@ -232,16 +236,23 @@ export const run = async ({
     commentReportFormat: config.commentReportFormat,
   });
 
-  try {
-    if (config.outdatedCommentAction === 'minimize') {
-      await minimizePreviousComments(client, event.number, config.artifactName);
+  const shouldComment =
+    config.commentMode === 'always' || (config.commentMode === 'changes' && hasChanges(result));
+
+  if (shouldComment) {
+    try {
+      if (config.outdatedCommentAction === 'minimize') {
+        await minimizePreviousComments(client, event.number, config.artifactName);
+      }
+      await client.postComment(event.number, comment);
+
+      log.info('post summary comment');
+
+      await client.summary(comment);
+    } catch (e) {
+      log.error(e);
     }
-    await client.postComment(event.number, comment);
-
-    log.info('post summary comment');
-
-    await client.summary(comment);
-  } catch (e) {
-    log.error(e);
+  } else {
+    log.info(`Skipping comment (comment: ${config.commentMode}, has changes: ${hasChanges(result)})`);
   }
 };

@@ -19,6 +19,7 @@ export interface Config {
   commentReportFormat: 'raw' | 'summarized';
   outdatedCommentAction: 'none' | 'minimize';
   retentionDays: number;
+  commentMode: 'always' | 'changes' | 'never';
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -98,7 +99,13 @@ function validateCommentReportFormat(format: string): asserts format is 'raw' | 
 
 function validateOutdatedCommentAction(action: string): asserts action is 'none' | 'minimize' {
   if (action !== 'none' && action !== 'minimize') {
-    throw new Error(`'outdated-comment-action' input must be 'none' or 'minimized' but got '${action}'`);
+    throw new Error(`'outdated-comment-action' input must be 'none' or 'minimize' but got '${action}'`);
+  }
+}
+
+function validateComment(value: string): asserts value is 'always' | 'changes' | 'never' {
+  if (value !== 'always' && value !== 'changes' && value !== 'never') {
+    throw new Error(`'comment-mode' input must be 'always', 'changes', or 'never' but got '${value}'`);
   }
 }
 
@@ -133,6 +140,8 @@ export const getConfig = (): Config => {
   validateCommentReportFormat(commentReportFormat);
   const outdatedCommentAction = core.getInput('outdated-comment-action') || 'none';
   validateOutdatedCommentAction(outdatedCommentAction);
+  const commentMode = core.getInput('comment-mode') || 'always';
+  validateComment(commentMode);
 
   return {
     githubToken,
@@ -150,5 +159,6 @@ export const getConfig = (): Config => {
     commentReportFormat,
     outdatedCommentAction,
     retentionDays,
+    commentMode,
   };
 };
