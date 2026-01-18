@@ -45,7 +45,7 @@ inputs:
     description: "The option how to render changed file in comment. `raw` by default."
     required: false
   outdated-comment-action:
-    description: "The option to handle outdated comments. `none` by default."
+    description: "The option to handle outdated comments. Options: 'none' (default), 'minimize' (collapse old comments), 'update' (edit existing comment in place - sticky comment)."
     required: false
   retention-days:
     description: "This option allows you to specify the duration for which images are stored in the branch. If not specified, the default is 30 days."
