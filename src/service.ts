@@ -251,45 +251,49 @@ export const run = async ({
     commentReportFormat: config.commentReportFormat,
   });
 
-  const shouldComment =
+  const shouldPostNewComment =
     config.commentMode === 'always' || (config.commentMode === 'changes' && hasChanges(result));
 
-  if (shouldComment) {
-    try {
-      if (config.outdatedCommentAction === 'update') {
-        const existingComment = await findExistingComment(client, event.number, config.artifactName);
-        
-        if (hasChanges(result)) {
-          if (existingComment) {
-            log.info('Updating existing comment with changes');
-            await client.updateComment(existingComment.id, comment);
-          } else {
-            log.info('Creating new comment with changes');
-            await client.postComment(event.number, comment);
-          }
-          await client.summary(comment);
-        } else if (existingComment) {
-          log.info('Updating existing comment to show resolved');
-          const resolvedComment = createResolvedComment({ artifactName: config.artifactName });
-          await client.updateComment(existingComment.id, resolvedComment);
-          await client.summary(resolvedComment);
+  try {
+    if (config.outdatedCommentAction === 'update') {
+      const existingComment = await findExistingComment(client, event.number, config.artifactName);
+
+      if (hasChanges(result)) {
+        if (existingComment) {
+          log.info('Updating existing comment with changes');
+          await client.updateComment(existingComment.id, comment);
+        } else if (shouldPostNewComment) {
+          log.info('Creating new comment with changes');
+          await client.postComment(event.number, comment);
         } else {
-          log.info('No changes and no existing comment, skipping');
+          log.info(`Skipping new comment (comment-mode: ${config.commentMode})`);
         }
-      } else {
-        if (config.outdatedCommentAction === 'minimize') {
-          await minimizePreviousComments(client, event.number, config.artifactName);
-        }
-        await client.postComment(event.number, comment);
-
-        log.info('post summary comment');
-
         await client.summary(comment);
+      } else if (existingComment) {
+        log.info('Updating existing comment to show resolved');
+        const resolvedComment = createResolvedComment({ artifactName: config.artifactName });
+        await client.updateComment(existingComment.id, resolvedComment);
+        await client.summary(resolvedComment);
+      } else {
+        log.info('No changes and no existing comment, skipping');
+        if (shouldPostNewComment) {
+          await client.postComment(event.number, comment);
+          await client.summary(comment);
+        }
       }
-    } catch (e) {
-      log.error(e);
+    } else if (shouldPostNewComment) {
+      if (config.outdatedCommentAction === 'minimize') {
+        await minimizePreviousComments(client, event.number, config.artifactName);
+      }
+      await client.postComment(event.number, comment);
+
+      log.info('post summary comment');
+
+      await client.summary(comment);
+    } else {
+      log.info(`Skipping comment (comment-mode: ${config.commentMode}, has changes: ${hasChanges(result)})`);
     }
-  } else {
-    log.info(`Skipping comment (comment-mode: ${config.commentMode}, has changes: ${hasChanges(result)})`);
+  } catch (e) {
+    log.error(e);
   }
 };
