@@ -177,7 +177,20 @@ The option how to render changed file in comment. This action will change PR and
 - Type: String
 - Default: `"none"`
 
-The option to handle outdated comments in the PR. Available options are `none` and `minimize`. `none` do nothing. `minimize` will minimize outdated action comments.
+The option to handle outdated comments in the PR. Available options are `none`, `minimize`, and `update`.
+- `none`: Do nothing with previous comments.
+- `minimize`: Minimize (collapse) outdated action comments.
+- `update`: Edit the existing comment in place (sticky comment). When combined with `comment-mode: changes`, the existing comment will still be updated to show "resolved" when visual differences are fixed.
+
+#### `comment-mode` (Optional)
+
+- Type: String
+- Default: `"always"`
+
+When to post PR comments. Available options are `always`, `changes`, and `never`.
+- `always`: Always post a comment with the comparison results.
+- `changes`: Only post a comment when visual differences are detected. When combined with `outdated-comment-action: update`, existing comments will still be updated to show "resolved" when differences are fixed.
+- `never`: Never post PR comments (silent mode). Results are still available in the workflow summary and artifacts.
 
 ### `retention-days` (Optional)
 
