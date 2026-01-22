@@ -19,6 +19,7 @@ export interface Config {
   commentReportFormat: 'raw' | 'summarized';
   outdatedCommentAction: 'none' | 'minimize' | 'update';
   retentionDays: number;
+  commentMode: 'always' | 'changes' | 'never';
 }
 
 const validateGitHubToken = (githubToken: string | undefined) => {
@@ -102,6 +103,12 @@ function validateOutdatedCommentAction(action: string): asserts action is 'none'
   }
 }
 
+function validateCommentMode(value: string): asserts value is 'always' | 'changes' | 'never' {
+  if (value !== 'always' && value !== 'changes' && value !== 'never') {
+    throw new Error(`'comment-mode' input must be 'always', 'changes', or 'never' but got '${value}'`);
+  }
+}
+
 export const getConfig = (): Config => {
   const githubToken = core.getInput('github-token');
   const imageDirectoryPath = core.getInput('image-directory-path');
@@ -133,6 +140,8 @@ export const getConfig = (): Config => {
   validateCommentReportFormat(commentReportFormat);
   const outdatedCommentAction = core.getInput('outdated-comment-action') || 'none';
   validateOutdatedCommentAction(outdatedCommentAction);
+  const commentMode = core.getInput('comment-mode') || 'always';
+  validateCommentMode(commentMode);
 
   return {
     githubToken,
@@ -150,5 +159,6 @@ export const getConfig = (): Config => {
     commentReportFormat,
     outdatedCommentAction,
     retentionDays,
+    commentMode,
   };
 };
