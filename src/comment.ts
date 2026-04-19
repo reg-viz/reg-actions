@@ -219,8 +219,7 @@ Check out the report [here](${customReportPage}).`
     : '';
 
   const ghOneLiner = `
-<details>
-<summary>📥 Open HTML report locally</summary>
+### 📥 Open HTML report locally
 
 Download the artifact and open the report with a single command:
 
@@ -229,8 +228,7 @@ dir=$(mktemp -d) && gh run download ${runId} -R ${owner}/${repoName} -n "${artif
 \`\`\`
 
 > Requires [gh](https://cli.github.com/). Replace \`open\` with \`xdg-open\` on Linux or \`start\` on Windows.
-
-</details>`;
+`;
   const successOrFailMessage = isSuccess(result)
     ? `${badge(result)}
 
