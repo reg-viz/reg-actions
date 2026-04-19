@@ -71,10 +71,16 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
 
   if (config.reportFilePath) {
     try {
-      await fs.promises.copyFile(config.reportFilePath, path.join(workspace(), 'report.html'));
-      log.info(`Copied report to workspace: ${config.reportFilePath}`);
+      const html = await fs.promises.readFile(config.reportFilePath, 'utf8');
+      // reg-cli embeds paths like `__reg__/1_actual/...` (workspace-prefixed).
+      // Since the artifact root IS the workspace dir, strip the prefix so
+      // image links resolve when opening report.html from the downloaded
+      // artifact directory.
+      const rewritten = html.split(`${constants.WORKSPACE_DIR_NAME}/`).join('');
+      await fs.promises.writeFile(path.join(workspace(), 'report.html'), rewritten);
+      log.info(`Wrote report.html into workspace`);
     } catch (e) {
-      log.warn(`Failed to copy report into workspace: ${e}`);
+      log.warn(`Failed to write report into workspace: ${e}`);
     }
   }
 
