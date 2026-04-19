@@ -69,6 +69,15 @@ const compareAndUpload = async (client: UploadClient, config: Config): Promise<C
   const result = await compare(config);
   log.info('compare result', result);
 
+  if (config.reportFilePath) {
+    try {
+      await fs.promises.copyFile(config.reportFilePath, path.join(workspace(), 'report.html'));
+      log.info(`Copied report to workspace: ${config.reportFilePath}`);
+    } catch (e) {
+      log.warn(`Failed to copy report into workspace: ${e}`);
+    }
+  }
+
   const files = globSync(path.join(workspace(), '**/*'));
 
   log.info('Start upload artifact');
