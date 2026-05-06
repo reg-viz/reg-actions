@@ -9,6 +9,9 @@
 > [!WARNING]  
 > v1 and v2 are deprecated. Please use v3.
 
+> [!NOTE]
+> **Rust + wasmtime port (in progress).** The action is being rewritten in Rust with reg.wasm executed via [`wasmtime`](https://wasmtime.dev/). This shrinks the JavaScript dependency surface (17 npm + hundreds of transitive deps → a single signed binary distributed via GitHub Releases) to mitigate npm supply-chain attacks. See [docs/RUST-MIGRATION.md](./docs/RUST-MIGRATION.md) for details and the migration plan.
+
 [![GitHub Actions Status](https://github.com/bokuweb/reg-actions/workflows/CI/badge.svg)](https://github.com/bokuweb/reg-actions/actions)
 
 

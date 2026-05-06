@@ -1,0 +1,143 @@
+name: "reg-actions"
+author: "bokuweb"
+description: 'A visual regression test tool for github actions (Rust + wasmtime).'
+branding:
+  icon: 'aperture'
+  color: 'red'
+inputs:
+  github-token:
+    description: 'GitHub API access token. Used to upload test report and add comments to pull requests.'
+    required: true
+  image-directory-path:
+    description: "Path to images directory. Images stored here are compared with the expected images from the last upload."
+    required: true
+  enable-antialias:
+    description: "Enable antialias. Default false."
+    required: false
+  matching-threshold:
+    description: "Matching threshold (0-1). Smaller values make comparison more sensitive. Default 0."
+    required: false
+  threshold-rate:
+    description: "Rate threshold for change detection. Applied after matching-threshold. Default 0."
+    required: false
+  threshold-pixel:
+    description: "Pixel threshold. Takes precedence over threshold-rate. Default 0."
+    required: false
+  target-hash:
+    description: "The commit hash to compare against."
+    required: false
+  artifact-name:
+    description: "Workflow artifact name. Default `reg`."
+    required: false
+  branch:
+    description: "Branch name that manages images. Default `reg_actions`."
+    required: false
+  disable-branch:
+    description: "Disable push to branch. Images won't appear in comments."
+    required: false
+  custom-report-page:
+    description: "Custom report page URL."
+    required: false
+  report-file-path:
+    description: "Path of generated report html. Not included in artifact."
+    required: false
+  comment-report-format:
+    description: "How to render changed file in comment. `raw` (default) or `summarized`."
+    required: false
+  outdated-comment-action:
+    description: "Outdated comment handling: `none` (default), `minimize`, or `update`."
+    required: false
+  comment-mode:
+    description: "When to post PR comments: `always` (default), `changes`, or `never`."
+    required: false
+  retention-days:
+    description: "Image retention duration in days. Default 30."
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - name: Resolve runner target
+      id: target
+      shell: bash
+      run: |
+        set -euo pipefail
+        case "$(uname -s)" in
+          Linux)   os=unknown-linux-gnu ;;
+          Darwin)  os=apple-darwin ;;
+          MINGW*|MSYS*|CYGWIN*) os=pc-windows-msvc ;;
+          *) echo "::error::Unsupported OS: $(uname -s)" >&2; exit 1 ;;
+        esac
+        case "$(uname -m)" in
+          x86_64|amd64)         arch=x86_64 ;;
+          arm64|aarch64)        arch=aarch64 ;;
+          *) echo "::error::Unsupported arch: $(uname -m)" >&2; exit 1 ;;
+        esac
+        echo "target=${arch}-${os}" >> "$GITHUB_OUTPUT"
+        echo "ext=$([[ $os == pc-windows-msvc ]] && echo .exe || echo)" >> "$GITHUB_OUTPUT"
+
+    - name: Download reg-actions binary
+      shell: bash
+      env:
+        # Pin to the same version the action was checked out at.
+        # `github.action_ref` is set automatically when invoked as `uses: reg-viz/reg-actions@vX`.
+        REG_ACTIONS_REF: ${{ github.action_ref }}
+      run: |
+        set -euo pipefail
+        ver="${REG_ACTIONS_REF:-main}"
+        target='${{ steps.target.outputs.target }}'
+        ext='${{ steps.target.outputs.ext }}'
+        base="https://github.com/reg-viz/reg-actions/releases/download/${ver}"
+        url="${base}/reg-actions-${target}.tar.gz"
+        sums="${base}/checksums.txt"
+        workdir="$RUNNER_TEMP/reg-actions-bin"
+        mkdir -p "$workdir"
+        cd "$workdir"
+        echo "Downloading ${url}"
+        curl --proto '=https' --tlsv1.2 -fsSL "$url" -o reg-actions.tar.gz
+        curl --proto '=https' --tlsv1.2 -fsSL "$sums" -o checksums.txt
+        # SHA256 verification (always)
+        grep " reg-actions-${target}.tar.gz$" checksums.txt | shasum -a 256 -c -
+        # Optional cosign keyless signature verification.
+        # If cosign is on PATH, attempt to verify checksums.txt against the
+        # release workflow's OIDC identity. Failures here are fatal — once
+        # cosign is installed in the user's runner, signature verification is
+        # required.
+        if command -v cosign >/dev/null 2>&1; then
+          curl --proto '=https' --tlsv1.2 -fsSL -o checksums.txt.sig "${base}/checksums.txt.sig"
+          curl --proto '=https' --tlsv1.2 -fsSL -o checksums.txt.pem "${base}/checksums.txt.pem"
+          cosign verify-blob \
+            --signature checksums.txt.sig \
+            --certificate checksums.txt.pem \
+            --certificate-identity-regexp 'https://github\.com/reg-viz/reg-actions/\.github/workflows/release\.yml@.*' \
+            --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+            checksums.txt
+        else
+          echo '::notice::cosign not found on PATH; skipping signature verification (sha256 still verified). Install sigstore/cosign-installer in your workflow to enable.'
+        fi
+        tar xzf reg-actions.tar.gz
+        chmod +x "reg-actions${ext}"
+        echo "REG_ACTIONS_BIN=$workdir/reg-actions${ext}" >> "$GITHUB_ENV"
+
+    - name: Run reg-actions
+      shell: bash
+      env:
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_IMAGE_DIRECTORY_PATH: ${{ inputs.image-directory-path }}
+        INPUT_ENABLE_ANTIALIAS: ${{ inputs.enable-antialias }}
+        INPUT_MATCHING_THRESHOLD: ${{ inputs.matching-threshold }}
+        INPUT_THRESHOLD_RATE: ${{ inputs.threshold-rate }}
+        INPUT_THRESHOLD_PIXEL: ${{ inputs.threshold-pixel }}
+        INPUT_TARGET_HASH: ${{ inputs.target-hash }}
+        INPUT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        INPUT_BRANCH: ${{ inputs.branch }}
+        INPUT_DISABLE_BRANCH: ${{ inputs.disable-branch }}
+        INPUT_CUSTOM_REPORT_PAGE: ${{ inputs.custom-report-page }}
+        INPUT_REPORT_FILE_PATH: ${{ inputs.report-file-path }}
+        INPUT_COMMENT_REPORT_FORMAT: ${{ inputs.comment-report-format }}
+        INPUT_OUTDATED_COMMENT_ACTION: ${{ inputs.outdated-comment-action }}
+        INPUT_COMMENT_MODE: ${{ inputs.comment-mode }}
+        INPUT_RETENTION_DAYS: ${{ inputs.retention-days }}
+        RUST_LOG: ${{ env.RUST_LOG || 'info,reg_actions=debug' }}
+      run: |
+        set -euo pipefail
+        "$REG_ACTIONS_BIN"

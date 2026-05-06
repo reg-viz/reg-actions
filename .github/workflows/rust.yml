@@ -1,0 +1,67 @@
+name: rust
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-check-${{ hashFiles('Cargo.lock') }}
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+      - name: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('Cargo.lock') }}
+      - name: cargo build
+        run: cargo build --release --bin reg-actions
+      - name: cargo test
+        run: cargo test --all
+      - name: smoke (no env)
+        shell: bash
+        run: |
+          set +e
+          out=$(env -i PATH="$PATH" HOME="$HOME" ./target/release/reg-actions 2>&1)
+          code=$?
+          echo "$out"
+          # Expect non-zero exit and an ::error:: marker mentioning 'github-token'.
+          test "$code" -ne 0
+          echo "$out" | grep -F '::error::' | grep -q 'github-token'
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install --locked cargo-audit
+      - name: cargo audit
+        # Don't break PRs on advisories yet — surface them as warnings.
+        run: cargo audit || true

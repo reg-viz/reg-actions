@@ -1,0 +1,64 @@
+name: rust-self-test
+
+# Build the Rust binary in this PR/branch and run reg-actions against the repo's
+# own `images/` directory. This is the equivalent of the existing JS-based
+# `test.yml` (`uses: ./dist`) but for the Rust pipeline — it exercises the full
+# action.yml-less code path: config → event → compare (wasmtime + reg.wasm) →
+# Artifact v4 upload → PR comment.
+#
+# Designed to run on Linux x86_64 first; expand the matrix once the linux build
+# stabilises in CI.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write   # comment + minimize
+  actions: read          # workflow runs / artifacts
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}-self-test
+
+      - name: Build reg-actions binary
+        run: cargo build --release --bin reg-actions
+
+      - name: Run reg-actions against images/
+        env:
+          INPUT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_IMAGE_DIRECTORY_PATH: ./images
+          INPUT_DISABLE_BRANCH: 'true'
+          INPUT_REPORT_FILE_PATH: ./report.html
+          # Avoid noisy comments while we are still validating.
+          INPUT_COMMENT_MODE: changes
+          RUST_LOG: info,reg_actions=debug
+        run: |
+          set -euo pipefail
+          ./target/release/reg-actions
+
+      - name: Upload report.html
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reg-actions-self-test-report
+          path: |
+            report.html
+            __reg__
+          if-no-files-found: warn
