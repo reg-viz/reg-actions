@@ -10,8 +10,30 @@ jobs:
       - uses: pnpm/action-setup@v2
         with:
           version: 9
-      - run: pnpm i --frozen-lockfile
-      - run: pnpm package
+
+      # Same coronarium block-mode supervision as test.yml — see
+      # comments there for the full rationale. Wraps `pnpm i +
+      # pnpm package` only; the JavaScript-side actions
+      # (github-script and ./dist) run in the runner agent and
+      # sit outside the supervised tree.
+      - uses: bokuweb/coronarium@v0
+        with:
+          policy: .github/coronarium.yml
+          mode: block
+
+      - name: pnpm i + package (coronarium block)
+        run: |
+          sudo -E env "PATH=$PATH" "$CORONARIUM_BIN" run \
+            --policy  "$CORONARIUM_POLICY" \
+            --mode    "$CORONARIUM_MODE" \
+            --log     coronarium.log.json \
+            --html    coronarium-report.html \
+            --summary "$GITHUB_STEP_SUMMARY" \
+            -- bash -euxo pipefail -c '
+              pnpm i --frozen-lockfile
+              pnpm package
+            '
+
       - uses: actions/github-script@v5
         id: target
         with:

@@ -1,0 +1,53 @@
+mode: block
+
+# Mirrored from reg-viz/reg-cli — see that repo's PR for the
+# rationale on each pillar's default. Summary:
+#
+# - network: default: allow. CDN-fronted egress (Cloudflare / Fastly
+#   anycast for npm tarballs, GitHub releases) makes a strict
+#   IP-based whitelist unreachable today (rotating IPs vs. eBPF
+#   map capacity). Real defence is on the other two pillars.
+#
+# - file: default: allow + 8 deny prefixes. The 8 entries are
+#   kernel-blocked via eBPF LSM (SIGKILL on attempted reads).
+#   `default: deny` would also tag every anonymous fd open
+#   (`pipe:[…]`, `anon_inode:[…]`, …) as denied, breaking block
+#   mode despite no real violation.
+#
+# - process.deny_exec: basename block on common data-exfil /
+#   lateral-movement tools. The supervised step legitimately needs
+#   node, pnpm, sh, bash, and git — nothing on this list should
+#   ever appear in a clean run.
+
+network:
+  default: allow
+
+file:
+  default: allow
+  deny:
+    # Kernel-blocked credential / socket paths. Order matters:
+    # coronarium kernel-blocks only the first 8 entries (eBPF map
+    # capacity); the rest are tag-only and would inflate
+    # `stats.denied` without actually protecting anything.
+    - /etc/shadow
+    - /etc/sudoers
+    - /home/runner/.ssh
+    - /home/runner/.aws
+    - /home/runner/.gnupg
+    - /home/runner/.docker/config.json
+    - /var/run/docker.sock
+    - /etc/gshadow
+
+process:
+  deny_exec:
+    - curl
+    - wget
+    - nc
+    - ncat
+    - socat
+    - ssh
+    - scp
+    - sftp
+    - rsync
+    - telnet
+    - ftp
