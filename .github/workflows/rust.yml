@@ -6,6 +6,11 @@ on:
     branches:
       - main
 
+# Minimum-privilege GITHUB_TOKEN for the whole workflow.
+# Read-only is enough: we don't push code, comment on PRs, or upload artifacts.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
