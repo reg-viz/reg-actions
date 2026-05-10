@@ -1,0 +1,77 @@
+name: rust
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# Minimum-privilege GITHUB_TOKEN for the whole workflow.
+# Read-only is enough: we don't push code, comment on PRs, or upload artifacts.
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-check-${{ hashFiles('Cargo.lock') }}
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+      - name: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: stable
+      - name: Cache cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('Cargo.lock') }}
+      - name: cargo build
+        run: cargo build --release --bin reg-actions
+      - name: cargo test
+        run: cargo test --all
+      - name: smoke (no env)
+        shell: bash
+        run: |
+          set +e
+          out=$(env -i PATH="$PATH" HOME="$HOME" ./target/release/reg-actions 2>&1)
+          code=$?
+          echo "$out"
+          # Expect non-zero exit and an ::error:: marker mentioning 'github-token'.
+          test "$code" -ne 0
+          echo "$out" | grep -F '::error::' | grep -q 'github-token'
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: stable
+      - name: Install cargo-audit
+        run: cargo install --locked cargo-audit
+      - name: cargo audit
+        # Don't break PRs on advisories yet — surface them as warnings.
+        run: cargo audit || true

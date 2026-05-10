@@ -1,0 +1,140 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v6-rust-rc1). Skip prefix-checks; must already exist."
+        required: true
+
+permissions:
+  contents: write
+  id-token: write   # for cosign keyless signing (future)
+  attestations: write
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: true
+          - target: x86_64-apple-darwin
+            os: macos-13
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            ext: .exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+
+      - name: Install cross (linux aarch64)
+        if: ${{ matrix.cross }}
+        run: cargo install cross --git https://github.com/cross-rs/cross --rev v0.2.5
+
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${{ matrix.cross || '' }}" ]; then
+            cross build --release --target ${{ matrix.target }} --bin reg-actions
+          else
+            cargo build --release --target ${{ matrix.target }} --bin reg-actions
+          fi
+
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          ext='${{ matrix.ext }}'
+          out="reg-actions-${{ matrix.target }}.tar.gz"
+          tar czf "$out" -C "target/${{ matrix.target }}/release" "reg-actions${ext}"
+          shasum -a 256 "$out" > "$out.sha256"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bin-${{ matrix.target }}
+          path: |
+            reg-actions-${{ matrix.target }}.tar.gz
+            reg-actions-${{ matrix.target }}.tar.gz.sha256
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate combined checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          ls -la
+          # 個別 .sha256 を統合
+          rm -f checksums.txt
+          for f in *.tar.gz; do
+            shasum -a 256 "$f" >> checksums.txt
+          done
+          cat checksums.txt
+
+      - name: Determine tag
+        id: tag
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.tag || '' }}" ]; then
+            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
+
+      - name: Sign checksums (keyless OIDC)
+        shell: bash
+        env:
+          COSIGN_YES: "true"
+        run: |
+          set -euo pipefail
+          cd dist
+          cosign sign-blob \
+            --output-signature checksums.txt.sig \
+            --output-certificate checksums.txt.pem \
+            checksums.txt
+
+      - name: Generate SLSA-style attestation
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: 'dist/*.tar.gz'
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          files: |
+            dist/*.tar.gz
+            dist/checksums.txt
+            dist/checksums.txt.sig
+            dist/checksums.txt.pem
