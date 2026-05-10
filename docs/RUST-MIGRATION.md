@@ -105,6 +105,30 @@ verifies the keyless signature against the release workflow's OIDC identity:
 --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
 ```
 
+## Preview channel: `@rc-rust`
+
+While the legacy JS bundle continues to power `@rc` (via `deploy-rc.yml`
+pushing `dist/` to the `rc` branch), every push to `develop` also
+**force-updates** a moving GitHub Release tagged `rc-rust` containing
+fresh binaries for all 5 targets, signed with cosign keyless OIDC.
+
+Try the Rust port without disturbing existing `@rc` users:
+
+```yaml
+- uses: reg-viz/reg-actions@rc-rust
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    image-directory-path: ./screenshots
+```
+
+Notes:
+- Marked as a GitHub *prerelease* so it never appears as "Latest".
+- Tag is force-replaced (delete + recreate) on every `develop` push, so
+  pinning a SHA via Dependabot/Renovate is recommended for production
+  consumers — `@rc-rust` is for try-it-out and dogfooding only.
+- Once Phase 7 cutover lands, the regular `@rc` channel will switch to
+  the Rust binary and `@rc-rust` will be retired.
+
 ## Migration status
 
 - [x] Phase 0 — wasm protocol reverse-engineering, octocrab survey

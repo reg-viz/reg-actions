@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+    # Moving `rc-rust` release: every push to `develop` rebuilds the
+    # binaries and force-updates the `rc-rust` tag + release so users can
+    # try the Rust port via `uses: reg-viz/reg-actions@rc-rust` without
+    # disturbing the JS-based `@rc` channel managed by deploy-rc.yml.
+    branches:
+      - develop
   workflow_dispatch:
     inputs:
       tag:
@@ -14,6 +20,12 @@ permissions:
   contents: write
   id-token: write   # for cosign keyless signing (future)
   attestations: write
+
+# Cancel in-flight develop-driven rc-rust builds when a newer commit lands.
+# Tag pushes (real releases) get unique groups so they never cancel each other.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/develop' }}
 
 jobs:
   build:
@@ -101,11 +113,30 @@ jobs:
         id: tag
         shell: bash
         run: |
+          set -euo pipefail
           if [ -n "${{ github.event.inputs.tag || '' }}" ]; then
-            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+            name="${{ github.event.inputs.tag }}"
+            moving=false
+          elif [ "$GITHUB_REF" = "refs/heads/develop" ]; then
+            # Moving release for the Rust port preview channel.
+            name="rc-rust"
+            moving=true
           else
-            echo "name=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
+            name="${GITHUB_REF##*/}"
+            moving=false
           fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "moving=$moving" >> "$GITHUB_OUTPUT"
+
+      - name: Delete previous moving release (rc-rust)
+        if: steps.tag.outputs.moving == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Best-effort cleanup so softprops can recreate the tag.
+          gh release delete "${{ steps.tag.outputs.name }}" --cleanup-tag --yes \
+            --repo "${{ github.repository }}" || true
 
       - name: Install cosign
         uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
@@ -131,8 +162,13 @@ jobs:
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
+          # Don't promote the moving rc-rust release to "Latest".
+          make_latest: ${{ steps.tag.outputs.moving == 'true' && 'false' || 'true' }}
+          prerelease: ${{ steps.tag.outputs.moving == 'true' }}
+          name: ${{ steps.tag.outputs.moving == 'true' && 'rc-rust (preview)' || steps.tag.outputs.name }}
+          body: ${{ steps.tag.outputs.moving == 'true' && 'Moving preview release built from `develop` HEAD. Use via `uses: reg-viz/reg-actions@rc-rust` to try the Rust + wasmtime port. May break or be force-updated at any time.' || '' }}
           fail_on_unmatched_files: true
-          generate_release_notes: true
+          generate_release_notes: ${{ steps.tag.outputs.moving != 'true' }}
           files: |
             dist/*.tar.gz
             dist/checksums.txt
