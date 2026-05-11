@@ -6,26 +6,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 9
-
-      # Same sakimori block-mode supervision as test.yml — see
-      # comments there for the full rationale. Wraps `pnpm i +
-      # pnpm package` only; the JavaScript-side actions
-      # (github-script and ./dist) run in the runner agent and
-      # sit outside the supervised tree.
-      - name: pnpm i + package (sakimori block)
-        uses: bokuweb/sakimori@v0
+      # Job-scoped sakimori (v0.34+). See test.yml for the full
+      # rationale. Earlier we used the one-step form which only
+      # supervised the wrapped `pnpm i + pnpm package` block; this
+      # widens supervision to every step including the github-script
+      # randomiser and the `./dist` action under test.
+      - uses: bokuweb/sakimori/job@v0
         with:
           policy: .github/sakimori.yml
           mode: block
           log: sakimori.log.json
           html: sakimori-report.html
-          run: |
-            pnpm i --frozen-lockfile
-            pnpm package
+
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: pnpm i + package
+        run: |
+          pnpm i --frozen-lockfile
+          pnpm package
 
       - uses: actions/github-script@v5
         id: target

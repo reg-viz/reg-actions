@@ -10,36 +10,30 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 9
-
-      # Audit-with-block supervision via bokuweb/sakimori. Wraps
-      # the `pnpm i + pnpm package` build under an eBPF supervisor
-      # that:
-      #   - kernel-blocks reads of credential paths
-      #     (.ssh / .aws / .gnupg / .docker / shadow / sudoers / docker.sock)
-      #   - records every exec/open/connect for the run
-      #   - fails CI if any deny-listed exec (curl/wget/nc/ssh/…)
-      #     fires inside the supervised tree.
-      # The `./dist` action step below is a JavaScript action that
-      # runs in the runner agent rather than our shell, so it sits
-      # outside the supervised tree by construction.
-      #
-      # The action's new `run:` input (sakimori v0.33+) wraps the
-      # script with `sakimori run` for us — no separate
-      # `sudo -E env "PATH=$PATH" "$SAKIMORI_BIN" run …` step needed.
-      - name: pnpm i + package (sakimori block)
-        uses: bokuweb/sakimori@v0
+      # Job-scoped sakimori (v0.34+). Starts an eBPF daemon attached
+      # to the runner-worker's cgroup BEFORE checkout, so every
+      # subsequent step (checkout, pnpm/action-setup, the build, the
+      # `./dist` action under test, the comment action) is observed
+      # by a single supervisor. Earlier we used the one-step form
+      # `bokuweb/sakimori@v0` with `run:`, which only supervised the
+      # wrapped command and explicitly left `./dist` outside the
+      # supervised tree.
+      - uses: bokuweb/sakimori/job@v0
         with:
           policy: .github/sakimori.yml
           mode: block
           log: sakimori.log.json
           html: sakimori-report.html
-          run: |
-            pnpm i --frozen-lockfile
-            pnpm package
+
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: pnpm i + package
+        run: |
+          pnpm i --frozen-lockfile
+          pnpm package
 
       - uses: ./dist
         with:
@@ -47,6 +41,18 @@ jobs:
           image-directory-path: "./images"
           disable-branch: true
           report-file-path: './report.html'
+
+      # Force the daemon to flush its log + HTML mid-job so the
+      # upload-artifact / comment steps below can see them. The
+      # job-action's post-hook also calls `daemon stop`, but it runs
+      # at the very end of the job — long after upload-artifact has
+      # already executed. `daemon stop` is idempotent on a missing
+      # pid-file, so the post-hook becomes a no-op.
+      - if: always()
+        name: Flush sakimori daemon
+        run: |
+          sudo -n -E "$SAKIMORI_BIN" daemon stop \
+            --pid-file "$SAKIMORI_JOB_PIDFILE"
 
       - uses: actions/upload-artifact@v4
         if: always()
