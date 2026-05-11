@@ -42,17 +42,12 @@ jobs:
           disable-branch: true
           report-file-path: './report.html'
 
-      # Force the daemon to flush its log + HTML mid-job so the
-      # upload-artifact / comment steps below can see them. The
-      # job-action's post-hook also calls `daemon stop`, but it runs
-      # at the very end of the job — long after upload-artifact has
-      # already executed. `daemon stop` is idempotent on a missing
-      # pid-file, so the post-hook becomes a no-op.
+      # Flush the daemon so upload-artifact + the comment sub-action
+      # below see the freshly-written log + HTML. The daemon's own
+      # post-hook would otherwise write them at end-of-job, too late
+      # for an in-job upload.
       - if: always()
-        name: Flush sakimori daemon
-        run: |
-          sudo -n -E "$SAKIMORI_BIN" daemon stop \
-            --pid-file "$SAKIMORI_JOB_PIDFILE"
+        uses: bokuweb/sakimori/job/stop@v0
 
       - uses: actions/upload-artifact@v4
         if: always()
