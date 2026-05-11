@@ -26,7 +26,7 @@ file:
   default: allow
   deny:
     # Kernel-blocked credential / socket paths. Order matters:
-    # coronarium kernel-blocks only the first 8 entries (eBPF map
+    # sakimori kernel-blocks only the first 8 entries (eBPF map
     # capacity); the rest are tag-only and would inflate
     # `stats.denied` without actually protecting anything.
     - /etc/shadow

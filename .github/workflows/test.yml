@@ -15,7 +15,7 @@ jobs:
         with:
           version: 9
 
-      # Audit-with-block supervision via bokuweb/coronarium. Wraps
+      # Audit-with-block supervision via bokuweb/sakimori. Wraps
       # the `pnpm i + pnpm package` build under an eBPF supervisor
       # that:
       #   - kernel-blocks reads of credential paths
@@ -26,25 +26,20 @@ jobs:
       # The `./dist` action step below is a JavaScript action that
       # runs in the runner agent rather than our shell, so it sits
       # outside the supervised tree by construction.
-      - uses: bokuweb/coronarium@v0
+      #
+      # The action's new `run:` input (sakimori v0.33+) wraps the
+      # script with `sakimori run` for us — no separate
+      # `sudo -E env "PATH=$PATH" "$SAKIMORI_BIN" run …` step needed.
+      - name: pnpm i + package (sakimori block)
+        uses: bokuweb/sakimori@v0
         with:
-          policy: .github/coronarium.yml
+          policy: .github/sakimori.yml
           mode: block
-
-      - name: pnpm i + package (coronarium block)
-        run: |
-          # `sudo -E env "PATH=$PATH"` so the supervised child can
-          # find pnpm; sudo strips PATH even with -E.
-          sudo -E env "PATH=$PATH" "$CORONARIUM_BIN" run \
-            --policy  "$CORONARIUM_POLICY" \
-            --mode    "$CORONARIUM_MODE" \
-            --log     coronarium.log.json \
-            --html    coronarium-report.html \
-            --summary "$GITHUB_STEP_SUMMARY" \
-            -- bash -euxo pipefail -c '
-              pnpm i --frozen-lockfile
-              pnpm package
-            '
+          log: sakimori.log.json
+          html: sakimori-report.html
+          run: |
+            pnpm i --frozen-lockfile
+            pnpm package
 
       - uses: ./dist
         with:
@@ -56,15 +51,15 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coronarium-report
+          name: sakimori-report
           path: |
-            coronarium-report.html
-            coronarium.log.json
+            sakimori-report.html
+            sakimori.log.json
           if-no-files-found: ignore
 
-      - uses: bokuweb/coronarium/comment@v0
+      - uses: bokuweb/sakimori/comment@v0
         if: github.event_name == 'pull_request'
         with:
-          log: coronarium.log.json
-          artifact-name: coronarium-report
-          html-filename: coronarium-report.html
+          log: sakimori.log.json
+          artifact-name: sakimori-report
+          html-filename: sakimori-report.html
