@@ -40,7 +40,7 @@ jobs:
             os: ubuntu-latest
             cross: true
           - target: x86_64-apple-darwin
-            os: macos-13
+            os: macos-15-intel
           - target: aarch64-apple-darwin
             os: macos-14
           - target: x86_64-pc-windows-msvc
@@ -166,7 +166,10 @@ jobs:
           make_latest: ${{ steps.tag.outputs.moving == 'true' && 'false' || 'true' }}
           prerelease: ${{ steps.tag.outputs.moving == 'true' }}
           name: ${{ steps.tag.outputs.moving == 'true' && 'rc-rust (preview)' || steps.tag.outputs.name }}
-          body: ${{ steps.tag.outputs.moving == 'true' && 'Moving preview release built from `develop` HEAD. Use via `uses: reg-viz/reg-actions@rc-rust` to try the Rust + wasmtime port. May break or be force-updated at any time.' || '' }}
+          # Block scalar so the inline literal — which contains `uses: ` —
+          # parses as a YAML string, not a nested mapping.
+          body: |-
+            ${{ steps.tag.outputs.moving == 'true' && 'Moving preview release built from `develop` HEAD. Use via `uses: reg-viz/reg-actions@rc-rust` to try the Rust + wasmtime port. May break or be force-updated at any time.' || '' }}
           fail_on_unmatched_files: true
           generate_release_notes: ${{ steps.tag.outputs.moving != 'true' }}
           files: |
