@@ -56,19 +56,29 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
 
-      - name: Install cross (linux aarch64)
+      # Native cross-compile for aarch64-linux via apt's gcc cross-toolchain.
+      # We previously used `cargo install cross --rev v0.2.5`, but that
+      # pinned revision no longer builds on modern Rust (soundness
+      # diagnostics for `&mut` to mutable statics — 18 errors in
+      # cross::temp). Going through apt + a target-specific linker keeps
+      # the supply-chain surface flat (no third-party cargo install).
+      - name: Install aarch64 cross-toolchain (linux aarch64)
         if: ${{ matrix.cross }}
-        run: cargo install cross --git https://github.com/cross-rs/cross --rev v0.2.5
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          {
+            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc"
+            echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc"
+            echo "AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar"
+          } >> "$GITHUB_ENV"
 
       - name: Build
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "${{ matrix.cross || '' }}" ]; then
-            cross build --release --target ${{ matrix.target }} --bin reg-actions
-          else
-            cargo build --release --target ${{ matrix.target }} --bin reg-actions
-          fi
+          cargo build --release --target ${{ matrix.target }} --bin reg-actions
 
       - name: Package
         shell: bash
@@ -77,15 +87,17 @@ jobs:
           ext='${{ matrix.ext }}'
           out="reg-actions-${{ matrix.target }}.tar.gz"
           tar czf "$out" -C "target/${{ matrix.target }}/release" "reg-actions${ext}"
-          shasum -a 256 "$out" > "$out.sha256"
+          # Per-target .sha256 is no longer emitted here: the release job
+          # regenerates a combined `checksums.txt` from the uploaded
+          # tar.gz files, and Windows runners' Git Bash doesn't ship
+          # `shasum`/`sha256sum` by default. Avoiding the redundant
+          # hashing here keeps the matrix portable.
 
       - name: Upload artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: bin-${{ matrix.target }}
-          path: |
-            reg-actions-${{ matrix.target }}.tar.gz
-            reg-actions-${{ matrix.target }}.tar.gz.sha256
+          path: reg-actions-${{ matrix.target }}.tar.gz
 
   release:
     needs: build
