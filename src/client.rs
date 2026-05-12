@@ -16,7 +16,6 @@ use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
 use backon::{ExponentialBuilder, Retryable};
 use bytes::Bytes;
-use http_body_util::BodyExt;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -137,22 +136,26 @@ impl ApiClient {
     }
 
     /// Workflow run artifact を zip でダウンロードする (REST API 経由)。
+    ///
+    /// `/repos/{}/actions/artifacts/{}/zip` は **302 で Azure Blob 署名 URL
+    /// にリダイレクト**する仕様なので、生の `_get` だと空ボディが返って
+    /// `Could not find EOCD` で zip パースに失敗する。
+    /// octocrab の `actions().download_artifact()` は内部で
+    /// `follow_location_to_data` を呼んで本体を取りに行ってくれるので、
+    /// そちらを経由する。
     pub async fn download_artifact_zip(&self, artifact_id: u64) -> Result<Bytes> {
+        use octocrab::params::actions::ArchiveFormat;
         let owner = self.repository.owner.clone();
         let repo = self.repository.repo.clone();
         let octo = self.octocrab.clone();
-        let url = format!("/repos/{owner}/{repo}/actions/artifacts/{artifact_id}/zip");
-        let resp = (|| async { octo._get(url.clone()).await })
-            .retry(Self::backoff())
-            .await
-            .context("downloadArtifact")?;
-        // フォロー先 URL の本体を取得
-        let bytes = resp
-            .into_body()
-            .collect()
-            .await
-            .context("collect download body")?
-            .to_bytes();
+        let bytes = (|| async {
+            octo.actions()
+                .download_artifact(&owner, &repo, artifact_id.into(), ArchiveFormat::Zip)
+                .await
+        })
+        .retry(Self::backoff())
+        .await
+        .context("downloadArtifact")?;
         Ok(bytes)
     }
 
@@ -340,9 +343,15 @@ impl ArtifactClient {
     /// Artifact をアップロードする。
     /// `files` のうち `workspace_root` 配下にあるものだけをアーカイブし、相対パスで保存。
     ///
-    /// **本実装は Phase 2 stub**: 実 GitHub Actions ランナー上での動作確認が
-    /// 別途必要。現状は protocol に沿った API 呼び出しを行うが、エラーハンドリング・
-    /// チャンク分割・SHA256 計算は最小限。
+    /// **既知の制約 (2026-05 時点):** Artifact v4 の Twirl API は
+    /// `ACTIONS_RUNTIME_TOKEN` / `ACTIONS_RESULTS_URL` を要求するが、
+    /// これらは **composite action のシェルステップには runner が注入しない**
+    /// (GitHub のセキュリティ仕様)。Node20 action からは process env で
+    /// 見えるが、composite からは見えない。
+    ///
+    /// 当面は env 変数が無いときに `Ok(skipped)` を返してアップロードを
+    /// no-op 扱いとする。次回比較のための expected 画像保存は、別ルート
+    /// (reg_actions branch への push) でカバーされる前提。
     pub async fn upload_artifact(
         &self,
         artifact_name: &str,
@@ -350,10 +359,13 @@ impl ArtifactClient {
         workspace_root: &Path,
     ) -> Result<UploadArtifactResult> {
         if !self.enabled() {
-            anyhow::bail!(
-                "Artifact API is unavailable (ACTIONS_RUNTIME_TOKEN / ACTIONS_RESULTS_URL not set). \
-                 Are you running outside a GitHub Actions runner?"
+            tracing::warn!(
+                "skipping artifact upload — ACTIONS_RUNTIME_TOKEN / ACTIONS_RESULTS_URL not \
+                 available to this composite step. The branch-based image storage \
+                 (`disable-branch: false`) still works; only the artifact-as-cache path is \
+                 affected. Tracking: https://github.com/actions/runner/issues/2391",
             );
+            return Ok(UploadArtifactResult { id: None, size: 0 });
         }
 
         // 1. zip を作る

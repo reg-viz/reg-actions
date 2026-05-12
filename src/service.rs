@@ -219,7 +219,7 @@ async fn compare_and_upload(client: &ApiClient, config: &Config) -> Result<Compa
             r.id
         }
         Err(e) => {
-            tracing::error!(error = %e, "upload_artifact failed");
+            tracing::warn!(error = %e, "upload_artifact failed (non-fatal)");
             None
         }
     };
