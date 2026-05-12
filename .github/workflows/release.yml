@@ -125,8 +125,19 @@ jobs:
             name="${GITHUB_REF##*/}"
             moving=false
           fi
+
+          # For semver tag pushes (vX.Y.Z), also publish a moving major
+          # alias `vX` so users can `uses: reg-viz/reg-actions@vX` and
+          # auto-track the latest patch within that major. Pre-release
+          # tags (v4.0.0-rc1) are intentionally excluded.
+          major=""
+          if [[ "$name" =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]]; then
+            major="v${BASH_REMATCH[1]}"
+          fi
+
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "moving=$moving" >> "$GITHUB_OUTPUT"
+          echo "major=$major" >> "$GITHUB_OUTPUT"
 
       - name: Delete previous moving release (rc-rust)
         if: steps.tag.outputs.moving == 'true'
@@ -172,6 +183,45 @@ jobs:
             ${{ steps.tag.outputs.moving == 'true' && 'Moving preview release built from `develop` HEAD. Use via `uses: reg-viz/reg-actions@rc-rust` to try the Rust + wasmtime port. May break or be force-updated at any time.' || '' }}
           fail_on_unmatched_files: true
           generate_release_notes: ${{ steps.tag.outputs.moving != 'true' }}
+          files: |
+            dist/*.tar.gz
+            dist/checksums.txt
+            dist/checksums.txt.sig
+            dist/checksums.txt.pem
+
+      # ────────────────────────────────────────────────────────────────
+      # Moving major alias (vX) for semver releases (vX.Y.Z).
+      # Same artifacts, separate Release/tag so `uses: org/repo@vX`
+      # always resolves to the latest patch.
+      # ────────────────────────────────────────────────────────────────
+      - name: Delete previous major alias release (${{ steps.tag.outputs.major }})
+        if: steps.tag.outputs.major != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Best-effort: previous major alias may not exist yet (first vX.0.0).
+          gh release delete "${{ steps.tag.outputs.major }}" --cleanup-tag --yes \
+            --repo "${{ github.repository }}" || true
+
+      - name: Publish moving major alias release (${{ steps.tag.outputs.major }})
+        if: steps.tag.outputs.major != ''
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: ${{ steps.tag.outputs.major }}
+          target_commitish: ${{ github.sha }}
+          # The canonical vX.Y.Z release stays "Latest"; the moving alias
+          # piggybacks on the same artifacts but doesn't override it.
+          make_latest: false
+          prerelease: false
+          name: ${{ steps.tag.outputs.major }} (moving alias)
+          body: |
+            Moving alias for the latest `${{ steps.tag.outputs.major }}.x.y` release.
+            Currently points at [`${{ steps.tag.outputs.name }}`](https://github.com/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.name }}).
+
+            Use via `uses: reg-viz/reg-actions@${{ steps.tag.outputs.major }}` to auto-track patches.
+            For reproducible builds, pin the canonical tag or a SHA.
+          fail_on_unmatched_files: true
           files: |
             dist/*.tar.gz
             dist/checksums.txt

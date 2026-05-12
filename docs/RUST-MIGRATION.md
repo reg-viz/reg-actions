@@ -129,6 +129,53 @@ Notes:
 - Once Phase 7 cutover lands, the regular `@rc` channel will switch to
   the Rust binary and `@rc-rust` will be retired.
 
+## Cutting `v4` (the first stable Rust release)
+
+Once `@rc-rust` validation is satisfactory, promote it to a stable
+`v4` major channel as follows:
+
+1. **Merge `develop` → `main`** so the Rust port is on the stable line.
+
+2. **Tag and push** a semver release from `main`:
+
+   ```sh
+   git switch main && git pull
+   git tag -a v4.0.0 -m "v4.0.0: Rust + wasmtime port"
+   git push origin v4.0.0
+   ```
+
+3. `release.yml` triggers on the `v*` tag and runs **two release jobs
+   in one workflow**:
+   - **Canonical release** at `v4.0.0` — marked `make_latest: true`,
+     full release notes, cosign-signed checksums, SLSA attestation.
+   - **Moving major alias** at `v4` — same binaries, `make_latest:
+     false`, short body that links back to the canonical tag. The
+     existing `v4` tag/release (if any) is force-replaced first.
+
+4. Users can then choose:
+
+   ```yaml
+   - uses: reg-viz/reg-actions@v4         # auto-track v4.x.y
+   - uses: reg-viz/reg-actions@v4.0.0     # pin exact patch
+   - uses: reg-viz/reg-actions@<sha>      # reproducible (Dependabot/Renovate friendly)
+   ```
+
+5. Subsequent patch releases (`v4.0.1`, `v4.1.0`, …) re-run the same
+   workflow and re-point `v4` at the new SHA. Pre-release tags
+   (`v4.1.0-rc1`) intentionally do **not** move the major alias; they
+   live at their own tag only.
+
+6. **Retire the legacy channels** in a follow-up PR:
+   - delete `dist/`, `package.json`, `pnpm-lock.yaml`, `tsconfig.json`,
+     `src/*.ts`
+   - delete `.github/workflows/{deploy,deploy-rc,test,test_with_target_hash}.yml`
+   - delete the `rc-rust` Release & tag (now superseded by `@v4`)
+   - update the README "v1/v2 are deprecated" warning to "v3 is
+     deprecated; please use v4".
+
+The legacy `@v3` branch keeps working until step 6 is shipped, so
+existing consumers see no break during the cutover.
+
 ## Migration status
 
 - [x] Phase 0 — wasm protocol reverse-engineering, octocrab survey
