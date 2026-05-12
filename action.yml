@@ -87,16 +87,20 @@ runs:
         target='${{ steps.target.outputs.target }}'
         ext='${{ steps.target.outputs.ext }}'
         base="https://github.com/reg-viz/reg-actions/releases/download/${ver}"
-        url="${base}/reg-actions-${target}.tar.gz"
+        archive="reg-actions-${target}.tar.gz"
+        url="${base}/${archive}"
         sums="${base}/checksums.txt"
         workdir="$RUNNER_TEMP/reg-actions-bin"
         mkdir -p "$workdir"
         cd "$workdir"
         echo "Downloading ${url}"
-        curl --proto '=https' --tlsv1.2 -fsSL "$url" -o reg-actions.tar.gz
+        # Save the archive under its canonical name so `shasum -c` can
+        # match the path listed in checksums.txt (which contains
+        # entries like `<sha>  reg-actions-<target>.tar.gz`).
+        curl --proto '=https' --tlsv1.2 -fsSL "$url" -o "$archive"
         curl --proto '=https' --tlsv1.2 -fsSL "$sums" -o checksums.txt
         # SHA256 verification (always)
-        grep " reg-actions-${target}.tar.gz$" checksums.txt | shasum -a 256 -c -
+        grep " ${archive}$" checksums.txt | shasum -a 256 -c -
         # Optional cosign keyless signature verification.
         # If cosign is on PATH, attempt to verify checksums.txt against the
         # release workflow's OIDC identity. Failures here are fatal — once
@@ -114,7 +118,7 @@ runs:
         else
           echo '::notice::cosign not found on PATH; skipping signature verification (sha256 still verified). Install sigstore/cosign-installer in your workflow to enable.'
         fi
-        tar xzf reg-actions.tar.gz
+        tar xzf "$archive"
         chmod +x "reg-actions${ext}"
         echo "REG_ACTIONS_BIN=$workdir/reg-actions${ext}" >> "$GITHUB_ENV"
 
