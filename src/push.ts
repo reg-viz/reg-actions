@@ -25,7 +25,6 @@ import { stream as fgStream } from 'fast-glob';
 import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import * as path from 'path';
-import cpy from 'cpy';
 
 import { mkdirP } from '@actions/io';
 import {
@@ -86,6 +85,19 @@ export type Event = {
   };
 };
 
+/**
+ * Copy files to a destination directory using fs.copyFile instead of cpy.
+ *
+ * cpy passes paths through fast-glob/picomatch which interprets parentheses
+ * as extglob patterns (e.g. Next.js route groups like "(headerFooter)"),
+ * causing lookups to fail for literal paths containing those characters.
+ * fs.copyFile bypasses glob processing entirely.
+ */
+const copyFiles = async (srcs: string[], destDir: string): Promise<void> => {
+  await mkdirP(destDir);
+  await Promise.all(srcs.map(src => fs.copyFile(src, path.join(destDir, path.basename(src)))));
+};
+
 const genConfig = (input: PushImagesInput): Config => {
   const { branch, env } = input;
   // Determine the type of URL
@@ -106,13 +118,13 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
   if (result.deletedItems.length > 0) {
     log.info(`Copying deleted files`);
     const deleted = result.deletedItems.map(item => `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${item}`);
-    await cpy(deleted, `${temp}/${dest}/expected/`);
+    await copyFiles(deleted, `${temp}/${dest}/expected/`);
   }
 
   if (result.newItems.length > 0) {
     log.info(`Copying new files`);
     const newGlobs = result.newItems.map(item => `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${item}`);
-    await cpy(newGlobs, `${temp}/${dest}/actual/`);
+    await copyFiles(newGlobs, `${temp}/${dest}/actual/`);
   }
 
   if (result.failedItems.length > 0) {
@@ -124,14 +136,14 @@ const copyImages = async (result: CompareOutput, temp: string, dest: string): Pr
     const failedGlobs = result.failedItems.map(
       item => `${path.join(workspace(), constants.DIFF_DIR_NAME)}/${itemToWebp(item)}`,
     );
-    await cpy(failedGlobs, `${temp}/${dest}/diff/`);
+    await copyFiles(failedGlobs, `${temp}/${dest}/diff/`);
 
     const expectedGlobs = result.failedItems.map(
       item => `${path.join(workspace(), constants.EXPECTED_DIR_NAME)}/${item}`,
     );
-    await cpy(expectedGlobs, `${temp}/${dest}/expected/`);
+    await copyFiles(expectedGlobs, `${temp}/${dest}/expected/`);
     const actualGlobs = result.failedItems.map(item => `${path.join(workspace(), constants.ACTUAL_DIR_NAME)}/${item}`);
-    await cpy(actualGlobs, `${temp}/${dest}/actual/`);
+    await copyFiles(actualGlobs, `${temp}/${dest}/actual/`);
   }
   return;
 };
