@@ -183,6 +183,19 @@ pub fn run_compare(input: &CompareInput) -> Result<CompareOutput> {
     // Engine: wasi-threads が要求する threads サポートを ON
     let mut wcfg = WasmConfig::new();
     wcfg.wasm_threads(true);
+    // 大きな画像 (高解像度 PNG など) を扱うと reg.wasm 内の dlmalloc が
+    // 数百 MB 単位の連続領域を要求し、デフォルトのメモリ予約サイズでは
+    // memory.grow に失敗して `unreachable` トラップを起こすケースがある。
+    // wasm32 の linear memory 上限である 4 GiB まで予約を引き上げ、
+    // guard も最大化することで、モジュールが宣言する max まで素直に
+    // 伸ばせるようにする。
+    // 実効上限は reg.wasm 側の `(memory ... max)` 宣言 (現在 1 GiB) が
+    // 律速するため、それ以上必要な場合は wasm 側の再ビルドが必要。
+    const WASM32_MAX: u64 = 1 << 32; // 4 GiB
+    wcfg.static_memory_maximum_size(WASM32_MAX);
+    wcfg.static_memory_guard_size(WASM32_MAX);
+    wcfg.dynamic_memory_guard_size(WASM32_MAX);
+    wcfg.dynamic_memory_reserved_for_growth(WASM32_MAX);
     let engine = Engine::new(&wcfg).context("create wasmtime engine")?;
 
     let module = Module::new(&engine, REG_WASM).context("compile reg.wasm")?;
